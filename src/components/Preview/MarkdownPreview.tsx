@@ -1,5 +1,5 @@
-import { type Component, createMemo } from "solid-js";
 import { marked } from "marked";
+import { type Component, createMemo } from "solid-js";
 
 interface MarkdownPreviewProps {
   content: string;

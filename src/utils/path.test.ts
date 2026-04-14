@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
+
 import { normalizePath, getParentPath, getPathSegments, isChildPath } from "./path";
 
 describe("normalizePath", () => {

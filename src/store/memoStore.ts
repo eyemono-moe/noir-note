@@ -1,6 +1,7 @@
 import { createStore } from "solid-js/store";
-import type { Memo } from "../types/memo";
+
 import type { IStorage } from "../storage";
+import type { Memo } from "../types/memo";
 
 interface MemoStoreState {
   memos: Map<string, Memo>;

@@ -1,4 +1,5 @@
 import type { ParentComponent } from "solid-js";
+
 import { StorageProvider } from "./context/storage";
 
 const App: ParentComponent = (props) => {

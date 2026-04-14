@@ -1,4 +1,5 @@
 import { openDB, type IDBPDatabase } from "idb";
+
 import type { Memo } from "../types/memo";
 import { DB_NAME, DB_VERSION, STORE_NAME } from "../utils/constants";
 import type { IStorage } from "./interface";

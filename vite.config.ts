@@ -9,10 +9,14 @@ export default defineConfig({
   },
   fmt: {
     ignorePatterns: ["dist/**"],
+    sortImports: true,
+    sortTailwindcss: true,
+    sortPackageJson: true,
   },
   lint: {
     ignorePatterns: ["dist/**"],
     options: { typeAware: true, typeCheck: true },
+    plugins: ["import", "jsx-a11y", "promise", "vitest"],
     jsPlugins: ["eslint-plugin-solid"],
     rules: {
       "solid/components-return-once": "warn",

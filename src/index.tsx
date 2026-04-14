@@ -1,8 +1,8 @@
 import "uno.css";
 import "@unocss/reset/tailwind-compat.css";
 import "./styles/markdown.css";
-import { render } from "solid-js/web";
 import { Route, Router } from "@solidjs/router";
+import { render } from "solid-js/web";
 
 import App from "./App";
 import MemoPage from "./routes/MemoPage";

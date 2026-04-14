@@ -1,4 +1,5 @@
 import { createSignal } from "solid-js";
+
 import type { ViewMode } from "../types/ui";
 
 const [viewMode, setViewMode] = createSignal<ViewMode>("edit");

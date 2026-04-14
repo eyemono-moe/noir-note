@@ -1,5 +1,6 @@
 import { createCodeMirror, createEditorControlledValue } from "solid-codemirror";
 import { type Component } from "solid-js";
+
 import { createEditorExtensions } from "../../editor/extensions";
 
 interface EditorProps {

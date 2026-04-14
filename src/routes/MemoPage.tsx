@@ -1,3 +1,4 @@
+import { debounce } from "@solid-primitives/scheduled";
 import { useLocation, useSearchParams } from "@solidjs/router";
 import {
   type Component,
@@ -9,16 +10,16 @@ import {
   Switch,
   Match,
 } from "solid-js";
-import { debounce } from "@solid-primitives/scheduled";
+
+import Editor from "../components/Editor/Editor";
+import SplitView from "../components/Layout/SplitView";
+import MarkdownPreview from "../components/Preview/MarkdownPreview";
+import { useStorage } from "../context/storage";
 import { memoActions, memoStore } from "../store/memoStore";
 import { uiActions } from "../store/uiStore";
 import type { ViewMode } from "../types/ui";
-import { normalizePath } from "../utils/path";
 import { AUTO_SAVE_DELAY } from "../utils/constants";
-import Editor from "../components/Editor/Editor";
-import MarkdownPreview from "../components/Preview/MarkdownPreview";
-import SplitView from "../components/Layout/SplitView";
-import { useStorage } from "../context/storage";
+import { normalizePath } from "../utils/path";
 
 const MemoPage: Component = () => {
   const location = useLocation();
@@ -79,7 +80,7 @@ const MemoPage: Component = () => {
   });
 
   return (
-    <div class="h-screen w-screen flex flex-col bg-white text-black">
+    <div class="flex h-screen w-screen flex-col bg-white text-black">
       <div class="flex-1 overflow-hidden">
         <Switch fallback={<div class="p-4 text-gray-500">Loading...</div>}>
           <Match when={!isLoading() && mode() === "preview"}>
@@ -108,7 +109,7 @@ const MemoPage: Component = () => {
       </div>
 
       {/* Debug info (temporary) */}
-      <div class="p-2 text-xs text-gray-500 border-t border-gray-200">
+      <div class="border-t border-gray-200 p-2 text-xs text-gray-500">
         Path: {currentPath()} | Mode: {mode()} | Sidebar: {showSidebar() ? "visible" : "hidden"} |
         Memos: {memoStore.memos.size}
       </div>
