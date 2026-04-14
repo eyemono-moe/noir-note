@@ -1,9 +1,17 @@
+import UnoCSS from "unocss/vite";
+import solidPlugin from "vite-plugin-solid";
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
+  plugins: [solidPlugin(), UnoCSS()],
   staged: {
     "*": "vp check --fix",
   },
-  fmt: {},
-  lint: { options: { typeAware: true, typeCheck: true } },
+  fmt: {
+    ignorePatterns: ["dist/**"],
+  },
+  lint: {
+    ignorePatterns: ["dist/**"],
+    options: { typeAware: true, typeCheck: true },
+  },
 });
