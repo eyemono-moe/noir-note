@@ -91,6 +91,9 @@ importers:
       vite:
         specifier: npm:@voidzero-dev/vite-plus-core@latest
         version: '@voidzero-dev/vite-plus-core@0.1.16(jiti@2.6.1)(typescript@6.0.2)'
+      vite-bundle-analyzer:
+        specifier: ^1.3.7
+        version: 1.3.7
       vite-plugin-solid:
         specifier: ^2.11.12
         version: 2.11.12(@voidzero-dev/vite-plus-core@0.1.16(jiti@2.6.1)(typescript@6.0.2))(solid-js@1.9.12)
@@ -2540,6 +2543,10 @@ packages:
 
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
+
+  vite-bundle-analyzer@1.3.7:
+    resolution: {integrity: sha512-dYlW6iM0Gq7+uSEfXytDC+UjruUMgEKhXwQUbw4cJUgHA6FdEhpLgIrL5OZEyabrzVen0mZyfOSESyZ7nGyT8g==}
+    hasBin: true
 
   vite-plugin-solid@2.11.12:
     resolution: {integrity: sha512-FgjPcx2OwX9h6f28jli7A4bG7PP3te8uyakE5iqsmpq3Jqi1TWLgSroC9N6cMfGRU2zXsl4Q6ISvTr2VL0QHpA==}
@@ -5426,6 +5433,8 @@ snapshots:
   uri-js@4.4.1:
     dependencies:
       punycode: 2.3.1
+
+  vite-bundle-analyzer@1.3.7: {}
 
   vite-plugin-solid@2.11.12(@voidzero-dev/vite-plus-core@0.1.16(jiti@2.6.1)(typescript@6.0.2))(solid-js@1.9.12):
     dependencies:

@@ -1,9 +1,10 @@
 import UnoCSS from "unocss/vite";
+import { analyzer } from "vite-bundle-analyzer";
 import solidPlugin from "vite-plugin-solid";
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
-  plugins: [solidPlugin(), UnoCSS()],
+  plugins: [solidPlugin(), UnoCSS(), analyzer()],
   staged: {
     "*": "vp check --fix",
   },
@@ -44,5 +45,24 @@ export default defineConfig({
   optimizeDeps: {
     // Add both @codemirror/state and @codemirror/view to included deps to optimize
     include: ["@codemirror/state", "@codemirror/view"],
+  },
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: "codemirror",
+              test: /node_modules[\\/]@codemirror/,
+              priority: 10,
+            },
+            {
+              name: "common",
+              priority: 1,
+            },
+          ],
+        },
+      },
+    },
   },
 });
