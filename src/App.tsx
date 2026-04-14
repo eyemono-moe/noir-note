@@ -1,7 +1,8 @@
-import type { Component } from "solid-js";
+import type { ParentComponent } from "solid-js";
+import { StorageProvider } from "./context/storage";
 
-const App: Component = () => {
-  return <p class="font-bold text-xl">Hello, Solid!</p>;
+const App: ParentComponent = (props) => {
+  return <StorageProvider>{props.children}</StorageProvider>;
 };
 
 export default App;

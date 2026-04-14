@@ -1,7 +1,10 @@
 import "uno.css";
+import "@unocss/reset/tailwind-compat.css";
 import { render } from "solid-js/web";
+import { Route, Router } from "@solidjs/router";
 
 import App from "./App";
+import MemoPage from "./routes/MemoPage";
 
 const root = document.getElementById("root");
 
@@ -11,4 +14,11 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
   );
 }
 
-render(() => <App />, root!);
+render(
+  () => (
+    <Router root={App}>
+      <Route path="*" component={MemoPage} />
+    </Router>
+  ),
+  root!,
+);
