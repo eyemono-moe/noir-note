@@ -5,6 +5,7 @@ import { EditorView } from "@codemirror/view";
 import { lineNumbers, highlightActiveLineGutter, highlightActiveLine } from "@codemirror/view";
 import { keymap } from "@codemirror/view";
 
+import { formatKeyBinding } from "./formatter";
 import { markdown } from "./markdown";
 import { monochromeTheme } from "./theme";
 
@@ -18,7 +19,7 @@ export function createEditorExtensions() {
     bracketMatching(),
 
     // Keymaps
-    keymap.of([...defaultKeymap, ...historyKeymap]),
+    keymap.of([...defaultKeymap, ...historyKeymap, formatKeyBinding]),
 
     // Language support
     ...markdown(),
