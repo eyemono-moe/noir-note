@@ -1,7 +1,7 @@
-import { defineConfig, presetMini } from "unocss";
+import { defineConfig, presetWind3 } from "unocss";
 
 export default defineConfig({
-  presets: [presetMini()],
+  presets: [presetWind3()],
   theme: {
     colors: {
       black: "#000000",

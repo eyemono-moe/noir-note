@@ -22,9 +22,9 @@ const MarkdownPreview: Component<MarkdownPreviewProps> = (props) => {
   });
 
   return (
-    <div class="h-full w-full overflow-auto">
+    <div class="h-full w-full overflow-auto p-4">
       {/* oxlint-disable solid/no-innerhtml: needed for markdown rendering */}
-      <div class="markdown-preview p-4" innerHTML={html()} />
+      <div class="markdown-preview" innerHTML={html()} />
     </div>
   );
 };

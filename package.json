@@ -11,6 +11,7 @@
     "fix": "vp check --fix"
   },
   "dependencies": {
+    "@ark-ui/solid": "^5.36.0",
     "@codemirror/autocomplete": "^6.20.1",
     "@codemirror/commands": "^6.10.3",
     "@codemirror/lang-markdown": "^6.5.0",
