@@ -1,5 +1,5 @@
 import { createCodeMirror, createEditorControlledValue } from "solid-codemirror";
-import { type Component, createEffect } from "solid-js";
+import { type Component } from "solid-js";
 import { createEditorExtensions } from "../../editor/extensions";
 
 interface EditorProps {
@@ -10,16 +10,14 @@ interface EditorProps {
 
 const Editor: Component<EditorProps> = (props) => {
   const { ref, editorView, createExtension } = createCodeMirror({
-    onValueChange: props.onChange,
+    onValueChange: (value) => props.onChange(value),
   });
 
-  // Setup extensions
-  createExtension(() => createEditorExtensions());
+  // Setup extensions (pass the array directly)
+  createExtension(createEditorExtensions);
 
-  // Create controlled value - wrap in accessor
-  createEffect(() => {
-    createEditorControlledValue(editorView, () => props.content);
-  });
+  // Create controlled value
+  createEditorControlledValue(editorView, () => props.content);
 
   return (
     <div class="h-full w-full">

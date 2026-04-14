@@ -1,5 +1,6 @@
 import "uno.css";
 import "@unocss/reset/tailwind-compat.css";
+import "./styles/markdown.css";
 import { render } from "solid-js/web";
 import { Route, Router } from "@solidjs/router";
 

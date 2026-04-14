@@ -57,7 +57,6 @@ export const memoActions = {
   },
 
   async save(path: string, content: string, storage: IStorage, fromSync = false) {
-    console.log("save", path);
     try {
       await storage.set(path, content);
 

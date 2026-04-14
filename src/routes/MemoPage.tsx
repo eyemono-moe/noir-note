@@ -1,5 +1,14 @@
 import { useLocation, useSearchParams } from "@solidjs/router";
-import { type Component, createEffect, createMemo, createSignal, on, onMount } from "solid-js";
+import {
+  type Component,
+  createEffect,
+  createMemo,
+  createSignal,
+  on,
+  onMount,
+  Switch,
+  Match,
+} from "solid-js";
 import { debounce } from "@solid-primitives/scheduled";
 import { memoActions, memoStore } from "../store/memoStore";
 import { uiActions } from "../store/uiStore";
@@ -7,6 +16,8 @@ import type { ViewMode } from "../types/ui";
 import { normalizePath } from "../utils/path";
 import { AUTO_SAVE_DELAY } from "../utils/constants";
 import Editor from "../components/Editor/Editor";
+import MarkdownPreview from "../components/Preview/MarkdownPreview";
+import SplitView from "../components/Layout/SplitView";
 import { useStorage } from "../context/storage";
 
 const MemoPage: Component = () => {
@@ -70,15 +81,30 @@ const MemoPage: Component = () => {
   return (
     <div class="h-screen w-screen flex flex-col bg-white text-black">
       <div class="flex-1 overflow-hidden">
-        {isLoading() ? (
-          <div class="p-4 text-gray-500">Loading...</div>
-        ) : (
-          <Editor
-            content={content()}
-            onChange={handleContentChange}
-            placeholder="Start typing..."
-          />
-        )}
+        <Switch fallback={<div class="p-4 text-gray-500">Loading...</div>}>
+          <Match when={!isLoading() && mode() === "preview"}>
+            <MarkdownPreview content={content()} />
+          </Match>
+          <Match when={!isLoading() && mode() === "split"}>
+            <SplitView
+              left={
+                <Editor
+                  content={content()}
+                  onChange={handleContentChange}
+                  placeholder="Start typing..."
+                />
+              }
+              right={<MarkdownPreview content={content()} />}
+            />
+          </Match>
+          <Match when={!isLoading()}>
+            <Editor
+              content={content()}
+              onChange={handleContentChange}
+              placeholder="Start typing..."
+            />
+          </Match>
+        </Switch>
       </div>
 
       {/* Debug info (temporary) */}

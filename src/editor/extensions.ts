@@ -1,7 +1,6 @@
 import { EditorView } from "@codemirror/view";
 import { markdown } from "./markdown";
 import { monochromeTheme } from "./theme";
-import { listCompletion } from "./listCompletion";
 import { lineNumbers, highlightActiveLineGutter, highlightActiveLine } from "@codemirror/view";
 import { bracketMatching } from "@codemirror/language";
 import { history, historyKeymap } from "@codemirror/commands";
@@ -19,7 +18,6 @@ export function createEditorExtensions() {
 
     // Keymaps
     keymap.of([...defaultKeymap, ...historyKeymap]),
-    listCompletion,
 
     // Language support
     ...markdown(),
