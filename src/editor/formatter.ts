@@ -74,7 +74,13 @@ const formatCommand: Command = (target) => {
   return true;
 };
 
-export const formatKeyBinding: KeyBinding = {
-  key: "Mod-Shift-f",
-  run: formatCommand,
-};
+export const formatKeyBindings: KeyBinding[] = [
+  {
+    key: "Mod-Shift-f",
+    run: formatCommand,
+  },
+  {
+    key: "Mod-s",
+    run: formatCommand,
+  },
+];

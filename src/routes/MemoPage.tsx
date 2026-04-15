@@ -1,5 +1,5 @@
 import { debounce } from "@solid-primitives/scheduled";
-import { useLocation, useSearchParams } from "@solidjs/router";
+import { useLocation, useNavigate } from "@solidjs/router";
 import {
   type Component,
   createEffect,
@@ -11,109 +11,147 @@ import {
   Match,
 } from "solid-js";
 
+import { allCommands } from "../commands/definitions";
+import CommandPalette from "../commands/palette";
+import { commandRegistry } from "../commands/registry";
+import type { CommandContext } from "../commands/types";
 import Editor from "../components/Editor/Editor";
 import SplitView from "../components/Layout/SplitView";
 import MarkdownPreview from "../components/Preview/MarkdownPreview";
+import Sidebar from "../components/Sidebar/Sidebar";
 import { useStorage } from "../context/storage";
-import { memoActions, memoStore } from "../store/memoStore";
-import { uiActions } from "../store/uiStore";
-import type { ViewMode } from "../types/ui";
+import { useUIState } from "../hooks/useUIState";
+import { createMemoResource } from "../store/memoResource";
 import { AUTO_SAVE_DELAY } from "../utils/constants";
 import { normalizePath } from "../utils/path";
 
 const MemoPage: Component = () => {
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const storage = useStorage();
+  const { mode, sidebarVisible, setMode, toggleSidebar } = useUIState();
+
+  // Create reactive memo resource
+  const memoResource = createMemoResource(storage);
 
   // Get current path from URL (everything after domain)
   const currentPath = createMemo(() => normalizePath(location.pathname));
 
-  // Get view mode and sidebar visibility from URL params
-  const mode = createMemo(() => (searchParams.mode as ViewMode) || "edit");
-  const showSidebar = createMemo(() => searchParams.sidebar === "tree");
+  // Local content state (for editing without saving immediately)
+  const [localContent, setLocalContent] = createSignal("");
+  const [hasLocalChanges, setHasLocalChanges] = createSignal(false);
 
-  // Local content state
-  const [content, setContent] = createSignal("");
-  const [isLoading, setIsLoading] = createSignal(true);
-
-  // Update UI store when URL params change
-  createEffect(() => {
-    uiActions.setMode(mode());
-    uiActions.setSidebarVisibility(showSidebar());
-  });
-
-  // Load memo when path changes (only react to path changes, not store updates)
+  // Load content when path changes (navigation)
+  // This effect ONLY runs when path changes, not when memo updates from storage
   createEffect(
-    on(currentPath, async (path) => {
-      setIsLoading(true);
-
-      // Load directly from storage to avoid reacting to store updates
-      const memo = await storage.get(path);
-      if (memo) {
-        setContent(memo.content);
-      } else {
-        // New memo - start with empty content
-        setContent("");
-      }
-
-      setIsLoading(false);
-    }),
+    on(
+      currentPath,
+      (path) => {
+        console.log("[MemoPage] Path changed, loading content:", path);
+        const memo = memoResource.findMemo(path);
+        if (memo) {
+          console.log("[MemoPage] Found memo in list, loading content");
+          setLocalContent(memo.content);
+        } else {
+          console.log("[MemoPage] No memo found, starting with empty content");
+          setLocalContent("");
+        }
+        setHasLocalChanges(false);
+      },
+      { defer: true },
+    ),
   );
 
   // Debounced save function
-  const debouncedSave = debounce((path: string, newContent: string) => {
-    void memoActions.save(path, newContent, storage);
+  const debouncedSave = debounce(async (path: string, newContent: string) => {
+    console.log("[MemoPage] debouncedSave executing:", { path, contentLength: newContent.length });
+    const success = await memoResource.saveMemo(path, newContent);
+    console.log("[MemoPage] saveMemo result:", { success });
+    if (success) {
+      setHasLocalChanges(false);
+    }
   }, AUTO_SAVE_DELAY);
 
   // Handle content changes
   const handleContentChange = (newContent: string) => {
-    setContent(newContent);
+    console.log("[MemoPage] handleContentChange:", { contentLength: newContent.length });
+    setLocalContent(newContent);
+    setHasLocalChanges(true);
 
     // Auto-save
     debouncedSave(currentPath(), newContent);
   };
 
-  // Load all memos on mount
+  // Register commands on mount
   onMount(() => {
-    void memoActions.loadAll(storage);
+    // Register all commands
+    for (const command of allCommands) {
+      commandRegistry.register(command);
+    }
   });
 
+  // Create command context
+  const commandContext = createMemo<CommandContext>(() => ({
+    currentPath: currentPath(),
+    currentMode: mode(),
+    sidebarVisible: sidebarVisible(),
+    navigate: (path: string) => navigate(path),
+    setMode,
+    toggleSidebar,
+  }));
+
   return (
-    <div class="flex h-screen w-screen flex-col bg-white text-black">
-      <div class="flex-1 overflow-hidden">
-        <Switch fallback={<div class="p-4 text-gray-500">Loading...</div>}>
-          <Match when={!isLoading() && mode() === "preview"}>
-            <MarkdownPreview content={content()} />
-          </Match>
-          <Match when={!isLoading() && mode() === "split"}>
-            <SplitView
-              left={
+    <>
+      <CommandPalette context={commandContext()} memoResource={memoResource} />
+      <div class="flex h-screen w-screen flex-col bg-white text-black">
+        <div class="flex flex-1 overflow-hidden">
+          <Sidebar
+            currentPath={currentPath()}
+            onNavigate={(path) => navigate(path)}
+            onDelete={(path) => {
+              console.log("sidebar onDelete", path);
+              void memoResource.deleteMemo(path);
+            }}
+            onInsert={(_parentPath) => {}}
+            visible={sidebarVisible()}
+            memoResource={memoResource}
+          />
+          <div class="flex flex-1 flex-col overflow-hidden">
+            <Switch fallback={<div class="p-4 text-gray-500">Loading...</div>}>
+              <Match when={!memoResource.memos.loading && mode() === "preview"}>
+                <MarkdownPreview content={localContent()} />
+              </Match>
+              <Match when={!memoResource.memos.loading && mode() === "split"}>
+                <SplitView
+                  left={
+                    <Editor
+                      content={localContent()}
+                      onChange={handleContentChange}
+                      placeholder="Start typing..."
+                    />
+                  }
+                  right={<MarkdownPreview content={localContent()} />}
+                />
+              </Match>
+              <Match when={!memoResource.memos.loading}>
                 <Editor
-                  content={content()}
+                  content={localContent()}
                   onChange={handleContentChange}
                   placeholder="Start typing..."
                 />
-              }
-              right={<MarkdownPreview content={content()} />}
-            />
-          </Match>
-          <Match when={!isLoading()}>
-            <Editor
-              content={content()}
-              onChange={handleContentChange}
-              placeholder="Start typing..."
-            />
-          </Match>
-        </Switch>
-      </div>
+              </Match>
+            </Switch>
 
-      {/* Debug info (temporary) */}
-      <div class="border-t border-gray-200 p-2 text-xs text-gray-500">
-        Path: {currentPath()} | Mode: {mode()} | Sidebar: {showSidebar() ? "visible" : "hidden"} |
-        Memos: {memoStore.memos.size}
+            {/* Debug info (temporary) */}
+            <div class="border-t border-gray-200 p-2 text-xs text-gray-500">
+              Path: {currentPath()} | Mode: {mode()} | Sidebar:{" "}
+              {sidebarVisible() ? "visible" : "hidden"} | Memos: {memoResource.memosArray().length}
+              {hasLocalChanges() ? " | Unsaved changes" : ""}
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

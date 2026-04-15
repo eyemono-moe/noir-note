@@ -64,6 +64,9 @@ importers:
         specifier: ^1.9.12
         version: 1.9.12
     devDependencies:
+      '@iconify-json/material-symbols':
+        specifier: ^1.2.66
+        version: 1.2.66
       '@solid-primitives/event-listener':
         specifier: ^2.4.5
         version: 2.4.5(solid-js@1.9.12)
@@ -76,6 +79,9 @@ importers:
       '@solid-primitives/storage':
         specifier: ^4.3.4
         version: 4.3.4(solid-js@1.9.12)
+      '@unocss/postcss':
+        specifier: ^66.6.8
+        version: 66.6.8(postcss@8.5.9)
       eslint-plugin-solid:
         specifier: ^0.14.5
         version: 0.14.5(eslint@9.39.4(jiti@2.6.1))(typescript@6.0.2)
@@ -87,7 +93,7 @@ importers:
         version: 6.0.2
       unocss:
         specifier: ^66.6.8
-        version: 66.6.8(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@voidzero-dev/vite-plus-core@0.1.16(jiti@2.6.1)(typescript@6.0.2))
+        version: 66.6.8(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@unocss/postcss@66.6.8(postcss@8.5.9))(@voidzero-dev/vite-plus-core@0.1.16(jiti@2.6.1)(typescript@6.0.2))
       vite:
         specifier: npm:@voidzero-dev/vite-plus-core@latest
         version: '@voidzero-dev/vite-plus-core@0.1.16(jiti@2.6.1)(typescript@6.0.2)'
@@ -418,6 +424,9 @@ packages:
   '@humanwhocodes/retry@0.4.3':
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
+
+  '@iconify-json/material-symbols@1.2.66':
+    resolution: {integrity: sha512-pgZmK8RBAaYjfHnR0DcUDraduiJwjGDi4FwCXp89ecyNfs6fcL8j+TJ+Xqkyv6v7c31j/4OlL5ly86ATT6yTpA==}
 
   '@iconify/types@2.0.0':
     resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
@@ -1058,6 +1067,12 @@ packages:
 
   '@unocss/inspector@66.6.8':
     resolution: {integrity: sha512-g8uRzXDdmoNRjXX/mZP7m0rWXLtOimyOW7+VFK6FNxRWBmvIGYgTLHkutF6Wyh9lLPDYx3pkkEmfgL35BDT3Sg==}
+
+  '@unocss/postcss@66.6.8':
+    resolution: {integrity: sha512-wBbcSBSwWjQ4YhgcT4f2N0FUeRnO/AOnpb90nElEdTipNiLscyo7d2B5EpC/TG/4JRoiSXqZO5bWXiT9FdcJmA==}
+    engines: {node: '>=14'}
+    peerDependencies:
+      postcss: ^8.4.21
 
   '@unocss/preset-attributify@66.6.8':
     resolution: {integrity: sha512-YxyRSF5rq0WbY8kCG0gpj3DSXPL89QGxZeqABmceCzPJbXJBBHEJz/pgBPmzSa2Ziulgs0AEkHzWFPfpb2uGTA==}
@@ -3176,6 +3191,10 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.3': {}
 
+  '@iconify-json/material-symbols@1.2.66':
+    dependencies:
+      '@iconify/types': 2.0.0
+
   '@iconify/types@2.0.0': {}
 
   '@iconify/utils@3.1.0':
@@ -3667,6 +3686,15 @@ snapshots:
       colorette: 2.0.20
       gzip-size: 6.0.0
       sirv: 3.0.2
+
+  '@unocss/postcss@66.6.8(postcss@8.5.9)':
+    dependencies:
+      '@unocss/config': 66.6.8
+      '@unocss/core': 66.6.8
+      '@unocss/rule-utils': 66.6.8
+      css-tree: 3.2.1
+      postcss: 8.5.9
+      tinyglobby: 0.2.16
 
   '@unocss/preset-attributify@66.6.8':
     dependencies:
@@ -5386,7 +5414,7 @@ snapshots:
 
   universalify@0.1.2: {}
 
-  unocss@66.6.8(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@voidzero-dev/vite-plus-core@0.1.16(jiti@2.6.1)(typescript@6.0.2)):
+  unocss@66.6.8(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@unocss/postcss@66.6.8(postcss@8.5.9))(@voidzero-dev/vite-plus-core@0.1.16(jiti@2.6.1)(typescript@6.0.2)):
     dependencies:
       '@unocss/cli': 66.6.8
       '@unocss/core': 66.6.8
@@ -5405,6 +5433,8 @@ snapshots:
       '@unocss/transformer-directives': 66.6.8
       '@unocss/transformer-variant-group': 66.6.8
       '@unocss/vite': 66.6.8(@voidzero-dev/vite-plus-core@0.1.16(jiti@2.6.1)(typescript@6.0.2))
+    optionalDependencies:
+      '@unocss/postcss': 66.6.8(postcss@8.5.9)
     transitivePeerDependencies:
       - '@emnapi/core'
       - '@emnapi/runtime'
