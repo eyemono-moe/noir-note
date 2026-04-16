@@ -53,12 +53,22 @@ const formatCommand: Command = (target) => {
     .then((formatted) => {
       if (formatted === content) return; // 変更がない場合は何もしない
 
+      // 1. 今回の変更（全置換）を定義
+      const changeSpec = { from: 0, to: state.doc.length, insert: formatted };
+
+      // 2. この変更に基づいた ChangeSet を作成
+      const changeSet = state.changes(changeSpec);
+
+      // 3. 作成した changeSet を使って、現在の選択範囲をマッピングする
+      // これにより、ドキュメントが短くなっても適切な位置に調整される
+      const newSelection = state.selection.map(changeSet);
+
       // ドキュメント全体を置換するトランザクションを発行
       dispatch(
         state.update({
-          changes: { from: 0, to: state.doc.length, insert: formatted },
-          selection: state.selection.map(state.changes()),
-          annotations: Transaction.userEvent.of("format"), // ユーザーイベントを付与
+          changes: changeSpec,
+          selection: newSelection, // 正しくマッピングされた選択範囲を適用
+          annotations: Transaction.userEvent.of("format"),
           // effects: snapshot, // スクロール位置を復元
         }),
       );

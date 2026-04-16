@@ -1,6 +1,7 @@
-import { history, historyKeymap } from "@codemirror/commands";
+import { history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { defaultKeymap } from "@codemirror/commands";
-import { bracketMatching } from "@codemirror/language";
+import { bracketMatching, indentUnit } from "@codemirror/language";
+import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { lineNumbers, highlightActiveLineGutter, highlightActiveLine } from "@codemirror/view";
 import { keymap } from "@codemirror/view";
@@ -18,8 +19,13 @@ export function createEditorExtensions() {
     history(),
     bracketMatching(),
 
-    // Keymaps
-    keymap.of([...defaultKeymap, ...historyKeymap, ...formatKeyBindings]),
+    keymap.of(defaultKeymap), // defaultKeymapを有効化
+    keymap.of(historyKeymap), // historyKeymapを有効化
+    keymap.of([indentWithTab]), // タブキーをbindしてインデントの上げ下げに使用する。入力される文字列はindentUnitで設定する
+    indentUnit.of("  "), // インデントの単位をスペース4個にする。@codemirror/lang-markdownでネストしたリストに正しい挙動をさせるには2-5の範囲にする必要がある
+    EditorView.lineWrapping, // テキストの折返しを有効化
+    EditorState.tabSize.of(2), // Tab（\t）をスペース4個分の大きさにする
+    keymap.of(formatKeyBindings), // フォーマット用のキーバインドを有効化
 
     // Language support
     ...markdown(),
