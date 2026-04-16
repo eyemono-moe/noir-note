@@ -254,6 +254,7 @@ export const Tree: Component<TreeProps> = (props) => {
       <TreeView.Root
         collection={props.collection}
         class={styles.Root}
+        selectedValue={[props.currentPath]}
         expandedValue={effectiveExpandedPaths()}
         onExpandedChange={(details) => {
           batch(() => {
