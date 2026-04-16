@@ -21,6 +21,7 @@
     "@codemirror/view": "^6.41.0",
     "@dprint/formatter": "^0.5.1",
     "@dprint/markdown": "^0.21.1",
+    "@solid-primitives/set": "^0.7.3",
     "@solidjs/router": "^0.16.1",
     "@tanstack/rxdb-db-collection": "^0.1.71",
     "@tanstack/solid-db": "^0.2.19",

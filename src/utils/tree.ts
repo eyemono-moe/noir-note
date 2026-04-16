@@ -27,7 +27,7 @@ export function buildTree(memos: Memo[]): TreeNode[] {
         memo,
       };
       nodeMap.set("/", rootNode);
-      root.push(rootNode);
+      // Don't add to root yet - we'll handle it at the end
       continue;
     }
 
@@ -61,6 +61,14 @@ export function buildTree(memos: Memo[]): TreeNode[] {
       // Move to next level
       currentLevel = node.children;
     }
+  }
+
+  // If "/" node exists, make it the root and move all top-level nodes as its children
+  const rootSlashNode = nodeMap.get("/");
+  if (rootSlashNode) {
+    // Move all current top-level nodes to be children of "/"
+    rootSlashNode.children = root;
+    return [rootSlashNode];
   }
 
   return root;

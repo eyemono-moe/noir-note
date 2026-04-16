@@ -2,6 +2,7 @@ import { createTreeCollection } from "@ark-ui/solid";
 import { Show, type Component, createMemo } from "solid-js";
 
 import type { MemoDocument } from "../../db/rxdb";
+import type { MemosCollection } from "../../db/tanstack";
 import { buildTree, type TreeNode } from "../../utils/tree";
 import { Tree } from "./Tree";
 
@@ -11,6 +12,7 @@ interface SidebarProps {
   onDelete: (path: string) => void;
   visible: boolean;
   allMemos: MemoDocument[];
+  memosCollection: MemosCollection;
 }
 
 const Sidebar: Component<SidebarProps> = (props) => {
@@ -44,6 +46,8 @@ const Sidebar: Component<SidebarProps> = (props) => {
             currentPath={props.currentPath}
             onDelete={props.onDelete}
             onInsert={(_parentPath) => {}}
+            memosCollection={props.memosCollection}
+            allMemos={props.allMemos}
           />
         </div>
       </div>

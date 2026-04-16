@@ -45,6 +45,9 @@ importers:
       '@dprint/markdown':
         specifier: ^0.21.1
         version: 0.21.1
+      '@solid-primitives/set':
+        specifier: ^0.7.3
+        version: 0.7.3(solid-js@1.9.12)
       '@solidjs/router':
         specifier: ^0.16.1
         version: 0.16.1(solid-js@1.9.12)
@@ -1229,6 +1232,11 @@ packages:
 
   '@solid-primitives/scheduled@1.5.3':
     resolution: {integrity: sha512-oNwLE6E6lxJAWrc8QXuwM0k2oU1BnANnkChwMw82aK1j3+mWGJkG1IFe5gCwbV+afYmjI76t9JJV3md/8tLw+g==}
+    peerDependencies:
+      solid-js: ^1.6.12
+
+  '@solid-primitives/set@0.7.3':
+    resolution: {integrity: sha512-Ipk8izBOfIjWxKfkW+la/4uDHCsOlK783g4lEyQzSFUrDUlNn1D7UMyUPSudK/HatgD8qOmVox9wMj2tNPNrrQ==}
     peerDependencies:
       solid-js: ^1.6.12
 
@@ -4747,6 +4755,11 @@ snapshots:
 
   '@solid-primitives/scheduled@1.5.3(solid-js@1.9.12)':
     dependencies:
+      solid-js: 1.9.12
+
+  '@solid-primitives/set@0.7.3(solid-js@1.9.12)':
+    dependencies:
+      '@solid-primitives/trigger': 1.2.3(solid-js@1.9.12)
       solid-js: 1.9.12
 
   '@solid-primitives/trigger@1.2.3(solid-js@1.9.12)':

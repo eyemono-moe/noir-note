@@ -1,9 +1,9 @@
 .Root {
   @apply text-gray-7;
   --tree-item-gap: 0.5rem;
-  --tree-indentation: 1rem;
-  --tree-padding-inline: 0.25rem;
-  --tree-padding-block: 0.25rem;
+  --tree-indentation: 0.25rem;
+  --tree-padding-inline: 0rem;
+  --tree-padding-block: 0.125rem;
   --tree-icon-size: 1rem;
 
   display: flex;
@@ -365,4 +365,13 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.CreateInputContainer {
+  display: flex;
+  align-items: center;
+  gap: var(--tree-item-gap);
+  padding-inline-start: calc(var(--tree-offset) + var(--tree-indentation));
+  padding-inline-end: var(--tree-padding-inline);
+  padding-block: var(--tree-padding-block);
 }

@@ -161,6 +161,7 @@ const MemoPage: Component = () => {
               }}
               visible={sidebarVisible()}
               allMemos={allMemosQuery() || []}
+              memosCollection={memosCollectionResource()!}
             />
             <div class="flex flex-1 flex-col overflow-hidden">
               <Switch fallback={<div class="p-4 text-gray-500">Loading...</div>}>
