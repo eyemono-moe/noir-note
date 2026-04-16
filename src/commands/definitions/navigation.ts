@@ -1,6 +1,6 @@
 import type { Command } from "../types";
 
-export const navigateCommand: Command = {
+const navigateCommand: Command = {
   id: "navigate",
   label: "Navigate to Page",
   description: "Jump to a specific page by path",
@@ -11,7 +11,7 @@ export const navigateCommand: Command = {
   },
 };
 
-export const goHomeCommand: Command = {
+const goHomeCommand: Command = {
   id: "go-home",
   label: "Go to Home",
   description: "Navigate to root page",

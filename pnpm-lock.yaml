@@ -57,9 +57,6 @@ importers:
       '@unocss/reset':
         specifier: ^66.6.8
         version: 66.6.8
-      idb:
-        specifier: ^8.0.3
-        version: 8.0.3
       marked:
         specifier: ^18.0.0
         version: 18.0.0
@@ -76,18 +73,12 @@ importers:
       '@iconify-json/material-symbols':
         specifier: ^1.2.66
         version: 1.2.66
-      '@solid-primitives/event-listener':
-        specifier: ^2.4.5
-        version: 2.4.5(solid-js@1.9.12)
       '@solid-primitives/keyboard':
         specifier: ^1.3.5
         version: 1.3.5(solid-js@1.9.12)
       '@solid-primitives/scheduled':
         specifier: ^1.5.3
         version: 1.5.3(solid-js@1.9.12)
-      '@solid-primitives/storage':
-        specifier: ^4.3.4
-        version: 4.3.4(solid-js@1.9.12)
       '@types/node':
         specifier: ^25.6.0
         version: 25.6.0
@@ -1216,18 +1207,6 @@ packages:
     resolution: {integrity: sha512-oNwLE6E6lxJAWrc8QXuwM0k2oU1BnANnkChwMw82aK1j3+mWGJkG1IFe5gCwbV+afYmjI76t9JJV3md/8tLw+g==}
     peerDependencies:
       solid-js: ^1.6.12
-
-  '@solid-primitives/storage@4.3.4':
-    resolution: {integrity: sha512-GSxPAIuyxhJWOcv7n10iv3aid5oHN3KUgyA9IV0GYWlPpgyGs43aS9E85b0VXDLoH+D4ThNK8+2WEJ8B/S6Ccg==}
-    peerDependencies:
-      '@tauri-apps/plugin-store': '*'
-      solid-js: ^1.6.12
-      solid-start: '*'
-    peerDependenciesMeta:
-      '@tauri-apps/plugin-store':
-        optional: true
-      solid-start:
-        optional: true
 
   '@solid-primitives/trigger@1.2.3':
     resolution: {integrity: sha512-Za2JebEiDyfamjmDwRaESYqBBYOlgYGzB8kHYH0QrkXyLf2qNADlKdGN+z3vWSLCTDcKxChS43Kssjuc0OZhng==}
@@ -2401,9 +2380,6 @@ packages:
   iconv-lite@0.7.2:
     resolution: {integrity: sha512-im9DjEDQ55s9fL4EYzOAv0yMqmMBSZp6G0VvFyTMPKWxiSBHUj9NW/qqLmXUwXrrM7AvqSlTCfvqRb0cM8yYqw==}
     engines: {node: '>=0.10.0'}
-
-  idb@8.0.3:
-    resolution: {integrity: sha512-LtwtVyVYO5BqRvcsKuB2iUMnHwPVByPCXFXOpuU96IZPPoPN6xjOGxZQ74pgSVVLQWtUOYgyeL4GE98BY5D3wg==}
 
   ieee754@1.2.1:
     resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==}
@@ -4415,11 +4391,6 @@ snapshots:
     dependencies:
       solid-js: 1.9.12
 
-  '@solid-primitives/storage@4.3.4(solid-js@1.9.12)':
-    dependencies:
-      '@solid-primitives/utils': 6.4.0(solid-js@1.9.12)
-      solid-js: 1.9.12
-
   '@solid-primitives/trigger@1.2.3(solid-js@1.9.12)':
     dependencies:
       '@solid-primitives/utils': 6.4.0(solid-js@1.9.12)
@@ -5958,8 +5929,6 @@ snapshots:
   iconv-lite@0.7.2:
     dependencies:
       safer-buffer: 2.1.2
-
-  idb@8.0.3: {}
 
   ieee754@1.2.1: {}
 

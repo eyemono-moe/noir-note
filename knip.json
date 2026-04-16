@@ -1,0 +1,9 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["src/index.{js,ts,tsx}"],
+  "postcss": true,
+  "tags": ["-lintignore"],
+  "unocss": true,
+  "vite": true,
+  "vitest": true
+}

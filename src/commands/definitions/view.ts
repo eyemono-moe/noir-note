@@ -1,6 +1,6 @@
 import type { Command } from "../types";
 
-export const changeModeCommand: Command = {
+const changeModeCommand: Command = {
   id: "change-mode",
   label: "Change View Mode",
   description: "Switch between Edit, Preview, and Split modes",
@@ -15,7 +15,7 @@ export const changeModeCommand: Command = {
   },
 };
 
-export const toggleSidebarCommand: Command = {
+const toggleSidebarCommand: Command = {
   id: "toggle-sidebar",
   label: "Toggle Sidebar",
   description: "Show or hide the page tree sidebar",
