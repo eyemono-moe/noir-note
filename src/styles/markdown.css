@@ -67,6 +67,20 @@
   margin-bottom: 0.5em;
 }
 
+/* checkboxを直下の子に持つ時はmarkerを非表示にして、checkboxをリストアイテムの外に出す */
+.markdown-preview li:has(> input[type="checkbox"]) {
+  position: relative;
+  list-style: none;
+}
+
+.markdown-preview li:has(> input[type="checkbox"]) > input[type="checkbox"] {
+  position: absolute;
+  left: -1.5em;
+  top: 0.25em;
+  width: 1em;
+  height: 1em;
+}
+
 .markdown-preview li {
   margin-top: 0.25em;
 }
