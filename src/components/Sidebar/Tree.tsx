@@ -119,7 +119,6 @@ export const Tree: Component<TreeProps> = (props) => {
         props.onNavigate(details.selectedNodes[0].path);
       }}
     >
-      <TreeView.Label class={styles.Label}>Notes</TreeView.Label>
       <TreeView.Tree class={styles.Tree}>
         <For each={props.collection.rootNode.children}>
           {(node, index) => (
