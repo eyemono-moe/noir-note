@@ -1,10 +1,18 @@
 import UnoCSS from "unocss/vite";
 import { analyzer } from "vite-bundle-analyzer";
+import { nodePolyfills } from "vite-plugin-node-polyfills";
 import solidPlugin from "vite-plugin-solid";
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
-  plugins: [solidPlugin(), UnoCSS(), analyzer()],
+  plugins: [
+    solidPlugin(),
+    UnoCSS(),
+    nodePolyfills({
+      include: ["buffer"],
+    }),
+    analyzer(),
+  ],
   staged: {
     "*": "vp check --fix",
   },

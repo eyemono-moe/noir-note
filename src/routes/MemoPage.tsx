@@ -23,6 +23,7 @@ import Sidebar from "../components/Sidebar/Sidebar";
 import { useMemosCollection } from "../context/db";
 import { useUIState } from "../hooks/useUIState";
 import { AUTO_SAVE_DELAY } from "../utils/constants";
+import { parseFrontmatter } from "../utils/frontmatter";
 import { normalizePath } from "../utils/path";
 
 const MemoPage: Component = () => {
@@ -79,13 +80,17 @@ const MemoPage: Component = () => {
       const memos = currentMemoQuery();
       const existing = memos?.[0];
 
+      // Parse frontmatter from content
+      const { metadata } = parseFrontmatter(newContent);
+
       if (existing) {
         // Update existing memo using draft function
         collection.update(path, (draft) => {
           draft.content = newContent;
           draft.updatedAt = now;
+          draft.metadata = metadata;
         });
-        console.log("[MemoPage] Memo updated successfully");
+        console.log("[MemoPage] Memo updated successfully", { hasMetadata: !!metadata });
       } else {
         // Insert new memo
         collection.insert({
@@ -93,8 +98,9 @@ const MemoPage: Component = () => {
           content: newContent,
           createdAt: now,
           updatedAt: now,
+          metadata,
         });
-        console.log("[MemoPage] New memo created successfully");
+        console.log("[MemoPage] New memo created successfully", { hasMetadata: !!metadata });
       }
     } catch (error) {
       console.error("[MemoPage] Save failed:", error);

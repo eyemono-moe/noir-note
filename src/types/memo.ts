@@ -3,9 +3,16 @@ export interface Memo {
   content: string;
   createdAt: number;
   updatedAt: number;
+  metadata?: MemoFrontmatter;
 }
 
-export interface MemoMetadata {
+export interface MemoFrontmatter {
+  tags?: string[];
+  title?: string;
+  [key: string]: unknown;
+}
+
+export interface MemoTreeMetadata {
   path: string;
   createdAt: number;
   updatedAt: number;
