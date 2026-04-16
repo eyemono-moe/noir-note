@@ -3,6 +3,8 @@ import { type Component } from "solid-js";
 
 import { createEditorExtensions } from "../../editor/extensions";
 
+import "../../styles/editor.css";
+
 interface EditorProps {
   content: string;
   onChange: (content: string) => void;

@@ -2,7 +2,7 @@ import { history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { defaultKeymap } from "@codemirror/commands";
 import { bracketMatching, indentUnit } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import { EditorView, highlightWhitespace } from "@codemirror/view";
 import { lineNumbers, highlightActiveLineGutter, highlightActiveLine } from "@codemirror/view";
 import { keymap } from "@codemirror/view";
 
@@ -29,6 +29,8 @@ export function createEditorExtensions() {
 
     // Language support
     ...markdown(),
+
+    highlightWhitespace(), // 空白文字を可視化する（スペースは点、タブは矢印で表示される）
 
     // Theme
     monochromeTheme,

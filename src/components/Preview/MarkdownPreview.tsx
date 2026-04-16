@@ -1,6 +1,8 @@
 import { marked } from "marked";
 import { type Component, createEffect, createMemo } from "solid-js";
 
+import "../../styles/markdown.css";
+
 interface MarkdownPreviewProps {
   content: string;
 }
