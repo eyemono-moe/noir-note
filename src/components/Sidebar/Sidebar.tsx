@@ -1,8 +1,7 @@
 import { createTreeCollection } from "@ark-ui/solid";
-import { Show, type Component } from "solid-js";
-import { createMemo } from "solid-js";
+import { Show, type Component, createMemo } from "solid-js";
 
-import type { MemoResource } from "../../store/memoResource";
+import type { MemoDocument } from "../../db/rxdb";
 import { buildTree, type TreeNode } from "../../utils/tree";
 import { Tree } from "./Tree";
 
@@ -10,15 +9,13 @@ interface SidebarProps {
   currentPath: string;
   onNavigate: (path: string) => void;
   onDelete: (path: string) => void;
-  onInsert: (parentPath: string) => void;
   visible: boolean;
-  memoResource: MemoResource;
+  allMemos: MemoDocument[];
 }
 
 const Sidebar: Component<SidebarProps> = (props) => {
   const tree = createMemo(() => {
-    const memos = props.memoResource.memosArray();
-    return buildTree(memos);
+    return buildTree(props.allMemos);
   });
 
   const collection = createMemo(() =>
@@ -39,16 +36,16 @@ const Sidebar: Component<SidebarProps> = (props) => {
         <div class="border-b border-gray-200 p-4">
           <h2 class="text-sm font-bold text-black">Pages</h2>
         </div>
-        <div class="p-2">
+        <div class="py-2">
           <Show when={tree().length === 0}>
             <div class="px-4 py-8 text-center text-sm text-gray-500">No pages yet</div>
           </Show>
           <Tree
             collection={collection()}
             onNavigate={props.onNavigate}
-            onDelete={props.onDelete}
-            onInsert={props.onInsert}
             currentPath={props.currentPath}
+            onDelete={props.onDelete}
+            onInsert={(_parentPath) => {}}
           />
         </div>
       </div>

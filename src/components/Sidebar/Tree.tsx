@@ -19,7 +19,7 @@ const TreeItemActions: Component<TreeNodeProps> = (props) => {
         <button
           class={styles.Action}
           onClick={(e) => {
-            console.log("delete", props.node.path);
+            console.log("delete", props.node.path, typeof props.onRemove);
             e.stopPropagation();
             props.onRemove?.(props);
           }}
@@ -31,7 +31,7 @@ const TreeItemActions: Component<TreeNodeProps> = (props) => {
         <button
           class={styles.Action}
           onClick={(e) => {
-            console.log("add", props.node.path);
+            console.log("add", props.node.path, typeof props.onAdd);
             e.stopPropagation();
             props.onAdd?.(props);
           }}
@@ -60,7 +60,10 @@ const TreeItem: Component<TreeNodeProps> = (props) => {
                   node={props.node}
                   indexPath={props.indexPath}
                   onAdd={props.onAdd}
-                  onRemove={props.onRemove}
+                  onRemove={(e) => {
+                    props.onRemove?.(e);
+                    console.log("onRemove callback", e.node.path, typeof props.onRemove);
+                  }}
                 />
               </TreeView.Item>
             }
@@ -80,14 +83,22 @@ const TreeItem: Component<TreeNodeProps> = (props) => {
                   node={props.node}
                   indexPath={props.indexPath}
                   onAdd={props.onAdd}
-                  onRemove={props.onRemove}
+                  onRemove={(e) => {
+                    props.onRemove?.(e);
+                    console.log("onRemove callback", e.node.path, typeof props.onRemove);
+                  }}
                 />
               </TreeView.BranchControl>
               <TreeView.BranchContent class={styles.BranchContent}>
                 <TreeView.BranchIndentGuide class={styles.BranchIndentGuide} />
                 <For each={props.node.children}>
                   {(child, index) => (
-                    <TreeItem node={child} indexPath={[...props.indexPath, index()]} />
+                    <TreeItem
+                      node={child}
+                      indexPath={[...props.indexPath, index()]}
+                      onAdd={props.onAdd}
+                      onRemove={props.onRemove}
+                    />
                   )}
                 </For>
               </TreeView.BranchContent>
@@ -124,7 +135,10 @@ export const Tree: Component<TreeProps> = (props) => {
               node={node}
               indexPath={[index()]}
               onAdd={(e) => props.onInsert(e.node.path)}
-              onRemove={(e) => props.onDelete(e.node.path)}
+              onRemove={(e) => {
+                console.log("Tree onRemove", e.node.path, typeof props.onDelete);
+                props.onDelete(e.node.path);
+              }}
             />
           )}
         </For>

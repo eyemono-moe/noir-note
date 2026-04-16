@@ -1,12 +1,13 @@
 import { debounce } from "@solid-primitives/scheduled";
 import { useLocation, useNavigate } from "@solidjs/router";
+import { eq, useLiveQuery } from "@tanstack/solid-db";
 import {
   type Component,
   createEffect,
   createMemo,
   createSignal,
-  on,
   onMount,
+  Show,
   Switch,
   Match,
 } from "solid-js";
@@ -19,72 +20,97 @@ import Editor from "../components/Editor/Editor";
 import SplitView from "../components/Layout/SplitView";
 import MarkdownPreview from "../components/Preview/MarkdownPreview";
 import Sidebar from "../components/Sidebar/Sidebar";
-import { useStorage } from "../context/storage";
+import { useMemosCollection } from "../context/db";
 import { useUIState } from "../hooks/useUIState";
-import { createMemoResource } from "../store/memoResource";
 import { AUTO_SAVE_DELAY } from "../utils/constants";
 import { normalizePath } from "../utils/path";
 
 const MemoPage: Component = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const storage = useStorage();
   const { mode, sidebarVisible, setMode, toggleSidebar } = useUIState();
 
-  // Create reactive memo resource
-  const memoResource = createMemoResource(storage);
+  // Get memos collection
+  const memosCollectionResource = useMemosCollection();
 
-  // Get current path from URL (everything after domain)
+  // Get current path from URL
   const currentPath = createMemo(() => normalizePath(location.pathname));
+
+  // Query for current memo using useLiveQuery
+  const currentMemoQuery = useLiveQuery((q) => {
+    const collection = memosCollectionResource();
+    if (!collection) return null;
+
+    const path = currentPath(); // Signal is tracked automatically
+    return q
+      .from({ memos: collection })
+      .where(({ memos }) => eq(memos.path, path))
+      .select(({ memos }) => memos);
+  });
 
   // Local content state (for editing without saving immediately)
   const [localContent, setLocalContent] = createSignal("");
-  const [hasLocalChanges, setHasLocalChanges] = createSignal(false);
+  const [isSaving, setIsSaving] = createSignal(false);
 
-  // Load content when path changes (navigation)
-  // This effect ONLY runs when path changes, not when memo updates from storage
-  createEffect(
-    on(
-      currentPath,
-      (path) => {
-        console.log("[MemoPage] Path changed, loading content:", path);
-        const memo = memoResource.findMemo(path);
-        if (memo) {
-          console.log("[MemoPage] Found memo in list, loading content");
-          setLocalContent(memo.content);
-        } else {
-          console.log("[MemoPage] No memo found, starting with empty content");
-          setLocalContent("");
-        }
-        setHasLocalChanges(false);
-      },
-      { defer: true },
-    ),
-  );
+  // Sync currentMemo to localContent when it changes
+  createEffect(() => {
+    const memos = currentMemoQuery();
+    const memo = memos?.[0]; // useLiveQuery returns array
+    if (memo) {
+      setLocalContent(memo.content);
+    } else if (currentMemoQuery.isReady) {
+      setLocalContent("");
+    }
+  });
 
-  // Debounced save function
+  // Debounced save function with optimistic update
   const debouncedSave = debounce(async (path: string, newContent: string) => {
-    console.log("[MemoPage] debouncedSave executing:", { path, contentLength: newContent.length });
-    const success = await memoResource.saveMemo(path, newContent);
-    console.log("[MemoPage] saveMemo result:", { success });
-    if (success) {
-      setHasLocalChanges(false);
+    const collection = memosCollectionResource();
+    if (!collection) {
+      console.error("[MemoPage] Cannot save: collection not ready");
+      return;
+    }
+
+    console.log("[MemoPage] Saving memo:", { path, contentLength: newContent.length });
+    setIsSaving(true);
+
+    try {
+      const now = Date.now();
+      const memos = currentMemoQuery();
+      const existing = memos?.[0];
+
+      if (existing) {
+        // Update existing memo using draft function
+        collection.update(path, (draft) => {
+          draft.content = newContent;
+          draft.updatedAt = now;
+        });
+        console.log("[MemoPage] Memo updated successfully");
+      } else {
+        // Insert new memo
+        collection.insert({
+          path,
+          content: newContent,
+          createdAt: now,
+          updatedAt: now,
+        });
+        console.log("[MemoPage] New memo created successfully");
+      }
+    } catch (error) {
+      console.error("[MemoPage] Save failed:", error);
+    } finally {
+      setIsSaving(false);
     }
   }, AUTO_SAVE_DELAY);
 
   // Handle content changes
   const handleContentChange = (newContent: string) => {
-    console.log("[MemoPage] handleContentChange:", { contentLength: newContent.length });
     setLocalContent(newContent);
-    setHasLocalChanges(true);
-
-    // Auto-save
     debouncedSave(currentPath(), newContent);
   };
 
   // Register commands on mount
   onMount(() => {
-    // Register all commands
     for (const command of allCommands) {
       commandRegistry.register(command);
     }
@@ -100,57 +126,77 @@ const MemoPage: Component = () => {
     toggleSidebar,
   }));
 
+  // All memos query for sidebar and command palette
+  const allMemosQuery = useLiveQuery((q) => {
+    const collection = memosCollectionResource();
+    if (!collection) return null;
+    return q.from({ memos: collection });
+  });
+
   return (
     <>
-      <CommandPalette context={commandContext()} memoResource={memoResource} />
-      <div class="flex h-screen w-screen flex-col bg-white text-black">
-        <div class="flex flex-1 overflow-hidden">
-          <Sidebar
-            currentPath={currentPath()}
-            onNavigate={(path) => navigate(path)}
-            onDelete={(path) => {
-              console.log("sidebar onDelete", path);
-              void memoResource.deleteMemo(path);
-            }}
-            onInsert={(_parentPath) => {}}
-            visible={sidebarVisible()}
-            memoResource={memoResource}
-          />
-          <div class="flex flex-1 flex-col overflow-hidden">
-            <Switch fallback={<div class="p-4 text-gray-500">Loading...</div>}>
-              <Match when={!memoResource.memos.loading && mode() === "preview"}>
-                <MarkdownPreview content={localContent()} />
-              </Match>
-              <Match when={!memoResource.memos.loading && mode() === "split"}>
-                <SplitView
-                  left={
-                    <Editor
-                      content={localContent()}
-                      onChange={handleContentChange}
-                      placeholder="Start typing..."
-                    />
-                  }
-                  right={<MarkdownPreview content={localContent()} />}
-                />
-              </Match>
-              <Match when={!memoResource.memos.loading}>
-                <Editor
-                  content={localContent()}
-                  onChange={handleContentChange}
-                  placeholder="Start typing..."
-                />
-              </Match>
-            </Switch>
+      <Show when={memosCollectionResource() && allMemosQuery.isReady}>
+        <CommandPalette
+          context={commandContext()}
+          allMemos={allMemosQuery() || []}
+          collection={memosCollectionResource()!}
+        />
+        <div class="flex h-screen w-screen flex-col bg-white text-black">
+          <div class="flex flex-1 overflow-hidden">
+            <Sidebar
+              currentPath={currentPath()}
+              onNavigate={(path) => navigate(path)}
+              onDelete={(path) => {
+                console.log("[MemoPage] Deleting memo:", path);
+                const collection = memosCollectionResource();
+                if (collection) {
+                  collection.delete(path); // Optimistic delete
+                }
+              }}
+              visible={sidebarVisible()}
+              allMemos={allMemosQuery() || []}
+            />
+            <div class="flex flex-1 flex-col overflow-hidden">
+              <Switch fallback={<div class="p-4 text-gray-500">Loading...</div>}>
+                <Match when={currentMemoQuery.isReady && mode() === "preview"}>
+                  <MarkdownPreview content={localContent()} />
+                </Match>
+                <Match when={currentMemoQuery.isReady && mode() === "split"}>
+                  <SplitView
+                    left={
+                      <Editor
+                        content={localContent()}
+                        onChange={handleContentChange}
+                        placeholder="Start typing..."
+                      />
+                    }
+                    right={<MarkdownPreview content={localContent()} />}
+                  />
+                </Match>
+                <Match when={currentMemoQuery.isReady}>
+                  <Editor
+                    content={localContent()}
+                    onChange={handleContentChange}
+                    placeholder="Start typing..."
+                  />
+                </Match>
+              </Switch>
 
-            {/* Debug info (temporary) */}
-            <div class="border-t border-gray-200 p-2 text-xs text-gray-500">
-              Path: {currentPath()} | Mode: {mode()} | Sidebar:{" "}
-              {sidebarVisible() ? "visible" : "hidden"} | Memos: {memoResource.memosArray().length}
-              {hasLocalChanges() ? " | Unsaved changes" : ""}
+              {/* Debug info */}
+              <div class="border-t border-gray-200 p-2 text-xs text-gray-500">
+                Path: {currentPath()} | Mode: {mode()} | Sidebar:{" "}
+                {sidebarVisible() ? "visible" : "hidden"} | Memos: {allMemosQuery()?.length ?? 0}
+                {isSaving() && " | Saving..."}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </Show>
+      <Show when={!memosCollectionResource() || !allMemosQuery.isReady}>
+        <div class="flex h-screen w-screen items-center justify-center">
+          <div class="text-lg text-gray-500">Initializing database...</div>
+        </div>
+      </Show>
     </>
   );
 };

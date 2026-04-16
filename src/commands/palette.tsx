@@ -2,14 +2,16 @@ import { Combobox, createListCollection } from "@ark-ui/solid/combobox";
 import { createShortcut } from "@solid-primitives/keyboard";
 import { createSignal, For, Show, type Component, createMemo } from "solid-js";
 
-import type { MemoResource } from "../store/memoResource";
+import type { MemoDocument } from "../db/rxdb";
+import type { MemosCollection } from "../db/tanstack";
 import { commandRegistry } from "./registry";
 import { searchPages } from "./search";
 import type { CommandContext, PaletteItem } from "./types";
 
 interface CommandPaletteProps {
   context: CommandContext;
-  memoResource: MemoResource;
+  allMemos: MemoDocument[];
+  collection: MemosCollection;
 }
 
 const CommandPalette: Component<CommandPaletteProps> = (props) => {
@@ -36,8 +38,7 @@ const CommandPalette: Component<CommandPaletteProps> = (props) => {
 
     // Add pages (only if there's a query)
     if (query) {
-      const memos = props.memoResource.memosArray();
-      const pages = searchPages(memos, query);
+      const pages = searchPages(props.allMemos, query);
       for (const page of pages) {
         items.push({
           type: "page",

@@ -1,9 +1,9 @@
 import type { ParentComponent } from "solid-js";
 
-import { StorageProvider } from "./context/storage";
+import { DBProvider } from "./context/db";
 
 const App: ParentComponent = (props) => {
-  return <StorageProvider>{props.children}</StorageProvider>;
+  return <DBProvider>{props.children}</DBProvider>;
 };
 
 export default App;
