@@ -1,7 +1,7 @@
 import { Combobox, useListCollection } from "@ark-ui/solid/combobox";
 import { Dialog } from "@ark-ui/solid/dialog";
 import { createShortcut } from "@solid-primitives/keyboard";
-import { createSignal, For, Show, type Component } from "solid-js";
+import { createEffect, createSignal, For, on, Show, type Component } from "solid-js";
 import { Portal } from "solid-js/web";
 
 import type { MemoDocument } from "../db/rxdb";
@@ -27,7 +27,7 @@ const getItemIcon = (item: PaletteItem) => {
 const CommandPalette: Component<CommandPaletteProps> = (props) => {
   const [isOpen, setIsOpen] = createSignal(false);
 
-  const { collection, filter } = useListCollection(() => {
+  const { collection, filter, upsert } = useListCollection(() => {
     const items: PaletteItem[] = [];
 
     // Add commands
@@ -39,21 +39,6 @@ const CommandPalette: Component<CommandPaletteProps> = (props) => {
         description: command.description,
         icon: "⚡",
         category: command.category,
-      });
-    }
-
-    // Add pages (without content for performance)
-    for (const page of props.allMemos) {
-      // Use title from metadata, or extract from path (e.g., "/foo/bar" -> "bar")
-      const pathParts = page.path.split("/").filter(Boolean);
-      const defaultLabel = pathParts[pathParts.length - 1] || "Untitled";
-
-      items.push({
-        type: "page",
-        value: page.path,
-        label: page.metadata?.title || defaultLabel,
-        description: page.path,
-        icon: "📄",
       });
     }
 
@@ -71,6 +56,27 @@ const CommandPalette: Component<CommandPaletteProps> = (props) => {
       groupBy: (item) => item.type,
     };
   });
+
+  createEffect(
+    on(
+      () => props.allMemos,
+      (allMemos) => {
+        // Sync page in palette when memos change
+        for (const memo of allMemos) {
+          const pathParts = memo.path.split("/").filter(Boolean);
+          const defaultLabel = pathParts[pathParts.length - 1] || "Untitled";
+
+          upsert(memo.path, {
+            type: "page",
+            value: memo.path,
+            label: memo.metadata?.title || defaultLabel,
+            description: memo.path,
+            icon: "📄",
+          });
+        }
+      },
+    ),
+  );
 
   // Open palette with Cmd+K / Ctrl+K
   createShortcut(["Control", "K"], (e) => {
