@@ -1,5 +1,10 @@
-import { marked } from "marked";
-import { type Component, createEffect, createMemo, Show } from "solid-js";
+import rehypeExternalLinks from "rehype-external-links";
+import rehypeStringify from "rehype-stringify";
+import remarkGfm from "remark-gfm";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
+import { type Component, createMemo, Show } from "solid-js";
+import { unified } from "unified";
 
 import "../../styles/markdown.css";
 import { parseFrontmatter } from "../../utils/frontmatter";
@@ -9,14 +14,15 @@ interface MarkdownPreviewProps {
   content: string;
 }
 
-// Configure marked for security and simplicity
-marked.setOptions({
-  breaks: true,
-  gfm: true,
-});
-
 const MarkdownPreview: Component<MarkdownPreviewProps> = (props) => {
   let containerRef: HTMLDivElement | undefined;
+
+  const parser = unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkRehype)
+    .use(rehypeExternalLinks, { target: "_blank", rel: ["noopener", "noreferrer"] })
+    .use(rehypeStringify);
 
   // Parse frontmatter and separate content
   const parsed = createMemo(() => parseFrontmatter(props.content));
@@ -26,38 +32,12 @@ const MarkdownPreview: Component<MarkdownPreviewProps> = (props) => {
   // Render markdown (without frontmatter)
   const html = createMemo(() => {
     try {
-      return marked.parse(contentWithoutFrontmatter()) as string;
+      const file = parser.processSync(contentWithoutFrontmatter());
+      return file.value as string;
     } catch (error) {
       console.error("Failed to parse markdown:", error);
       return "<p>Error parsing markdown</p>";
     }
-  });
-
-  // Add target="_blank" to external links
-  createEffect(() => {
-    const container = containerRef;
-    if (!container) return;
-
-    // Re-process links when HTML changes
-    html();
-
-    const handleClick = (e: MouseEvent) => {
-      const target = (e.target as HTMLElement).closest("a");
-      if (!target) return;
-
-      const href = target.getAttribute("href");
-      if (!href) return;
-
-      // External link: open in new tab
-      if (href.startsWith("http://") || href.startsWith("https://")) {
-        target.setAttribute("target", "_blank");
-        target.setAttribute("rel", "noopener noreferrer");
-      }
-      // Internal links work normally via router
-    };
-
-    container.addEventListener("click", handleClick);
-    return () => container.removeEventListener("click", handleClick);
   });
 
   return (
