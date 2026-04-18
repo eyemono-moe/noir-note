@@ -3,7 +3,7 @@ import rehypeStringify from "rehype-stringify";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
-import { type Component, createMemo, Show } from "solid-js";
+import { type Component, createMemo, createResource, Show } from "solid-js";
 import { unified } from "unified";
 
 import "../../styles/markdown.css";
@@ -30,9 +30,9 @@ const MarkdownPreview: Component<MarkdownPreviewProps> = (props) => {
   const contentWithoutFrontmatter = createMemo(() => parsed().contentWithoutFrontmatter);
 
   // Render markdown (without frontmatter)
-  const html = createMemo(() => {
+  const [html] = createResource(contentWithoutFrontmatter, async (content) => {
     try {
-      const file = parser.processSync(contentWithoutFrontmatter());
+      const file = await parser.process(content);
       return file.value as string;
     } catch (error) {
       console.error("Failed to parse markdown:", error);
