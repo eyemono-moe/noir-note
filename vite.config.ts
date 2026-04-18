@@ -55,8 +55,10 @@ export default defineConfig({
     include: ["@codemirror/state", "@codemirror/view"],
   },
   build: {
+    license: { fileName: "LICENSE.md" },
     rolldownOptions: {
       output: {
+        postBanner: "/* See licenses of bundled dependencies at `/LICENSE.md` */",
         codeSplitting: {
           groups: [
             {
