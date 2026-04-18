@@ -1,3 +1,4 @@
+import rehypeShikiFromHighlighter from "@shikijs/rehype/core";
 import rehypeExternalLinks from "rehype-external-links";
 import rehypeStringify from "rehype-stringify";
 import remarkGfm from "remark-gfm";
@@ -7,12 +8,37 @@ import { type Component, createMemo, createResource, Show } from "solid-js";
 import { unified } from "unified";
 
 import "../../styles/markdown.css";
+import "../../styles/shiki.css";
+import { createHighlighter } from "../../editor/shiki.bundle";
 import { parseFrontmatter } from "../../utils/frontmatter";
 import FrontmatterDisplay from "./FrontmatterDisplay";
 
 interface MarkdownPreviewProps {
   content: string;
 }
+
+const highlighter = await createHighlighter({
+  langs: [
+    "typescript",
+    "ts",
+    "cts",
+    "mts",
+    "javascript",
+    "js",
+    "cjs",
+    "mjs",
+    "vue",
+    "go",
+    "python",
+    "py",
+    "html",
+    "css",
+    "json",
+    "markdown",
+    "md",
+  ],
+  themes: ["github-dark", "github-light"],
+});
 
 const MarkdownPreview: Component<MarkdownPreviewProps> = (props) => {
   // oxlint-disable-next-line no-unassigned-vars --- needed for ref
@@ -22,6 +48,12 @@ const MarkdownPreview: Component<MarkdownPreviewProps> = (props) => {
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkRehype)
+    .use(rehypeShikiFromHighlighter, highlighter, {
+      themes: {
+        light: "github-light",
+        dark: "github-dark",
+      },
+    })
     .use(rehypeExternalLinks, { target: "_blank", rel: ["noopener", "noreferrer"] })
     .use(rehypeStringify);
 
