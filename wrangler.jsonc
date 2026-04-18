@@ -9,4 +9,10 @@
     "directory": "dist",
   },
   "compatibility_flags": ["nodejs_compat"],
+  "routes": [
+    {
+      "custom_domain": true,
+      "pattern": "md.eyemono.moe",
+    },
+  ],
 }
