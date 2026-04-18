@@ -25,7 +25,7 @@ export default defineConfig({
   lint: {
     ignorePatterns: ["dist/**"],
     options: { typeAware: true, typeCheck: true },
-    plugins: ["import", "jsx-a11y", "promise", "vitest"],
+    plugins: ["eslint", "typescript", "unicorn", "oxc", "import", "jsx-a11y", "promise", "vitest"],
     jsPlugins: ["eslint-plugin-solid"],
     rules: {
       "solid/components-return-once": "warn",

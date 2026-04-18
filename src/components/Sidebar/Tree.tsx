@@ -39,6 +39,8 @@ const TreeItemActions: Component<TreeNodeProps> = (props) => {
             e.stopPropagation();
             props.onRemove?.(props);
           }}
+          type="button"
+          aria-label="Delete note"
         >
           <span class="i-material-symbols:delete-rounded size-4 shrink-0" />
         </button>
@@ -49,6 +51,8 @@ const TreeItemActions: Component<TreeNodeProps> = (props) => {
           e.stopPropagation();
           props.onAdd?.(props);
         }}
+        type="button"
+        aria-label="Add child note"
       >
         <span class="i-material-symbols:add-rounded size-4 shrink-0" />
       </button>

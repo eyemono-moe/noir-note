@@ -160,7 +160,7 @@ const MemoPage: Component = () => {
   });
 
   return (
-    <>
+    <main>
       <Show
         when={memosCollectionResource() && allMemosQuery.isReady}
         fallback={
@@ -214,7 +214,7 @@ const MemoPage: Component = () => {
           />
         </div>
       </Show>
-    </>
+    </main>
   );
 };
 
