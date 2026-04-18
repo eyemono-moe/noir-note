@@ -43,7 +43,7 @@ describe("buildTree", () => {
     const memos = [createMemo("/", "Root"), createMemo("/foo", "Foo")];
     const tree = buildTree(memos);
 
-    expect(tree).toHaveLength(2);
+    expect(tree).toHaveLength(1);
 
     // Root node
     const rootNode = tree.find((n) => n.path === "/");
@@ -51,9 +51,13 @@ describe("buildTree", () => {
     expect(rootNode?.memo?.content).toBe("Root");
 
     // Child node
-    const fooNode = tree.find((n) => n.path === "/foo");
+    const fooNode = rootNode?.children.find((n) => n.path === "/foo");
     expect(fooNode).toBeDefined();
     expect(fooNode?.memo?.content).toBe("Foo");
+
+    // Root should have foo as child
+    expect(rootNode?.children).toHaveLength(1);
+    expect(rootNode?.children[0].path).toBe("/foo");
   });
 
   test("nested paths create intermediate nodes", () => {
@@ -92,16 +96,17 @@ describe("buildTree", () => {
     ];
     const tree = buildTree(memos);
 
-    expect(tree).toHaveLength(3); // /, /foo, /qux
+    expect(tree).toHaveLength(1); // `/`
 
     const rootNode = tree.find((n) => n.path === "/");
     expect(rootNode?.memo?.content).toBe("Root");
+    expect(rootNode?.children).toHaveLength(2);
 
-    const fooNode = tree.find((n) => n.path === "/foo");
+    const fooNode = rootNode?.children.find((n) => n.path === "/foo");
     expect(fooNode?.memo?.content).toBe("Foo");
     expect(fooNode?.children).toHaveLength(2);
 
-    const quxNode = tree.find((n) => n.path === "/qux");
+    const quxNode = rootNode?.children.find((n) => n.path === "/qux");
     expect(quxNode?.memo?.content).toBe("Qux");
   });
 
