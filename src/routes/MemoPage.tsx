@@ -13,7 +13,6 @@ import MarkdownPreview from "../components/Preview/MarkdownPreview";
 import Sidebar from "../components/Sidebar/Sidebar";
 import { useMemosCollection } from "../context/db";
 import { useEditorSplit } from "../context/editorSplit";
-import { useUIState } from "../hooks/useUIState";
 import { AUTO_SAVE_DELAY } from "../utils/constants";
 import { parseFrontmatter } from "../utils/frontmatter";
 import { normalizePath } from "../utils/path";
@@ -21,7 +20,6 @@ import { normalizePath } from "../utils/path";
 const MemoPage: Component = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { mode, sidebarVisible, setMode, toggleSidebar } = useUIState();
   const editorSplitter = useEditorSplit();
 
   // Get memos collection
@@ -44,7 +42,6 @@ const MemoPage: Component = () => {
 
   // Local content state (for editing without saving immediately)
   const [localContent, setLocalContent] = createSignal("");
-  const [isSaving, setIsSaving] = createSignal(false);
 
   // Sync currentMemo to localContent when it changes
   createEffect(() => {
@@ -64,8 +61,6 @@ const MemoPage: Component = () => {
       console.error("[MemoPage] Cannot save: collection not ready");
       return;
     }
-
-    setIsSaving(true);
 
     try {
       const now = Date.now();
@@ -94,8 +89,6 @@ const MemoPage: Component = () => {
       }
     } catch (error) {
       console.error("[MemoPage] Save failed:", error);
-    } finally {
-      setIsSaving(false);
     }
   }, AUTO_SAVE_DELAY);
 
@@ -115,31 +108,38 @@ const MemoPage: Component = () => {
   // Create command context
   const commandContext = createMemo<CommandContext>(() => ({
     currentPath: currentPath(),
-    currentMode: mode(),
-    sidebarVisible: sidebarVisible(),
     navigate: (path: string) => navigate(path),
-    setMode: (modeOrFn) => {
-      // Set UI state
-      setMode(modeOrFn);
-      // Also update SplitView directly
+    setMode: (mode) => {
+      // update SplitView
       const api = editorSplitter();
-      if (api) {
-        const newMode = typeof modeOrFn === "function" ? modeOrFn(mode()) : modeOrFn;
-        const sidebarSize = api.getSizes()[0];
-        switch (newMode) {
-          case "edit":
-            api.setSizes([sidebarSize, 100 - sidebarSize, 0]);
-            break;
-          case "preview":
-            api.setSizes([sidebarSize, 0, 100 - sidebarSize]);
-            break;
-          case "split":
-            api.setSizes([sidebarSize, 50 - sidebarSize / 2, 50 - sidebarSize / 2]);
-            break;
-        }
+      if (!api) return;
+      const sidebarSize = api.getSizes()[0];
+      switch (mode) {
+        case "edit":
+          api.setSizes([sidebarSize, 100 - sidebarSize, 0]);
+          break;
+        case "preview":
+          api.setSizes([sidebarSize, 0, 100 - sidebarSize]);
+          break;
+        case "split":
+          api.setSizes([sidebarSize, 50 - sidebarSize / 2, 50 - sidebarSize / 2]);
+          break;
       }
     },
-    toggleSidebar,
+    toggleSidebar: () => {
+      const api = editorSplitter();
+      if (!api) return;
+      const sizes = api.getSizes();
+      const closed = sizes[0] === 0;
+      if (closed) {
+        // Show sidebar
+        const newSidebarSize = 20;
+        api.setSizes([newSidebarSize, sizes[1], sizes[2]]);
+      } else {
+        // Hide sidebar
+        api.setSizes([0, sizes[1], sizes[2]]);
+      }
+    },
   }));
 
   // All memos query for sidebar and command palette
@@ -164,47 +164,38 @@ const MemoPage: Component = () => {
           allMemos={allMemosQuery() || []}
           collection={memosCollectionResource()!}
         />
-        <div class="bg-surface-primary text-text-primary flex h-screen w-screen flex-col overflow-hidden">
-          <div class="flex-1 overflow-hidden">
-            <SplitView
-              splitter={editorSplitter}
-              left={
-                <Sidebar
-                  currentPath={currentPath()}
-                  onNavigate={(path) => navigate(path)}
-                  onDelete={(path) => {
-                    const collection = memosCollectionResource();
-                    if (collection) {
-                      collection.delete(path); // Optimistic delete
-                    }
-                  }}
-                  visible={sidebarVisible()}
-                  allMemos={allMemosQuery() || []}
-                  memosCollection={memosCollectionResource()!}
+        <div class="bg-surface-primary text-text-primary h-screen w-screen overflow-hidden">
+          <SplitView
+            splitter={editorSplitter}
+            left={
+              <Sidebar
+                currentPath={currentPath()}
+                onNavigate={(path) => navigate(path)}
+                onDelete={(path) => {
+                  const collection = memosCollectionResource();
+                  if (collection) {
+                    collection.delete(path); // Optimistic delete
+                  }
+                }}
+                allMemos={allMemosQuery() || []}
+                memosCollection={memosCollectionResource()!}
+              />
+            }
+            center={
+              <Show when={currentMemoQuery.isReady}>
+                <Editor
+                  content={localContent()}
+                  onChange={handleContentChange}
+                  placeholder="Start typing..."
                 />
-              }
-              center={
-                <Show when={currentMemoQuery.isReady}>
-                  <Editor
-                    content={localContent()}
-                    onChange={handleContentChange}
-                    placeholder="Start typing..."
-                  />
-                </Show>
-              }
-              right={
-                <Show when={currentMemoQuery.isReady}>
-                  <MarkdownPreview content={localContent()} />
-                </Show>
-              }
-            />
-          </div>
-          {/* Debug info */}
-          <div class="border-border-primary text-text-secondary border-t p-2 text-xs">
-            Path: {currentPath()} | Mode: {mode()} | Sidebar:{" "}
-            {sidebarVisible() ? "visible" : "hidden"} | Memos: {allMemosQuery()?.length ?? 0}
-            {isSaving() && " | Saving..."}
-          </div>
+              </Show>
+            }
+            right={
+              <Show when={currentMemoQuery.isReady}>
+                <MarkdownPreview content={localContent()} />
+              </Show>
+            }
+          />
         </div>
       </Show>
     </>

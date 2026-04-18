@@ -10,7 +10,6 @@ interface SidebarProps {
   currentPath: string;
   onNavigate: (path: string) => void;
   onDelete: (path: string) => void;
-  visible: boolean;
   allMemos: MemoDocument[];
   memosCollection: MemosCollection;
 }
@@ -33,25 +32,23 @@ const Sidebar: Component<SidebarProps> = (props) => {
   );
 
   return (
-    <Show when={props.visible}>
-      <div class="bg-surface-primary grid h-full w-full grid-rows-[auto_1fr]">
-        <div class="text-text-primary p-2">Notes</div>
-        <div class="overflow-auto p-2">
-          <Show when={tree().length === 0}>
-            <div class="text-text-secondary px-4 py-8 text-center text-sm">No pages yet</div>
-          </Show>
-          <Tree
-            collection={collection()}
-            onNavigate={props.onNavigate}
-            currentPath={props.currentPath}
-            onDelete={props.onDelete}
-            onInsert={(_parentPath) => {}}
-            memosCollection={props.memosCollection}
-            allMemos={props.allMemos}
-          />
-        </div>
+    <div class="bg-surface-primary grid h-full w-full grid-rows-[auto_1fr]">
+      <div class="text-text-primary p-2">Notes</div>
+      <div class="overflow-auto p-2">
+        <Show when={tree().length === 0}>
+          <div class="text-text-secondary px-4 py-8 text-center text-sm">No pages yet</div>
+        </Show>
+        <Tree
+          collection={collection()}
+          onNavigate={props.onNavigate}
+          currentPath={props.currentPath}
+          onDelete={props.onDelete}
+          onInsert={(_parentPath) => {}}
+          memosCollection={props.memosCollection}
+          allMemos={props.allMemos}
+        />
       </div>
-    </Show>
+    </div>
   );
 };
 

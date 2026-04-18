@@ -2,10 +2,8 @@ import type { ViewMode } from "../types/ui";
 
 export interface CommandContext {
   currentPath: string;
-  currentMode: ViewMode;
-  sidebarVisible: boolean;
   navigate: (path: string) => void;
-  setMode: (mode: ViewMode | ((prevMode: ViewMode) => ViewMode)) => void;
+  setMode: (mode: ViewMode) => void;
   toggleSidebar: () => void;
 }
 

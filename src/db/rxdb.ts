@@ -111,5 +111,17 @@ export async function createNoirNotesDB(): Promise<NoirNotesDatabase> {
     },
   });
 
+  // insert default document if collection is empty (for easier testing and development)
+  const memosCollection = db.memos;
+  const count = await memosCollection.count().exec();
+  if (count === 0) {
+    await memosCollection.insert({
+      path: "/",
+      content: "",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  }
+
   return db;
 }

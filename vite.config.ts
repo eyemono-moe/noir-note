@@ -59,19 +59,6 @@ export default defineConfig({
     rolldownOptions: {
       output: {
         postBanner: "/* See licenses of bundled dependencies at `/LICENSE.md` */",
-        codeSplitting: {
-          groups: [
-            {
-              name: "codemirror",
-              test: /node_modules[\\/]@codemirror/,
-              priority: 10,
-            },
-            {
-              name: "common",
-              priority: 1,
-            },
-          ],
-        },
       },
     },
   },
