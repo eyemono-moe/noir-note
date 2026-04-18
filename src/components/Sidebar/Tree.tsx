@@ -125,7 +125,7 @@ const TreeItem: Component<TreeNodeProps> = (props) => {
                     class={`size-4 shrink-0 ${nodeState().expanded ? "i-material-symbols:folder-open" : "i-material-symbols:folder"}`}
                   />
                 </Show>
-                <span class="truncate">{props.node.name}</span>
+                <span class="w-full truncate">{props.node.name}</span>
               </TreeView.BranchText>
               <TreeItemActions
                 node={props.node}
@@ -310,7 +310,7 @@ export const Tree: Component<TreeProps> = (props) => {
           <ConfirmDialog
             open={true}
             title="Delete Note"
-            description={`Are you sure you want to delete "${state().name}" (${state().path})? This action cannot be undone.`}
+            description={`Are you sure you want to delete "${state().name}" (${state().path})?\nThis action cannot be undone.`}
             confirmLabel="Delete"
             cancelLabel="Cancel"
             variant="danger"

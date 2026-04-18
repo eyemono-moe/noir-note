@@ -1,26 +1,25 @@
 /* Light theme (default) */
 :root {
-  /* Text: element.role pattern */
   --color-text-primary: #1f2328;
   --color-text-secondary: #59636e;
   --color-text-disabled: #818b98;
   --color-text-accent: #0969da;
   --color-text-danger: #d1242f;
 
-  /* Surface: element.role pattern */
   --color-surface-primary: #fff;
   --color-surface-secondary: #f6f8fa;
   --color-surface-accent: #0969da;
+  --color-surface-control-rest: #f6f8fa;
+  --color-surface-control-hover: #eff2f5;
+  --color-surface-control-active: #e6eaef;
 
   --color-surface-transparent-hover: #818b981a;
   --color-surface-transparent-active: #818b9826;
   --color-surface-transparent-accent: #00aaff24;
 
-  /* Border: element.role pattern */
   --color-border-primary: #d1d9e0;
   --color-border-accent: #0969da;
 
-  /* Overlay */
   --color-overlay: #c8d1da66;
 }
 
@@ -45,26 +44,25 @@
 
 /* Dark theme */
 [data-theme="dark"] {
-  /* Text: element.role pattern */
   --color-text-primary: #f0f6fc;
   --color-text-secondary: #9198a1;
   --color-text-disabled: #656c76;
   --color-text-accent: #4493f8;
   --color-text-danger: #f85149;
 
-  /* Surface: element.role pattern */
   --color-surface-primary: #0d1117;
   --color-surface-secondary: #151b23;
   --color-surface-accent: #1e3a8a;
+  --color-surface-control-rest: #212830;
+  --color-surface-control-hover: #262c36;
+  --color-surface-control-active: #2a313c;
 
   --color-surface-transparent-hover: #656c7633;
   --color-surface-transparent-active: #656c7640;
   --color-surface-transparent-accent: #388bfd1a;
 
-  /* Border: element.role pattern */
   --color-border-primary: #3d444d;
   --color-border-accent: #1f6feb;
 
-  /* Overlay */
   --color-overlay: #21283066;
 }

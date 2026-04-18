@@ -156,7 +156,7 @@ const MemoPage: Component = () => {
   const allMemosQuery = useLiveQuery((q) => {
     const collection = memosCollectionResource();
     if (!collection) return null;
-    return q.from({ memos: collection }).select(({ memos }) => memos);
+    return q.from({ memos: collection });
   });
 
   return (

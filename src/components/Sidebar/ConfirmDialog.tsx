@@ -22,26 +22,23 @@ const ConfirmDialog: Component<ConfirmDialogProps> = (props) => {
     >
       <Dialog.Backdrop class="bg-overlay fixed inset-0 z-50" />
       <Dialog.Positioner class="fixed inset-0 z-50 flex items-center justify-center">
-        <Dialog.Content class="border-border-primary bg-surface-primary w-96 max-w-[90vw] rounded-lg border p-6 shadow-xl">
+        <Dialog.Content class="border-border-primary bg-surface-primary w-96 max-w-[90vw] rounded-xl border p-6 shadow-xl">
           <Dialog.Title class="text-text-primary text-lg font-semibold">{props.title}</Dialog.Title>
-          <Dialog.Description class="text-text-secondary mt-2 text-sm">
+          <Dialog.Description class="text-text-secondary mt-2 text-sm text-wrap break-words whitespace-pre-wrap">
             {props.description}
           </Dialog.Description>
 
           <div class="mt-6 flex justify-end gap-3">
-            <button
-              onClick={() => props.onCancel()}
-              class="border-border-primary text-text-primary hover:bg-surface-hover rounded border px-4 py-2 text-sm font-medium"
-            >
+            <button onClick={() => props.onCancel()} class="text-text-primary button">
               {props.cancelLabel ?? "Cancel"}
             </button>
             <button
               onClick={() => props.onConfirm()}
-              class={`rounded px-4 py-2 text-sm font-medium text-white ${
-                props.variant === "danger"
-                  ? "bg-red-600 hover:bg-red-700"
-                  : "bg-blue-600 hover:bg-blue-700"
-              }`}
+              classList={{
+                button: true,
+                "text-text-accent": props.variant === "default",
+                "text-text-danger": props.variant === "danger",
+              }}
             >
               {props.confirmLabel ?? "Confirm"}
             </button>
