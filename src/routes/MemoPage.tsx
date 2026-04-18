@@ -1,21 +1,31 @@
 import { debounce } from "@solid-primitives/scheduled";
 import { useLocation, useNavigate } from "@solidjs/router";
 import { eq, useLiveQuery } from "@tanstack/solid-db";
-import { type Component, createEffect, createMemo, createSignal, onMount, Show } from "solid-js";
+import {
+  type Component,
+  createEffect,
+  createMemo,
+  createSignal,
+  lazy,
+  onMount,
+  Show,
+  Suspense,
+} from "solid-js";
 
 import { allCommands } from "../commands/definitions";
 import CommandPalette from "../commands/palette";
 import { commandRegistry } from "../commands/registry";
 import type { CommandContext } from "../commands/types";
-import Editor from "../components/Editor/Editor";
 import SplitView from "../components/Layout/SplitView";
-import MarkdownPreview from "../components/Preview/MarkdownPreview";
-import Sidebar from "../components/Sidebar/Sidebar";
 import { useMemosCollection } from "../context/db";
 import { useEditorSplit } from "../context/editorSplit";
 import { AUTO_SAVE_DELAY } from "../utils/constants";
 import { parseFrontmatter } from "../utils/frontmatter";
 import { normalizePath } from "../utils/path";
+
+const Editor = lazy(() => import("../components/Editor/Editor"));
+const MarkdownPreview = lazy(() => import("../components/Preview/MarkdownPreview"));
+const Sidebar = lazy(() => import("../components/Sidebar/Sidebar"));
 
 const MemoPage: Component = () => {
   const location = useLocation();
@@ -168,31 +178,37 @@ const MemoPage: Component = () => {
           <SplitView
             splitter={editorSplitter}
             left={
-              <Sidebar
-                currentPath={currentPath()}
-                onNavigate={(path) => navigate(path)}
-                onDelete={(path) => {
-                  const collection = memosCollectionResource();
-                  if (collection) {
-                    collection.delete(path); // Optimistic delete
-                  }
-                }}
-                allMemos={allMemosQuery() || []}
-                memosCollection={memosCollectionResource()!}
-              />
+              <Suspense fallback={<div class="text-text-secondary p-4">Loading sidebar...</div>}>
+                <Sidebar
+                  currentPath={currentPath()}
+                  onNavigate={(path) => navigate(path)}
+                  onDelete={(path) => {
+                    const collection = memosCollectionResource();
+                    if (collection) {
+                      collection.delete(path); // Optimistic delete
+                    }
+                  }}
+                  allMemos={allMemosQuery() || []}
+                  memosCollection={memosCollectionResource()!}
+                />
+              </Suspense>
             }
             center={
               <Show when={currentMemoQuery.isReady}>
-                <Editor
-                  content={localContent()}
-                  onChange={handleContentChange}
-                  placeholder="Start typing..."
-                />
+                <Suspense fallback={<div class="text-text-secondary p-4">Loading editor...</div>}>
+                  <Editor
+                    content={localContent()}
+                    onChange={handleContentChange}
+                    placeholder="Start typing..."
+                  />
+                </Suspense>
               </Show>
             }
             right={
               <Show when={currentMemoQuery.isReady}>
-                <MarkdownPreview content={localContent()} />
+                <Suspense fallback={<div class="text-text-secondary p-4">Loading preview...</div>}>
+                  <MarkdownPreview content={localContent()} />
+                </Suspense>
               </Show>
             }
           />
