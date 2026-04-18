@@ -1,16 +1,30 @@
 import { history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { defaultKeymap } from "@codemirror/commands";
+import { markdown } from "@codemirror/lang-markdown";
 import { bracketMatching, indentUnit } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
+import type { Extension } from "@codemirror/state";
 import { EditorView, highlightWhitespace } from "@codemirror/view";
 import { lineNumbers, highlightActiveLineGutter, highlightActiveLine } from "@codemirror/view";
 import { keymap } from "@codemirror/view";
 
 import { formatKeyBindings } from "./formatter";
-import { markdown } from "./markdown";
-import { monochromeTheme } from "./theme";
+import { darkTheme, lightTheme } from "./theme";
 
-export function createEditorExtensions() {
+const highlightWhitespaceTheme = EditorView.theme({
+  "[data-theme='light'] &": {
+    "--cm-highlight-space-color": "#6a737d10",
+  },
+  "[data-theme='dark'] &": {
+    "--cm-highlight-space-color": "#8b949e10",
+  },
+  ".cm-highlightSpace": {
+    "background-image":
+      "radial-gradient(circle at 50% 50%, var(--cm-highlight-space-color) 18%, transparent 28%);",
+  },
+});
+
+export function createEditorExtensions(isDark: boolean): Extension[] {
   return [
     // Basic editing
     lineNumbers(),
@@ -28,12 +42,11 @@ export function createEditorExtensions() {
     keymap.of(formatKeyBindings), // フォーマット用のキーバインドを有効化
 
     // Language support
-    ...markdown(),
+    markdown(),
 
-    highlightWhitespace(), // 空白文字を可視化する（スペースは点、タブは矢印で表示される）
+    [highlightWhitespace(), highlightWhitespaceTheme], // 空白文字を可視化する（スペースは点、タブは矢印で表示される）
 
     // Theme
-    monochromeTheme,
-    EditorView.lineWrapping,
+    ...(isDark ? darkTheme : lightTheme),
   ];
 }

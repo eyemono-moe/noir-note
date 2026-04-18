@@ -83,6 +83,7 @@ const CreateMemoInput: Component<{
 
   return (
     <div class={styles.CreateInputContainer}>
+      <span class="i-material-symbols:draft-outline-rounded size-4 shrink-0" />
       <input
         ref={inputRef}
         class={styles.NodeRenameInput}
@@ -119,7 +120,7 @@ const TreeItem: Component<TreeNodeProps> = (props) => {
                     class={`size-4 shrink-0 ${nodeState().expanded ? "i-material-symbols:folder-open" : "i-material-symbols:folder"}`}
                   />
                 </Show>
-                {props.node.name}
+                <span class="truncate">{props.node.name}</span>
               </TreeView.BranchText>
               <TreeItemActions
                 node={props.node}

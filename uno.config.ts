@@ -4,18 +4,31 @@ export default defineConfig({
   presets: [presetWind3(), presetIcons()],
   theme: {
     colors: {
-      black: "#000000",
-      white: "#ffffff",
-      gray: {
-        100: "#f5f5f5",
-        200: "#e0e0e0",
-        300: "#d0d0d0",
-        400: "#a0a0a0",
-        500: "#808080",
-        600: "#606060",
-        700: "#404040",
-        800: "#202020",
+      // Semantic colors (CSS variables)
+      // Pattern: element.role
+      text: {
+        primary: "var(--color-text-primary)",
+        secondary: "var(--color-text-secondary)",
+        disabled: "var(--color-text-disabled)",
+        accent: "var(--color-text-accent)",
+        danger: "var(--color-text-danger)",
       },
+
+      surface: {
+        primary: "var(--color-surface-primary)",
+        secondary: "var(--color-surface-secondary)",
+        accent: "var(--color-surface-accent)",
+        transparent: {
+          hover: "var(--color-surface-transparent-hover)",
+          active: "var(--color-surface-transparent-active)",
+          accent: "var(--color-surface-transparent-accent)",
+        },
+      },
+      border: {
+        primary: "var(--color-border-primary)",
+        accent: "var(--color-border-accent)",
+      },
+      overlay: "var(--color-overlay)",
     },
   },
 });

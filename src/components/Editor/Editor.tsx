@@ -1,9 +1,8 @@
 import { createCodeMirror, createEditorControlledValue } from "solid-codemirror";
 import { type Component } from "solid-js";
 
+import { useTheme } from "../../context/theme";
 import { createEditorExtensions } from "../../editor/extensions";
-
-import "../../styles/editor.css";
 
 interface EditorProps {
   content: string;
@@ -12,12 +11,14 @@ interface EditorProps {
 }
 
 const Editor: Component<EditorProps> = (props) => {
+  const isDark = useTheme();
+
   const { ref, editorView, createExtension } = createCodeMirror({
     onValueChange: (value) => props.onChange(value),
   });
 
-  // Setup extensions (pass the array directly)
-  createExtension(createEditorExtensions);
+  // Setup extensions with theme
+  createExtension(() => createEditorExtensions(isDark()));
 
   // Create controlled value
   createEditorControlledValue(editorView, () => props.content);

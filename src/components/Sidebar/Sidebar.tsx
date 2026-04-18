@@ -34,11 +34,11 @@ const Sidebar: Component<SidebarProps> = (props) => {
 
   return (
     <Show when={props.visible}>
-      <div class="grid h-full w-64 grid-rows-[auto_1fr] border-r border-gray-200 bg-white">
-        <div class="p-2 text-gray-700">Notes</div>
+      <div class="border-border-primary bg-surface-primary grid h-full w-64 grid-rows-[auto_1fr] border-r">
+        <div class="text-text-primary p-2">Notes</div>
         <div class="overflow-auto p-2">
           <Show when={tree().length === 0}>
-            <div class="px-4 py-8 text-center text-sm text-gray-500">No pages yet</div>
+            <div class="text-text-secondary px-4 py-8 text-center text-sm">No pages yet</div>
           </Show>
           <Tree
             collection={collection()}

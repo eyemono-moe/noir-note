@@ -94,7 +94,7 @@ const CommandPalette: Component<CommandPaletteProps> = (props) => {
     <Show when={isOpen()}>
       {/* Backdrop */}
       <div
-        class="fixed inset-0 z-50 bg-black/50"
+        class="bg-overlay fixed inset-0 z-50"
         onClick={() => setIsOpen(false)}
         role="presentation"
       />
@@ -119,7 +119,7 @@ const CommandPalette: Component<CommandPaletteProps> = (props) => {
             <Combobox.Control class="relative">
               <Combobox.Input
                 placeholder="Type a command or search pages..."
-                class="w-full rounded-t border border-gray-300 bg-white px-4 py-3 text-base outline-none"
+                class="border-border-primary bg-surface-primary text-text-primary w-full rounded-t border px-4 py-3 text-base outline-none"
                 onKeyDown={(e) => {
                   if (e.key === "Escape") {
                     setIsOpen(false);
@@ -130,27 +130,31 @@ const CommandPalette: Component<CommandPaletteProps> = (props) => {
             </Combobox.Control>
 
             <Combobox.Positioner>
-              <Combobox.Content class="w-full overflow-hidden rounded-b border border-t-0 border-gray-300 bg-white shadow-lg">
+              <Combobox.Content class="border-border-primary bg-surface-primary w-full overflow-hidden rounded-b border border-t-0 shadow-lg">
                 <Combobox.List class="max-h-96 overflow-y-auto">
                   <For each={paletteItems()}>
                     {(item) => (
                       <Combobox.Item
                         item={item}
-                        class="cursor-pointer border-b border-gray-100 px-4 py-3 last:border-b-0 hover:bg-gray-100 data-[state=highlighted]:bg-gray-100"
+                        class="border-border-secondary hover:bg-surface-hover data-[state=highlighted]:bg-surface-hover cursor-pointer border-b px-4 py-3 last:border-b-0"
                       >
                         <div class="flex items-start gap-3">
                           <span class="text-xl">{item.icon}</span>
                           <div class="min-w-0 flex-1">
-                            <div class="text-sm font-medium text-black">{item.label}</div>
+                            <div class="text-text-primary text-sm font-medium">{item.label}</div>
                             <Show when={item.description}>
-                              <div class="text-xs text-gray-600">{item.description}</div>
+                              <div class="text-text-secondary text-xs">{item.description}</div>
                             </Show>
                             <Show when={item.preview}>
-                              <div class="mt-1 truncate text-xs text-gray-500">{item.preview}</div>
+                              <div class="text-text-secondary mt-1 truncate text-xs">
+                                {item.preview}
+                              </div>
                             </Show>
                           </div>
                           <Show when={item.type === "command" && item.category}>
-                            <span class="text-xs text-gray-400 uppercase">{item.category}</span>
+                            <span class="text-text-disabled text-xs uppercase">
+                              {item.category}
+                            </span>
                           </Show>
                         </div>
                       </Combobox.Item>
@@ -159,7 +163,7 @@ const CommandPalette: Component<CommandPaletteProps> = (props) => {
                 </Combobox.List>
 
                 <Show when={paletteItems().length === 0}>
-                  <div class="px-4 py-8 text-center text-sm text-gray-500">
+                  <div class="text-text-secondary px-4 py-8 text-center text-sm">
                     <Show when={inputValue().trim() === ""} fallback="No results found">
                       Type to search commands and pages
                     </Show>

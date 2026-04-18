@@ -61,13 +61,13 @@ const MarkdownPreview: Component<MarkdownPreviewProps> = (props) => {
   });
 
   return (
-    <div class="h-full w-full overflow-auto p-4">
+    <div class="markdown-body h-full w-full overflow-auto p-4">
       {/* Frontmatter Display */}
       <Show when={metadata()}>{(data) => <FrontmatterDisplay metadata={data()} />}</Show>
 
       {/* Markdown Content */}
       {/* oxlint-disable solid/no-innerhtml: needed for markdown rendering */}
-      <div ref={containerRef} class="markdown-preview" innerHTML={html()} />
+      <div ref={containerRef} innerHTML={html()} />
     </div>
   );
 };

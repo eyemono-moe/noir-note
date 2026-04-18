@@ -1,9 +1,14 @@
 import type { ParentComponent } from "solid-js";
 
 import { DBProvider } from "./context/db";
+import { ThemeProvider } from "./context/theme";
 
 const App: ParentComponent = (props) => {
-  return <DBProvider>{props.children}</DBProvider>;
+  return (
+    <ThemeProvider>
+      <DBProvider>{props.children}</DBProvider>
+    </ThemeProvider>
+  );
 };
 
 export default App;

@@ -20,18 +20,18 @@ const ConfirmDialog: Component<ConfirmDialogProps> = (props) => {
         if (!details.open) props.onCancel();
       }}
     >
-      <Dialog.Backdrop class="fixed inset-0 z-50 bg-black/50" />
+      <Dialog.Backdrop class="bg-overlay fixed inset-0 z-50" />
       <Dialog.Positioner class="fixed inset-0 z-50 flex items-center justify-center">
-        <Dialog.Content class="w-96 max-w-[90vw] rounded-lg border border-gray-300 bg-white p-6 shadow-xl">
-          <Dialog.Title class="text-lg font-semibold text-gray-900">{props.title}</Dialog.Title>
-          <Dialog.Description class="mt-2 text-sm text-gray-600">
+        <Dialog.Content class="border-border-primary bg-surface-primary w-96 max-w-[90vw] rounded-lg border p-6 shadow-xl">
+          <Dialog.Title class="text-text-primary text-lg font-semibold">{props.title}</Dialog.Title>
+          <Dialog.Description class="text-text-secondary mt-2 text-sm">
             {props.description}
           </Dialog.Description>
 
           <div class="mt-6 flex justify-end gap-3">
             <button
               onClick={() => props.onCancel()}
-              class="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              class="border-border-primary text-text-primary hover:bg-surface-hover rounded border px-4 py-2 text-sm font-medium"
             >
               {props.cancelLabel ?? "Cancel"}
             </button>

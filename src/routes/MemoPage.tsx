@@ -141,67 +141,67 @@ const MemoPage: Component = () => {
 
   return (
     <>
-      <Show when={memosCollectionResource() && allMemosQuery.isReady}>
+      <Show
+        when={memosCollectionResource() && allMemosQuery.isReady}
+        fallback={
+          <div class="flex h-screen w-screen items-center justify-center">
+            <div class="text-text-secondary text-lg">Initializing database...</div>
+          </div>
+        }
+      >
         <CommandPalette
           context={commandContext()}
           allMemos={allMemosQuery() || []}
           collection={memosCollectionResource()!}
         />
-        <div class="flex h-screen w-screen flex-col bg-white text-black">
-          <div class="flex flex-1 overflow-hidden">
-            <Sidebar
-              currentPath={currentPath()}
-              onNavigate={(path) => navigate(path)}
-              onDelete={(path) => {
-                console.log("[MemoPage] Deleting memo:", path);
-                const collection = memosCollectionResource();
-                if (collection) {
-                  collection.delete(path); // Optimistic delete
-                }
-              }}
-              visible={sidebarVisible()}
-              allMemos={allMemosQuery() || []}
-              memosCollection={memosCollectionResource()!}
-            />
-            <div class="flex flex-1 flex-col overflow-hidden">
-              <Switch fallback={<div class="p-4 text-gray-500">Loading...</div>}>
-                <Match when={currentMemoQuery.isReady && mode() === "preview"}>
-                  <MarkdownPreview content={localContent()} />
-                </Match>
-                <Match when={currentMemoQuery.isReady && mode() === "split"}>
-                  <SplitView
-                    left={
-                      <Editor
-                        content={localContent()}
-                        onChange={handleContentChange}
-                        placeholder="Start typing..."
-                      />
-                    }
-                    right={<MarkdownPreview content={localContent()} />}
-                  />
-                </Match>
-                <Match when={currentMemoQuery.isReady}>
-                  <Editor
-                    content={localContent()}
-                    onChange={handleContentChange}
-                    placeholder="Start typing..."
-                  />
-                </Match>
-              </Switch>
+        <div class="bg-surface-primary text-text-primary flex h-screen w-screen overflow-hidden">
+          <Sidebar
+            currentPath={currentPath()}
+            onNavigate={(path) => navigate(path)}
+            onDelete={(path) => {
+              console.log("[MemoPage] Deleting memo:", path);
+              const collection = memosCollectionResource();
+              if (collection) {
+                collection.delete(path); // Optimistic delete
+              }
+            }}
+            visible={sidebarVisible()}
+            allMemos={allMemosQuery() || []}
+            memosCollection={memosCollectionResource()!}
+          />
+          <div class="flex flex-1 flex-col overflow-hidden">
+            <Switch>
+              <Match when={currentMemoQuery.isReady && mode() === "preview"}>
+                <MarkdownPreview content={localContent()} />
+              </Match>
+              <Match when={currentMemoQuery.isReady && mode() === "split"}>
+                <SplitView
+                  left={
+                    <Editor
+                      content={localContent()}
+                      onChange={handleContentChange}
+                      placeholder="Start typing..."
+                    />
+                  }
+                  right={<MarkdownPreview content={localContent()} />}
+                />
+              </Match>
+              <Match when={currentMemoQuery.isReady}>
+                <Editor
+                  content={localContent()}
+                  onChange={handleContentChange}
+                  placeholder="Start typing..."
+                />
+              </Match>
+            </Switch>
 
-              {/* Debug info */}
-              <div class="border-t border-gray-200 p-2 text-xs text-gray-500">
-                Path: {currentPath()} | Mode: {mode()} | Sidebar:{" "}
-                {sidebarVisible() ? "visible" : "hidden"} | Memos: {allMemosQuery()?.length ?? 0}
-                {isSaving() && " | Saving..."}
-              </div>
+            {/* Debug info */}
+            <div class="border-border-primary text-text-secondary border-t p-2 text-xs">
+              Path: {currentPath()} | Mode: {mode()} | Sidebar:{" "}
+              {sidebarVisible() ? "visible" : "hidden"} | Memos: {allMemosQuery()?.length ?? 0}
+              {isSaving() && " | Saving..."}
             </div>
           </div>
-        </div>
-      </Show>
-      <Show when={!memosCollectionResource() || !allMemosQuery.isReady}>
-        <div class="flex h-screen w-screen items-center justify-center">
-          <div class="text-lg text-gray-500">Initializing database...</div>
         </div>
       </Show>
     </>
