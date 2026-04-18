@@ -15,6 +15,7 @@ interface MarkdownPreviewProps {
 }
 
 const MarkdownPreview: Component<MarkdownPreviewProps> = (props) => {
+  // oxlint-disable-next-line no-unassigned-vars --- needed for ref
   let containerRef: HTMLDivElement | undefined;
 
   const parser = unified()

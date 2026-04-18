@@ -62,6 +62,7 @@ const CreateMemoInput: Component<{
   onCancel: () => void;
 }> = (props) => {
   const [value, setValue] = createSignal("");
+  // oxlint-disable-next-line no-unassigned-vars --- needed for ref
   let inputRef: HTMLInputElement | undefined;
 
   onMount(() => {

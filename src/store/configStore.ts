@@ -12,6 +12,7 @@ const DEFAULT_CONFIG: AppConfig = {
 };
 
 // Create reactive config store with localStorage persistence
+// oxlint-disable-next-line solid/reactivity
 const [config, setConfig] = makePersisted(createSignal<AppConfig>(DEFAULT_CONFIG), {
   name: "app-config",
 });
