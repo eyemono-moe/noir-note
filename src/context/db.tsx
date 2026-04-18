@@ -20,15 +20,11 @@ async function initializeDatabases(): Promise<{
   rxdb: NoirNotesDatabase;
   memosCollection: MemosCollection;
 }> {
-  console.log("[DB Context] Initializing databases...");
-
   // Create RxDB
   const rxdb = await createNoirNotesDB();
 
   // Create TanStack DB collection
   const memosCollection = createMemosCollection(rxdb);
-
-  console.log("[DB Context] Databases initialized successfully");
 
   return { rxdb, memosCollection };
 }

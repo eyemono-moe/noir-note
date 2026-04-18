@@ -1,17 +1,35 @@
 import type { Command } from "../types";
 
-const changeModeCommand: Command = {
-  id: "change-mode",
-  label: "Change View Mode",
-  description: "Switch between Edit, Preview, and Split modes",
-  shortcut: ["Mod", "\\"],
+const editModeCommand: Command = {
+  id: "view-mode-edit",
+  label: "View: Edit Mode",
+  description: "Switch to edit-only view",
+  shortcut: ["Mod", "1"],
   category: "view",
-  execute: async (context) => {
-    context.setMode((prevMode) => {
-      if (prevMode === "edit") return "preview";
-      if (prevMode === "preview") return "split";
-      return "edit";
-    });
+  execute: (context) => {
+    context.setMode("edit");
+  },
+};
+
+const splitModeCommand: Command = {
+  id: "view-mode-split",
+  label: "View: Split Mode",
+  description: "Switch to split view (edit + preview)",
+  shortcut: ["Mod", "2"],
+  category: "view",
+  execute: (context) => {
+    context.setMode("split");
+  },
+};
+
+const previewModeCommand: Command = {
+  id: "view-mode-preview",
+  label: "View: Preview Mode",
+  description: "Switch to preview-only view",
+  shortcut: ["Mod", "3"],
+  category: "view",
+  execute: (context) => {
+    context.setMode("preview");
   },
 };
 
@@ -26,4 +44,9 @@ const toggleSidebarCommand: Command = {
   },
 };
 
-export const viewCommands: Command[] = [changeModeCommand, toggleSidebarCommand];
+export const viewCommands: Command[] = [
+  editModeCommand,
+  splitModeCommand,
+  previewModeCommand,
+  toggleSidebarCommand,
+];

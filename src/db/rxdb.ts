@@ -73,7 +73,6 @@ const migrationStrategies = {
     createdAt: number;
     updatedAt: number;
   }): MemoDocument {
-    console.log(`[RxDB Migration] Migrating document: ${oldDoc.path}`);
     return {
       ...oldDoc,
       metadata: undefined,
@@ -97,16 +96,12 @@ export type NoirNotesDatabase = RxDatabase<NoirNotesCollections>;
  * Create and initialize RxDB database
  */
 export async function createNoirNotesDB(): Promise<NoirNotesDatabase> {
-  console.log("[RxDB] Creating database...");
-
   const db = await createRxDatabase<NoirNotesCollections>({
     name: "noir_notes",
     storage: getRxStorageDexie(),
     multiInstance: true, // Support multiple tabs
     eventReduce: true, // Enable event reduce for better query performance
   });
-
-  console.log("[RxDB] Database created, adding collections...");
 
   // Add memos collection
   await db.addCollections({
@@ -115,8 +110,6 @@ export async function createNoirNotesDB(): Promise<NoirNotesDatabase> {
       migrationStrategies,
     },
   });
-
-  console.log("[RxDB] Collections added successfully");
 
   return db;
 }

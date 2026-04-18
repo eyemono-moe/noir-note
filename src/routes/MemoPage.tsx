@@ -1,16 +1,7 @@
 import { debounce } from "@solid-primitives/scheduled";
 import { useLocation, useNavigate } from "@solidjs/router";
 import { eq, useLiveQuery } from "@tanstack/solid-db";
-import {
-  type Component,
-  createEffect,
-  createMemo,
-  createSignal,
-  onMount,
-  Show,
-  Switch,
-  Match,
-} from "solid-js";
+import { type Component, createEffect, createMemo, createSignal, onMount, Show } from "solid-js";
 
 import { allCommands } from "../commands/definitions";
 import CommandPalette from "../commands/palette";
@@ -21,6 +12,7 @@ import SplitView from "../components/Layout/SplitView";
 import MarkdownPreview from "../components/Preview/MarkdownPreview";
 import Sidebar from "../components/Sidebar/Sidebar";
 import { useMemosCollection } from "../context/db";
+import { useEditorSplit } from "../context/editorSplit";
 import { useUIState } from "../hooks/useUIState";
 import { AUTO_SAVE_DELAY } from "../utils/constants";
 import { parseFrontmatter } from "../utils/frontmatter";
@@ -30,6 +22,7 @@ const MemoPage: Component = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { mode, sidebarVisible, setMode, toggleSidebar } = useUIState();
+  const editorSplitter = useEditorSplit();
 
   // Get memos collection
   const memosCollectionResource = useMemosCollection();
@@ -72,7 +65,6 @@ const MemoPage: Component = () => {
       return;
     }
 
-    console.log("[MemoPage] Saving memo:", { path, contentLength: newContent.length });
     setIsSaving(true);
 
     try {
@@ -90,7 +82,6 @@ const MemoPage: Component = () => {
           draft.updatedAt = now;
           draft.metadata = metadata;
         });
-        console.log("[MemoPage] Memo updated successfully", { hasMetadata: !!metadata });
       } else {
         // Insert new memo
         collection.insert({
@@ -100,7 +91,6 @@ const MemoPage: Component = () => {
           updatedAt: now,
           metadata,
         });
-        console.log("[MemoPage] New memo created successfully", { hasMetadata: !!metadata });
       }
     } catch (error) {
       console.error("[MemoPage] Save failed:", error);
@@ -128,7 +118,27 @@ const MemoPage: Component = () => {
     currentMode: mode(),
     sidebarVisible: sidebarVisible(),
     navigate: (path: string) => navigate(path),
-    setMode,
+    setMode: (modeOrFn) => {
+      // Set UI state
+      setMode(modeOrFn);
+      // Also update SplitView directly
+      const api = editorSplitter();
+      if (api) {
+        const newMode = typeof modeOrFn === "function" ? modeOrFn(mode()) : modeOrFn;
+        const sidebarSize = api.getSizes()[0];
+        switch (newMode) {
+          case "edit":
+            api.setSizes([sidebarSize, 100 - sidebarSize, 0]);
+            break;
+          case "preview":
+            api.setSizes([sidebarSize, 0, 100 - sidebarSize]);
+            break;
+          case "split":
+            api.setSizes([sidebarSize, 50 - sidebarSize / 2, 50 - sidebarSize / 2]);
+            break;
+        }
+      }
+    },
     toggleSidebar,
   }));
 
@@ -136,7 +146,7 @@ const MemoPage: Component = () => {
   const allMemosQuery = useLiveQuery((q) => {
     const collection = memosCollectionResource();
     if (!collection) return null;
-    return q.from({ memos: collection });
+    return q.from({ memos: collection }).select(({ memos }) => memos);
   });
 
   return (
@@ -154,53 +164,46 @@ const MemoPage: Component = () => {
           allMemos={allMemosQuery() || []}
           collection={memosCollectionResource()!}
         />
-        <div class="bg-surface-primary text-text-primary flex h-screen w-screen overflow-hidden">
-          <Sidebar
-            currentPath={currentPath()}
-            onNavigate={(path) => navigate(path)}
-            onDelete={(path) => {
-              console.log("[MemoPage] Deleting memo:", path);
-              const collection = memosCollectionResource();
-              if (collection) {
-                collection.delete(path); // Optimistic delete
+        <div class="bg-surface-primary text-text-primary flex h-screen w-screen flex-col overflow-hidden">
+          <div class="flex-1 overflow-hidden">
+            <SplitView
+              splitter={editorSplitter}
+              left={
+                <Sidebar
+                  currentPath={currentPath()}
+                  onNavigate={(path) => navigate(path)}
+                  onDelete={(path) => {
+                    const collection = memosCollectionResource();
+                    if (collection) {
+                      collection.delete(path); // Optimistic delete
+                    }
+                  }}
+                  visible={sidebarVisible()}
+                  allMemos={allMemosQuery() || []}
+                  memosCollection={memosCollectionResource()!}
+                />
               }
-            }}
-            visible={sidebarVisible()}
-            allMemos={allMemosQuery() || []}
-            memosCollection={memosCollectionResource()!}
-          />
-          <div class="flex flex-1 flex-col overflow-hidden">
-            <Switch>
-              <Match when={currentMemoQuery.isReady && mode() === "preview"}>
-                <MarkdownPreview content={localContent()} />
-              </Match>
-              <Match when={currentMemoQuery.isReady && mode() === "split"}>
-                <SplitView
-                  left={
-                    <Editor
-                      content={localContent()}
-                      onChange={handleContentChange}
-                      placeholder="Start typing..."
-                    />
-                  }
-                  right={<MarkdownPreview content={localContent()} />}
-                />
-              </Match>
-              <Match when={currentMemoQuery.isReady}>
-                <Editor
-                  content={localContent()}
-                  onChange={handleContentChange}
-                  placeholder="Start typing..."
-                />
-              </Match>
-            </Switch>
-
-            {/* Debug info */}
-            <div class="border-border-primary text-text-secondary border-t p-2 text-xs">
-              Path: {currentPath()} | Mode: {mode()} | Sidebar:{" "}
-              {sidebarVisible() ? "visible" : "hidden"} | Memos: {allMemosQuery()?.length ?? 0}
-              {isSaving() && " | Saving..."}
-            </div>
+              center={
+                <Show when={currentMemoQuery.isReady}>
+                  <Editor
+                    content={localContent()}
+                    onChange={handleContentChange}
+                    placeholder="Start typing..."
+                  />
+                </Show>
+              }
+              right={
+                <Show when={currentMemoQuery.isReady}>
+                  <MarkdownPreview content={localContent()} />
+                </Show>
+              }
+            />
+          </div>
+          {/* Debug info */}
+          <div class="border-border-primary text-text-secondary border-t p-2 text-xs">
+            Path: {currentPath()} | Mode: {mode()} | Sidebar:{" "}
+            {sidebarVisible() ? "visible" : "hidden"} | Memos: {allMemosQuery()?.length ?? 0}
+            {isSaving() && " | Saving..."}
           </div>
         </div>
       </Show>

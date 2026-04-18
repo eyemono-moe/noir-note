@@ -75,15 +75,9 @@ importers:
       fast-diff:
         specifier: ^1.3.0
         version: 1.3.0
-      github-markdown-css:
-        specifier: ^5.9.0
-        version: 5.9.0
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
-      marked:
-        specifier: ^18.0.0
-        version: 18.0.0
       rehype-external-links:
         specifier: ^3.0.0
         version: 3.0.0
@@ -154,9 +148,6 @@ importers:
       knip:
         specifier: ^6.4.1
         version: 6.4.1(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)
-      shiki:
-        specifier: ^4.0.2
-        version: 4.0.2
       typescript:
         specifier: ~6.0.2
         version: 6.0.2
@@ -2631,10 +2622,6 @@ packages:
   get-tsconfig@4.13.7:
     resolution: {integrity: sha512-7tN6rFgBlMgpBML5j8typ92BKFi2sFQvIdpAqLA2beia5avZDrMs0FLZiM5etShWq5irVyGcGMEA1jcDaK7A/Q==}
 
-  github-markdown-css@5.9.0:
-    resolution: {integrity: sha512-tmT5sY+zvg2302XLYEfH2mtkViIM1SWf2nvYoF5N1ZsO0V6B2qZTiw3GOzw4vpjLygK/KG35qRlPFweHqfzz5w==}
-    engines: {node: '>=10'}
-
   glob-parent@5.1.2:
     resolution: {integrity: sha512-AOIgSQCepiJYwP3ARnGx+5VnTu2HBYdzbGP45eLw1vr3zB3vZLeyed1sC9hnbcOc9/SrMyM5RPQrkGz4aS9Zow==}
     engines: {node: '>= 6'}
@@ -3047,11 +3034,6 @@ packages:
 
   markdown-table@3.0.4:
     resolution: {integrity: sha512-wiYz4+JrLyb/DqW2hkFJxP7Vd7JuTDm77fvbM8VfEQdmSMqcImWeeRbHwZjBjIFki/VaMK2BhFi7oUUZeM5bqw==}
-
-  marked@18.0.0:
-    resolution: {integrity: sha512-2e7Qiv/HJSXj8rDEpgTvGKsP8yYtI9xXHKDnrftrmnrJPaFNM7VRb2YCzWaX4BP1iCJ/XPduzDJZMFoqTCcIMA==}
-    engines: {node: '>= 20'}
-    hasBin: true
 
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
@@ -6951,8 +6933,6 @@ snapshots:
     dependencies:
       resolve-pkg-maps: 1.0.0
 
-  github-markdown-css@5.9.0: {}
-
   glob-parent@5.1.2:
     dependencies:
       is-glob: 4.0.3
@@ -7357,8 +7337,6 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.5.5
 
   markdown-table@3.0.4: {}
-
-  marked@18.0.0: {}
 
   math-intrinsics@1.1.0: {}
 
