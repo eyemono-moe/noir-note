@@ -120,10 +120,7 @@ export const CommandsProvider: ParentComponent = (props) => {
   // Register keyboard shortcuts for all commands
   for (const cmd of allCommands) {
     if (cmd.shortcut) {
-      // Join shortcut array with "+" to create Hotkey string (e.g., ["Mod", "1"] -> "Mod+1")
-      // Type assertion is safe here because command shortcuts are defined with correct format
-      const shortcutStr = cmd.shortcut.join("+") as Parameters<typeof createHotkey>[0];
-      createHotkey(shortcutStr, (e) => {
+      createHotkey(cmd.shortcut, (e) => {
         e?.preventDefault();
         void executeCommandImpl(commands(), cmd.id, commandContext());
       });

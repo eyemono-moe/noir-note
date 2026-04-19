@@ -1,6 +1,7 @@
 import { Combobox, useListCollection } from "@ark-ui/solid/combobox";
 import { Dialog } from "@ark-ui/solid/dialog";
 import { useLiveQuery } from "@tanstack/solid-db";
+import { formatForDisplay } from "@tanstack/solid-hotkeys";
 import { createEffect, For, Show, untrack, type Component } from "solid-js";
 import { Portal } from "solid-js/web";
 
@@ -52,6 +53,7 @@ const CommandPalette: Component = () => {
         value: command.id,
         label: command.label,
         description: command.description,
+        shortcut: command.shortcut,
         category: command.category,
       });
     }
@@ -184,6 +186,11 @@ const CommandPalette: Component = () => {
                                   <span class={styles.ItemDescription}>{item.description}</span>
                                 </Show>
                               </div>
+                              <Show when={item.shortcut}>
+                                <kbd class={styles.ItemShortcut}>
+                                  {formatForDisplay(item.shortcut!)}
+                                </kbd>
+                              </Show>
                             </Combobox.Item>
                           )}
                         </For>
