@@ -1,15 +1,17 @@
 import { Clipboard } from "@ark-ui/solid";
 import type { Node, Root, RootContent, RootContentMap } from "mdast";
+import mermaid from "mermaid";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import type { Component, JSX } from "solid-js";
-import { For, Match, Show, Switch, createMemo, createResource } from "solid-js";
+import { For, Match, Show, Suspense, Switch, createMemo, createResource } from "solid-js";
 
 import "../../styles/markdown.css";
 import "../../styles/shiki.css";
 import { unified } from "unified";
 
+import { useTheme } from "../../context/theme";
 import { bundledLanguages, codeToHtml } from "../../editor/shiki.bundle";
 import { parseFrontmatterYamlString } from "../../utils/frontmatter";
 import { remarkFootnoteBackLink } from "../../utils/remark/remark-footnote-back-link";
@@ -114,34 +116,117 @@ const InlineCodeNode: Component<{ node: RootContentMap["inlineCode"] }> = (props
   return <code>{props.node.value}</code>;
 };
 
-const CodeNode: Component<{ node: RootContentMap["code"] }> = (props) => {
-  const [html] = createResource(
-    () => props.node,
-    async (node) => {
+/**
+ * Mermaid diagram renderer component
+ */
+const MermaidDiagram: Component<{ code: string }> = (props) => {
+  const isDark = useTheme();
+
+  const [result] = createResource(
+    () => ({ code: props.code, dark: isDark() }),
+    async (params) => {
       try {
-        const lang = !node.lang
+        const id = `mermaid-${Math.random().toString(36).substring(2, 11)}`;
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: params.dark ? "dark" : "default",
+        });
+
+        const { svg } = await mermaid.render(id, params.code);
+        return { success: true as const, svg };
+      } catch (error) {
+        console.error("Mermaid rendering failed:", error);
+        return { success: false as const, error: String(error) };
+      }
+    },
+  );
+
+  const currentError = createMemo(() => {
+    const current = result();
+    return current && !current.success ? current : null;
+  });
+
+  return (
+    <Show
+      when={result.latest?.success}
+      fallback={
+        <>
+          <pre>
+            <code>{props.code}</code>
+          </pre>
+          <Show when={currentError()}>
+            {(err) => (
+              <div class="text-text-danger text-sm">
+                <p>Mermaid rendering error:</p>
+                <pre class="text-sm">{err().error}</pre>
+              </div>
+            )}
+          </Show>
+        </>
+      }
+    >
+      <div
+        class="mermaid-diagram bg-surface-secondary mb-4 flex justify-center rounded-lg p-2"
+        // oxlint-disable-next-line solid/no-innerhtml
+        innerHTML={result.latest?.svg}
+      />
+    </Show>
+  );
+};
+
+/**
+ * Syntax highlighted code block renderer component
+ */
+const SyntaxHighlightedCode: Component<{ code: string; lang?: string | null }> = (props) => {
+  const [result] = createResource(
+    () => ({ code: props.code, lang: props.lang }),
+    async (params) => {
+      try {
+        const lang = !params.lang
           ? "plaintext"
-          : node.lang in bundledLanguages
-            ? node.lang
+          : params.lang in bundledLanguages
+            ? params.lang
             : "plaintext";
 
-        const value = await codeToHtml(node.value, {
+        const html = await codeToHtml(params.code, {
           lang,
           themes: { light: "github-light", dark: "github-dark" },
         });
-        return { success: true, value };
+        return { success: true as const, html };
       } catch (error) {
         console.error("Syntax highlighting failed:", error);
-        return { success: false };
+        return { success: false as const };
       }
     },
     {
-      initialValue: { success: false },
+      initialValue: { success: false as const },
     },
   );
 
   return (
+    <Show
+      when={result.latest?.success}
+      fallback={
+        <pre>
+          <code>{props.code}</code>
+        </pre>
+      }
+    >
+      {/* oxlint-disable-next-line solid/no-innerhtml */}
+      <div innerHTML={result.latest?.html} />
+    </Show>
+  );
+};
+
+/**
+ * Code block node with clipboard functionality
+ */
+const CodeNode: Component<{ node: RootContentMap["code"] }> = (props) => {
+  const isMermaid = () => props.node.lang === "mermaid";
+
+  return (
     <div class="parent relative">
+      {/* Clipboard button */}
       <Clipboard.Root
         class="parent-hover:block parent-focus-within:block absolute top-2 right-2 hidden"
         value={props.node.value}
@@ -154,17 +239,24 @@ const CodeNode: Component<{ node: RootContentMap["code"] }> = (props) => {
           </Clipboard.Indicator>
         </Clipboard.Trigger>
       </Clipboard.Root>
-      <Show
-        when={html.latest?.success}
-        fallback={
-          <pre>
-            <code>{props.node.value}</code>
-          </pre>
-        }
-      >
-        {/* oxlint-disable-next-line solid/no-innerhtml */}
-        <div innerHTML={html.latest?.value} />
-      </Show>
+
+      {/* Render based on language */}
+      <Switch>
+        <Match when={isMermaid()}>
+          <Suspense
+            fallback={
+              <pre>
+                <code>{props.node.value}</code>
+              </pre>
+            }
+          >
+            <MermaidDiagram code={props.node.value} />
+          </Suspense>
+        </Match>
+        <Match when={!isMermaid()}>
+          <SyntaxHighlightedCode code={props.node.value} lang={props.node.lang} />
+        </Match>
+      </Switch>
     </div>
   );
 };
