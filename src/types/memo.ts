@@ -6,6 +6,8 @@ export interface Memo {
   metadata?: MemoFrontmatter;
 }
 
+export type MemoWithoutContent = Omit<Memo, "content">;
+
 export interface MemoFrontmatter {
   tags?: string[];
   title?: string;

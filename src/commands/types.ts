@@ -1,3 +1,5 @@
+import type { RegisterableHotkey } from "@tanstack/solid-hotkeys";
+
 import type { ViewMode } from "../types/ui";
 
 export interface CommandContext {
@@ -11,13 +13,11 @@ export interface Command {
   id: string;
   label: string;
   description?: string;
-  shortcut?: string[];
+  shortcut?: RegisterableHotkey;
   category?: string;
   execute: (context: CommandContext) => void | Promise<void>;
   isEnabled?: (context: CommandContext) => boolean;
 }
-
-export type CommandRegistry = Map<string, Command>;
 
 // Unified palette item type for commands and pages
 export type PaletteItemType = "command" | "page";
@@ -28,7 +28,7 @@ export interface PaletteItem {
   label: string;
   description?: string;
   preview?: string; // For pages: content preview
-  icon?: string; // Icon/emoji to differentiate
+  shortcut?: RegisterableHotkey; // Keyboard shortcut for commands
   category?: string;
 }
 

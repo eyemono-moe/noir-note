@@ -11,8 +11,7 @@ import {
   type Component,
 } from "solid-js";
 
-import type { MemoDocument } from "../../db/rxdb";
-import { type MemosCollection } from "../../db/tanstack";
+import type { Memo, MemoWithoutContent } from "../../types/memo";
 import { getParentPath } from "../../utils/path";
 import { type TreeNode } from "../../utils/tree";
 import ConfirmDialog from "./ConfirmDialog";
@@ -171,10 +170,9 @@ type TreeProps = {
   currentPath: string;
   onNavigate: (path: string) => void;
   onDelete: (path: string) => void;
-  onInsert: (parentPath: string) => void;
+  onInsert: (memo: Omit<Memo, "content" | "createdAt" | "updatedAt">) => void;
   collection: TreeCollection<TreeNode>;
-  memosCollection: MemosCollection;
-  allMemos: MemoDocument[];
+  allMemos: MemoWithoutContent[];
 };
 
 export const Tree: Component<TreeProps> = (props) => {
@@ -231,13 +229,9 @@ export const Tree: Component<TreeProps> = (props) => {
     }
 
     // メモ作成
-    const now = Date.now();
     try {
-      props.memosCollection.insert({
+      props.onInsert({
         path: newPath,
-        content: "",
-        createdAt: now,
-        updatedAt: now,
         metadata: undefined,
       });
 

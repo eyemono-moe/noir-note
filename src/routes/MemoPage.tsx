@@ -1,26 +1,11 @@
-import { debounce } from "@solid-primitives/scheduled";
 import { useLocation, useNavigate } from "@solidjs/router";
-import { eq, useLiveQuery } from "@tanstack/solid-db";
-import {
-  type Component,
-  createEffect,
-  createMemo,
-  createSignal,
-  lazy,
-  onMount,
-  Show,
-  Suspense,
-} from "solid-js";
+import { useLiveQuery } from "@tanstack/solid-db";
+import { type Component, createMemo, lazy, Show, Suspense } from "solid-js";
 
-import { allCommands } from "../commands/definitions";
-import CommandPalette from "../commands/palette";
-import { commandRegistry } from "../commands/registry";
-import type { CommandContext } from "../commands/types";
 import SplitView from "../components/Layout/SplitView";
 import { useMemosCollection } from "../context/db";
 import { useEditorSplit } from "../context/editorSplit";
-import { AUTO_SAVE_DELAY } from "../utils/constants";
-import { parseFrontmatter } from "../utils/frontmatter";
+import { useMemoContent, useMemoSaver } from "../hooks/useMemoOperations";
 import { normalizePath } from "../utils/path";
 
 const Editor = lazy(() => import("../components/Editor/Editor"));
@@ -38,69 +23,13 @@ const MemoPage: Component = () => {
   // Get current path from URL
   const currentPath = createMemo(() => normalizePath(location.pathname));
 
-  // Query for current memo using useLiveQuery
-  const currentMemoQuery = useLiveQuery((q) => {
-    const collection = memosCollectionResource();
-    if (!collection) return null;
-
-    const path = currentPath(); // Signal is tracked automatically
-    return q
-      .from({ memos: collection })
-      .where(({ memos }) => eq(memos.path, path))
-      .select(({ memos }) => memos);
-  });
-
-  // Local content state (for editing without saving immediately)
-  const [localContent, setLocalContent] = createSignal("");
-
-  // Sync currentMemo to localContent when it changes
-  createEffect(() => {
-    const memos = currentMemoQuery();
-    const memo = memos?.[0]; // useLiveQuery returns array
-    if (memo) {
-      setLocalContent(memo.content);
-    } else if (currentMemoQuery.isReady) {
-      setLocalContent("");
-    }
-  });
-
-  // Debounced save function with optimistic update
-  const debouncedSave = debounce(async (path: string, newContent: string) => {
-    const collection = memosCollectionResource();
-    if (!collection) {
-      console.error("[MemoPage] Cannot save: collection not ready");
-      return;
-    }
-
-    try {
-      const now = Date.now();
-      const memos = currentMemoQuery();
-      const existing = memos?.[0];
-
-      // Parse frontmatter from content
-      const { metadata } = parseFrontmatter(newContent);
-
-      if (existing) {
-        // Update existing memo using draft function
-        collection.update(path, (draft) => {
-          draft.content = newContent;
-          draft.updatedAt = now;
-          draft.metadata = metadata;
-        });
-      } else {
-        // Insert new memo
-        collection.insert({
-          path,
-          content: newContent,
-          createdAt: now,
-          updatedAt: now,
-          metadata,
-        });
-      }
-    } catch (error) {
-      console.error("[MemoPage] Save failed:", error);
-    }
-  }, AUTO_SAVE_DELAY);
+  // Use memo operations hooks
+  const {
+    content: localContent,
+    setContent: setLocalContent,
+    isReady,
+  } = useMemoContent(currentPath);
+  const { save: debouncedSave } = useMemoSaver();
 
   // Handle content changes
   const handleContentChange = (newContent: string) => {
@@ -108,55 +37,17 @@ const MemoPage: Component = () => {
     debouncedSave(currentPath(), newContent);
   };
 
-  // Register commands on mount
-  onMount(() => {
-    for (const command of allCommands) {
-      commandRegistry.register(command);
-    }
-  });
-
-  // Create command context
-  const commandContext = createMemo<CommandContext>(() => ({
-    currentPath: currentPath(),
-    navigate: (path: string) => navigate(path),
-    setMode: (mode) => {
-      // update SplitView
-      const api = editorSplitter();
-      if (!api) return;
-      const sidebarSize = api.getSizes()[0];
-      switch (mode) {
-        case "edit":
-          api.setSizes([sidebarSize, 100 - sidebarSize, 0]);
-          break;
-        case "preview":
-          api.setSizes([sidebarSize, 0, 100 - sidebarSize]);
-          break;
-        case "split":
-          api.setSizes([sidebarSize, 50 - sidebarSize / 2, 50 - sidebarSize / 2]);
-          break;
-      }
-    },
-    toggleSidebar: () => {
-      const api = editorSplitter();
-      if (!api) return;
-      const sizes = api.getSizes();
-      const closed = sizes[0] === 0;
-      if (closed) {
-        // Show sidebar
-        const newSidebarSize = 20;
-        api.setSizes([newSidebarSize, sizes[1], sizes[2]]);
-      } else {
-        // Hide sidebar
-        api.setSizes([0, sizes[1], sizes[2]]);
-      }
-    },
-  }));
-
   // All memos query for sidebar and command palette
   const allMemosQuery = useLiveQuery((q) => {
     const collection = memosCollectionResource();
     if (!collection) return null;
-    return q.from({ memos: collection });
+    return q.from({ memos: collection }).select(({ memos }) => ({
+      path: memos.path,
+      title: memos.metadata?.title,
+      metadata: memos.metadata,
+      createdAt: memos.createdAt,
+      updatedAt: memos.updatedAt,
+    }));
   });
 
   return (
@@ -169,11 +60,6 @@ const MemoPage: Component = () => {
           </div>
         }
       >
-        <CommandPalette
-          context={commandContext()}
-          allMemos={allMemosQuery() || []}
-          collection={memosCollectionResource()!}
-        />
         <div class="bg-surface-primary text-text-primary h-screen w-screen overflow-hidden">
           <SplitView
             splitter={editorSplitter}
@@ -188,13 +74,20 @@ const MemoPage: Component = () => {
                       collection.delete(path); // Optimistic delete
                     }
                   }}
+                  onInsert={(memo) => {
+                    const collection = memosCollectionResource();
+                    if (collection) {
+                      const now = Date.now();
+                      collection.insert({ ...memo, content: "", createdAt: now, updatedAt: now }); // Optimistic insert
+                    }
+                  }}
                   allMemos={allMemosQuery() || []}
                   memosCollection={memosCollectionResource()!}
                 />
               </Suspense>
             }
             center={
-              <Show when={currentMemoQuery.isReady}>
+              <Show when={isReady()}>
                 <Suspense fallback={<div class="text-text-secondary p-4">Loading editor...</div>}>
                   <Editor
                     content={localContent()}
@@ -205,7 +98,7 @@ const MemoPage: Component = () => {
               </Show>
             }
             right={
-              <Show when={currentMemoQuery.isReady}>
+              <Show when={isReady()}>
                 <Suspense fallback={<div class="text-text-secondary p-4">Loading preview...</div>}>
                   <MarkdownPreview content={localContent()} />
                 </Suspense>

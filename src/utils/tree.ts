@@ -1,14 +1,12 @@
-import type { Memo } from "../types/memo";
 import { getPathSegments } from "./path";
 
 export interface TreeNode {
   path: string;
   name: string;
   children: TreeNode[];
-  memo?: Memo;
 }
 
-export function buildTree(memos: Memo[]): TreeNode[] {
+export function buildTree(memos: { path: string }[]): TreeNode[] {
   const root: TreeNode[] = [];
   const nodeMap = new Map<string, TreeNode>();
 
@@ -24,7 +22,6 @@ export function buildTree(memos: Memo[]): TreeNode[] {
         path: "/",
         name: "/",
         children: [],
-        memo,
       };
       nodeMap.set("/", rootNode);
       // Don't add to root yet - we'll handle it at the end
@@ -48,14 +45,10 @@ export function buildTree(memos: Memo[]): TreeNode[] {
           path: currentPath,
           name: segment,
           children: [],
-          memo: currentPath === memo.path ? memo : undefined,
         };
 
         nodeMap.set(currentPath, node);
         currentLevel.push(node);
-      } else if (currentPath === memo.path) {
-        // Update existing node with memo data
-        node.memo = memo;
       }
 
       // Move to next level
