@@ -36,6 +36,6 @@ export default defineConfig({
   },
   shortcuts: {
     button:
-      "inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors bg-surface-control-rest not-active:hover:bg-surface-control-hover active:bg-surface-control-active",
+      "inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors bg-surface-control-rest not-active:hover:bg-surface-control-hover active:bg-surface-control-active border border-border-primary",
   },
 });

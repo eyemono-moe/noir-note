@@ -490,9 +490,8 @@
   list-style-type: disc;
 }
 
-.markdown-body .task-list-item input[type="checkbox"] {
-  vertical-align: middle;
-  margin: 0 0.2em 0.25em -1.4em;
+.markdown-body ol {
+  list-style-type: decimal;
 }
 
 .markdown-body ul,
