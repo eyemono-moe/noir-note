@@ -25,7 +25,6 @@ describe("buildTree", () => {
     expect(tree).toHaveLength(1);
     expect(tree[0].path).toBe("/");
     expect(tree[0].name).toBe("/");
-    expect(tree[0].memo?.content).toBe("Root content");
     expect(tree[0].children).toEqual([]);
   });
 
@@ -36,7 +35,6 @@ describe("buildTree", () => {
     expect(tree).toHaveLength(1);
     expect(tree[0].path).toBe("/foo");
     expect(tree[0].name).toBe("foo");
-    expect(tree[0].memo?.content).toBe("Foo content");
   });
 
   test("root memo with children", () => {
@@ -48,12 +46,12 @@ describe("buildTree", () => {
     // Root node
     const rootNode = tree.find((n) => n.path === "/");
     expect(rootNode).toBeDefined();
-    expect(rootNode?.memo?.content).toBe("Root");
+    expect(rootNode?.name).toBe("/");
 
     // Child node
     const fooNode = rootNode?.children.find((n) => n.path === "/foo");
     expect(fooNode).toBeDefined();
-    expect(fooNode?.memo?.content).toBe("Foo");
+    expect(fooNode?.name).toBe("foo");
 
     // Root should have foo as child
     expect(rootNode?.children).toHaveLength(1);
@@ -67,15 +65,14 @@ describe("buildTree", () => {
     expect(tree).toHaveLength(1);
     expect(tree[0].path).toBe("/foo");
     expect(tree[0].name).toBe("foo");
-    expect(tree[0].memo).toBeUndefined(); // No memo for /foo
 
     expect(tree[0].children).toHaveLength(1);
     expect(tree[0].children[0].path).toBe("/foo/bar");
-    expect(tree[0].children[0].memo).toBeUndefined(); // No memo for /foo/bar
+    expect(tree[0].children[0].name).toBe("bar");
 
     expect(tree[0].children[0].children).toHaveLength(1);
     expect(tree[0].children[0].children[0].path).toBe("/foo/bar/baz");
-    expect(tree[0].children[0].children[0].memo?.content).toBe("Deep content");
+    expect(tree[0].children[0].children[0].name).toBe("baz");
   });
 
   test("multiple children at same level", () => {
@@ -99,15 +96,15 @@ describe("buildTree", () => {
     expect(tree).toHaveLength(1); // `/`
 
     const rootNode = tree.find((n) => n.path === "/");
-    expect(rootNode?.memo?.content).toBe("Root");
+    expect(rootNode?.name).toBe("/");
     expect(rootNode?.children).toHaveLength(2);
 
     const fooNode = rootNode?.children.find((n) => n.path === "/foo");
-    expect(fooNode?.memo?.content).toBe("Foo");
+    expect(fooNode?.name).toBe("foo");
     expect(fooNode?.children).toHaveLength(2);
 
     const quxNode = rootNode?.children.find((n) => n.path === "/qux");
-    expect(quxNode?.memo?.content).toBe("Qux");
+    expect(quxNode?.name).toBe("qux");
   });
 
   test("memo added to existing intermediate node", () => {
@@ -116,8 +113,8 @@ describe("buildTree", () => {
 
     expect(tree).toHaveLength(1);
     expect(tree[0].path).toBe("/foo");
-    expect(tree[0].memo?.content).toBe("Foo"); // Memo added to previously intermediate node
-    expect(tree[0].children[0].memo?.content).toBe("Bar");
+    expect(tree[0].name).toBe("foo");
+    expect(tree[0].children[0].name).toBe("bar");
   });
 });
 
@@ -128,7 +125,7 @@ describe("findNodeByPath", () => {
 
     const node = findNodeByPath(tree, "/");
     expect(node?.path).toBe("/");
-    expect(node?.memo?.content).toBe("Root");
+    expect(node?.name).toBe("/");
   });
 
   test("find child node", () => {
@@ -137,7 +134,7 @@ describe("findNodeByPath", () => {
 
     const node = findNodeByPath(tree, "/foo/bar");
     expect(node?.path).toBe("/foo/bar");
-    expect(node?.memo?.content).toBe("Bar");
+    expect(node?.name).toBe("bar");
   });
 
   test("return null for non-existent path", () => {
@@ -146,15 +143,6 @@ describe("findNodeByPath", () => {
 
     const node = findNodeByPath(tree, "/bar");
     expect(node).toBeNull();
-  });
-
-  test("find intermediate node without memo", () => {
-    const memos = [createMemo("/foo/bar/baz", "Baz")];
-    const tree = buildTree(memos);
-
-    const node = findNodeByPath(tree, "/foo/bar");
-    expect(node?.path).toBe("/foo/bar");
-    expect(node?.memo).toBeUndefined();
   });
 });
 

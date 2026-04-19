@@ -17,8 +17,6 @@ export interface Command {
   isEnabled?: (context: CommandContext) => boolean;
 }
 
-export type CommandRegistry = Map<string, Command>;
-
 // Unified palette item type for commands and pages
 export type PaletteItemType = "command" | "page";
 
@@ -28,7 +26,6 @@ export interface PaletteItem {
   label: string;
   description?: string;
   preview?: string; // For pages: content preview
-  icon?: string; // Icon/emoji to differentiate
   category?: string;
 }
 
