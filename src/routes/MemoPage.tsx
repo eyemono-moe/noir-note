@@ -9,7 +9,7 @@ import { useMemoContent, useMemoSaver } from "../hooks/useMemoOperations";
 import { normalizePath } from "../utils/path";
 
 const Editor = lazy(() => import("../components/Editor/Editor"));
-const MarkdownPreview = lazy(() => import("../components/Preview/MarkdownPreview"));
+const MarkdownRenderer = lazy(() => import("../components/Preview/MarkdownRenderer"));
 const Sidebar = lazy(() => import("../components/Sidebar/Sidebar"));
 
 const MemoPage: Component = () => {
@@ -28,6 +28,7 @@ const MemoPage: Component = () => {
     content: localContent,
     setContent: setLocalContent,
     isReady,
+    // oxlint-disable-next-line solid/reactivity
   } = useMemoContent(currentPath);
   const { save: debouncedSave } = useMemoSaver();
 
@@ -100,7 +101,7 @@ const MemoPage: Component = () => {
             right={
               <Show when={isReady()}>
                 <Suspense fallback={<div class="text-text-secondary p-4">Loading preview...</div>}>
-                  <MarkdownPreview content={localContent()} />
+                  <MarkdownRenderer content={localContent()} />
                 </Suspense>
               </Show>
             }

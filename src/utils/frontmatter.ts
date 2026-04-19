@@ -1,7 +1,8 @@
 import matter from "gray-matter";
+import * as v from "valibot";
+import { parse } from "yaml";
 
 import type { MemoFrontmatter } from "../types/memo";
-
 /**
  * Parse frontmatter from markdown content
  * Returns parsed metadata and content without frontmatter
@@ -44,7 +45,7 @@ export function parseFrontmatter(content: string): ParsedFrontmatter {
       contentWithoutFrontmatter: parsed.content,
     };
   } catch (error) {
-    console.error("[Frontmatter] Failed to parse frontmatter:", error);
+    console.warn("[Frontmatter] Failed to parse frontmatter:", error);
     return {
       metadata: undefined,
       contentWithoutFrontmatter: content,
@@ -52,18 +53,17 @@ export function parseFrontmatter(content: string): ParsedFrontmatter {
   }
 }
 
-// /**
-//  * Check if content has frontmatter
-//  */
-// export function hasFrontmatter(content: string): boolean {
-//   return content.trimStart().startsWith("---");
-// }
+const FrontmatterSchema = v.object({
+  title: v.optional(v.string()),
+  tags: v.optional(v.array(v.string())),
+});
 
-// /**
-//  * Strip frontmatter from content (utility for display)
-//  * Removes the YAML frontmatter block entirely
-//  */
-// export function stripFrontmatter(content: string): string {
-//   const { contentWithoutFrontmatter } = parseFrontmatter(content);
-//   return contentWithoutFrontmatter;
-// }
+export const parseFrontmatterYamlString = (yamlString: string) => {
+  try {
+    const parsed = parse(yamlString);
+    return { success: true, data: v.parse(FrontmatterSchema, parsed) };
+  } catch (error) {
+    console.warn("[Frontmatter] Failed to parse YAML frontmatter:", error);
+    return { success: false, error };
+  }
+};
