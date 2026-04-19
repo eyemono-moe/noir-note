@@ -170,22 +170,86 @@ const CodeNode: Component<{ node: RootContentMap["code"] }> = (props) => {
 };
 
 const ListNode: Component<{ node: RootContentMap["list"] }> = (props) => {
-  const children = <NodesRenderer nodes={props.node.children} />;
+  // Determine if the list is "loose" (has spacing between items)
+  const loose = () => props.node.spread ?? false;
+
   return (
     <>
       {props.node.ordered ? (
-        <ol start={props.node.start ?? undefined}>{children}</ol>
+        <ol start={props.node.start ?? undefined}>
+          <For each={props.node.children}>
+            {(item) => <ListItemNode node={item} loose={loose()} />}
+          </For>
+        </ol>
       ) : (
-        <ul>{children}</ul>
+        <ul>
+          <For each={props.node.children}>
+            {(item) => <ListItemNode node={item} loose={loose()} />}
+          </For>
+        </ul>
       )}
     </>
   );
 };
 
-const ListItemNode: Component<{ node: RootContentMap["listItem"] }> = (props) => {
+const ListItemNode: Component<{
+  node: RootContentMap["listItem"];
+  loose?: boolean;
+}> = (props) => {
+  /**
+   * Render list item children with proper paragraph handling.
+   * Based on mdast-util-to-hast logic:
+   * - In tight lists (loose=false), unwrap single paragraphs
+   * - In task lists, add space after checkbox
+   */
+  const renderChildren = () => {
+    const children = props.node.children;
+    const loose = props.loose ?? props.node.spread ?? false;
+
+    // Helper to unwrap paragraph content
+    const unwrapParagraph = (node: RootContent) => {
+      if (node.type === "paragraph") {
+        return <NodesRenderer nodes={node.children} />;
+      }
+      return renderSingleNode(node);
+    };
+
+    // Render results array
+    const results: JSX.Element[] = [];
+
+    for (let index = 0; index < children.length; index++) {
+      const child = children[index];
+
+      // In tight lists, unwrap first paragraph, keep others as-is
+      if (!loose && index === 0 && child.type === "paragraph") {
+        results.push(unwrapParagraph(child));
+      } else {
+        results.push(renderSingleNode(child));
+      }
+    }
+
+    return results;
+  };
+
+  const isTaskList = () => props.node.checked !== null;
+
   return (
-    <li>
-      <NodesRenderer nodes={props.node.children} />
+    <li
+      classList={{
+        "task-list-item": isTaskList(),
+      }}
+    >
+      <Show when={isTaskList()}>
+        <input
+          type="checkbox"
+          checked={props.node.checked ?? undefined}
+          disabled
+          class="task-list-item-checkbox"
+          aria-label={props.node.checked ? "Completed task" : "Incomplete task"}
+        />
+        {/* Add space after checkbox for better readability */}{" "}
+      </Show>
+      {renderChildren()}
     </li>
   );
 };
@@ -334,69 +398,71 @@ const FootNotesSection: Component<{ footnotes: RootContentMap["footnoteDefinitio
   );
 };
 
+/**
+ * Render a single node (used by ListItemNode for custom rendering)
+ */
+const renderSingleNode = (node: RenderableNode): JSX.Element => {
+  switch (node.type) {
+    case "text":
+      return <TextNode node={node as RootContentMap["text"]} />;
+    case "paragraph":
+      return <ParagraphNode node={node as RootContentMap["paragraph"]} />;
+    case "heading":
+      return <HeadingNode node={node as RootContentMap["heading"]} />;
+    case "emphasis":
+      return <EmphasisNode node={node as RootContentMap["emphasis"]} />;
+    case "strong":
+      return <StrongNode node={node as RootContentMap["strong"]} />;
+    case "delete":
+      return <DeleteNode node={node as RootContentMap["delete"]} />;
+    case "link":
+      return <LinkNode node={node as RootContentMap["link"]} />;
+    case "image":
+      return <ImageNode node={node as RootContentMap["image"]} />;
+    case "inlineCode":
+      return <InlineCodeNode node={node as RootContentMap["inlineCode"]} />;
+    case "code":
+      return <CodeNode node={node as RootContentMap["code"]} />;
+    case "list":
+      return <ListNode node={node as RootContentMap["list"]} />;
+    case "listItem":
+      return <ListItemNode node={node as RootContentMap["listItem"]} />;
+    case "blockquote":
+      return <BlockquoteNode node={node as RootContentMap["blockquote"]} />;
+    case "thematicBreak":
+      return <ThematicBreakNode />;
+    case "break":
+      return <BreakNode />;
+    case "table":
+      return <TableNode node={node as RootContentMap["table"]} />;
+    case "tableRow":
+      return <TableRowNode node={node as RootContentMap["tableRow"]} />;
+    case "tableCell":
+      return <TableCellNode node={node as RootContentMap["tableCell"]} />;
+    case "html":
+      return <HtmlNode node={node as RootContentMap["html"]} />;
+    case "yaml":
+      return <YamlNode node={node as RootContentMap["yaml"]} />;
+    case "footnoteReference":
+      return <FootnoteReferenceNode node={node as RootContentMap["footnoteReference"]} />;
+    case "footnote-back-link":
+      return <FootnoteBackLinkNode node={node as RootContentMap["footnote-back-link"]} />;
+    case "imageReference":
+    case "linkReference":
+    case "footnoteDefinition":
+    case "definition":
+      return null;
+    default:
+      return <UnknownNode node={node} />;
+  }
+};
+
 // ============================================================================
 // NodesRenderer - Main rendering component
 // ============================================================================
 
 const NodesRenderer: Component<{ nodes: readonly RenderableNode[] }> = (props) => {
-  const renderNode = (node: RenderableNode): JSX.Element => {
-    switch (node.type) {
-      case "text":
-        return <TextNode node={node as RootContentMap["text"]} />;
-      case "paragraph":
-        return <ParagraphNode node={node as RootContentMap["paragraph"]} />;
-      case "heading":
-        return <HeadingNode node={node as RootContentMap["heading"]} />;
-      case "emphasis":
-        return <EmphasisNode node={node as RootContentMap["emphasis"]} />;
-      case "strong":
-        return <StrongNode node={node as RootContentMap["strong"]} />;
-      case "delete":
-        return <DeleteNode node={node as RootContentMap["delete"]} />;
-      case "link":
-        return <LinkNode node={node as RootContentMap["link"]} />;
-      case "image":
-        return <ImageNode node={node as RootContentMap["image"]} />;
-      case "inlineCode":
-        return <InlineCodeNode node={node as RootContentMap["inlineCode"]} />;
-      case "code":
-        return <CodeNode node={node as RootContentMap["code"]} />;
-      case "list":
-        return <ListNode node={node as RootContentMap["list"]} />;
-      case "listItem":
-        return <ListItemNode node={node as RootContentMap["listItem"]} />;
-      case "blockquote":
-        return <BlockquoteNode node={node as RootContentMap["blockquote"]} />;
-      case "thematicBreak":
-        return <ThematicBreakNode />;
-      case "break":
-        return <BreakNode />;
-      case "table":
-        return <TableNode node={node as RootContentMap["table"]} />;
-      case "tableRow":
-        return <TableRowNode node={node as RootContentMap["tableRow"]} />;
-      case "tableCell":
-        return <TableCellNode node={node as RootContentMap["tableCell"]} />;
-      case "html":
-        return <HtmlNode node={node as RootContentMap["html"]} />;
-      case "yaml":
-        return <YamlNode node={node as RootContentMap["yaml"]} />;
-      case "footnoteReference":
-        return <FootnoteReferenceNode node={node as RootContentMap["footnoteReference"]} />;
-      case "footnote-back-link":
-        return <FootnoteBackLinkNode node={node as RootContentMap["footnote-back-link"]} />;
-      case "imageReference":
-      case "linkReference":
-      case "footnoteDefinition":
-      case "definition":
-        // These node types are not handled in this renderer, but we acknowledge their existence
-        return null;
-      default:
-        return <UnknownNode node={node} />;
-    }
-  };
-
-  return <For each={props.nodes}>{(node) => renderNode(node)}</For>;
+  return <For each={props.nodes}>{(node) => renderSingleNode(node)}</For>;
 };
 
 const extractFootnotes = (
