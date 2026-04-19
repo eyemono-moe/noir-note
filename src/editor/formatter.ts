@@ -38,7 +38,7 @@ class FormatService {
 
 const formatService = new FormatService();
 
-export const formatCommand: Command = (target) => {
+const formatCommand: Command = (target) => {
   // oxlint-disable-next-line typescript/unbound-method
   const { state, dispatch } = target;
   const content = state.doc.toString();

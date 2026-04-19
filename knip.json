@@ -5,5 +5,14 @@
   "tags": ["-lintignore"],
   "unocss": true,
   "vite": true,
-  "vitest": true
+  "vitest": true,
+  "ignoreDependencies": [
+    "@iconify-json/material-symbols",
+    "eslint-plugin-solid",
+    "jsdom",
+    "wrangler"
+  ],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignore": ["src/editor/shiki.bundle.ts"],
+  "exclude": ["catalog"]
 }

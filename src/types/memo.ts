@@ -11,9 +11,3 @@ export interface MemoFrontmatter {
   title?: string;
   [key: string]: unknown;
 }
-
-export interface MemoTreeMetadata {
-  path: string;
-  createdAt: number;
-  updatedAt: number;
-}

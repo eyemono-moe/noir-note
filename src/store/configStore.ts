@@ -1,9 +1,9 @@
 import { makePersisted } from "@solid-primitives/storage";
 import { createSignal } from "solid-js";
 
-export type ThemeMode = "light" | "dark" | "system";
+type ThemeMode = "light" | "dark" | "system";
 
-export interface AppConfig {
+interface AppConfig {
   theme: ThemeMode;
 }
 
