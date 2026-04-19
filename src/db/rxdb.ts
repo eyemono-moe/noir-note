@@ -115,11 +115,31 @@ export async function createNoirNotesDB(): Promise<NoirNotesDatabase> {
   const memosCollection = db.memos;
   const count = await memosCollection.count().exec();
   if (count === 0) {
+    const now = Date.now();
     await memosCollection.insert({
       path: "/",
-      content: "",
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      content: `# Welcome to eyemono.md
+
+A markdown note-taking app that runs entirely in your browser. All notes are stored locally using IndexedDB.
+
+## Keyboard Shortcuts
+
+- \`Cmd/Ctrl + K\` - Command palette
+- \`Cmd/Ctrl + S\` or \`Cmd/Ctrl + Shift + F\` - Format note
+
+## Path-Based Navigation
+
+Each note has a unique path corresponding to the URL. You can link notes using relative paths like [this](./child-note).
+
+## About
+
+This app is under active development.
+
+- Repository: [github.com/eyemono-moe/noir-note](https://github.com/eyemono-moe/noir-note)
+- Contact: eyemono.moe@gmail.com
+`,
+      createdAt: now,
+      updatedAt: now,
     });
   }
 
