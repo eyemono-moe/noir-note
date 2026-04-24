@@ -8,7 +8,7 @@
     "build": "tsc && vp build",
     "preview": "vp preview",
     "prepare": "vp config",
-    "fix": "vp check --fix",
+    "fix": "vp check --fix && knip --fix",
     "knip": "knip"
   },
   "dependencies": {
