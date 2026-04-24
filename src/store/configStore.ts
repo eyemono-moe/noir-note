@@ -5,6 +5,7 @@ type ThemeMode = "light" | "dark" | "system";
 
 interface AppConfig {
   theme: ThemeMode;
+  splitterSizes?: number[];
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -23,4 +24,8 @@ export function useConfig() {
 
 export function updateTheme(theme: ThemeMode) {
   setConfig((prev) => ({ ...prev, theme }));
+}
+
+export function updateSplitterSizes(sizes: number[]) {
+  setConfig((prev) => ({ ...prev, splitterSizes: sizes }));
 }
