@@ -2,7 +2,7 @@ import { Combobox, useListCollection } from "@ark-ui/solid/combobox";
 import { Dialog } from "@ark-ui/solid/dialog";
 import { useLiveQuery } from "@tanstack/solid-db";
 import { formatForDisplay } from "@tanstack/solid-hotkeys";
-import { createEffect, For, Show, untrack, type Component } from "solid-js";
+import { createEffect, createSignal, For, Show, untrack, type Component } from "solid-js";
 import { Portal } from "solid-js/web";
 
 import {
@@ -30,6 +30,8 @@ const CommandPalette: Component = () => {
   const commandContext = useCommandContext();
   const { executeCommand } = useCommandExecution();
   const { isOpen, setOpen } = useCommandPalette();
+
+  const [inputValue, setInputValue] = createSignal("");
 
   // Get all memos for palette
   const memosCollectionResource = useMemosCollection();
@@ -71,6 +73,14 @@ const CommandPalette: Component = () => {
       },
       groupBy: (item) => item.type,
     };
+  });
+
+  // Reset input value when dialog closes
+  createEffect(() => {
+    if (!isOpen()) {
+      setInputValue("");
+      filter("");
+    }
   });
 
   // Sync page in palette when memos change
@@ -133,7 +143,11 @@ const CommandPalette: Component = () => {
           <Dialog.Content class={styles.DialogContent}>
             <Combobox.Root
               collection={collection()}
-              onInputValueChange={({ inputValue }) => filter(inputValue)}
+              inputValue={inputValue()}
+              onInputValueChange={({ inputValue }) => {
+                setInputValue(inputValue);
+                filter(inputValue);
+              }}
               onSelect={handleSelect}
               class={styles.ComboboxRoot}
               closeOnSelect={false}
