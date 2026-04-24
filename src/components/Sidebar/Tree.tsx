@@ -114,7 +114,6 @@ const TreeItem: Component<TreeNodeProps> = (props) => {
         {(nodeState) => (
           <TreeView.Branch class={styles.Branch}>
             <HoverCard.Root
-              disabled={nodeState().isBranch}
               lazyMount
               unmountOnExit
               openDelay={600}
