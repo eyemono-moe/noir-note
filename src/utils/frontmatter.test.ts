@@ -51,16 +51,16 @@ describe("parseFrontmatter", () => {
     expect(result.contentWithoutFrontmatter).toBe("");
   });
 
-  test("coerces non-string title to string and warns", () => {
+  test("returns undefined metadata when title is not a string (schema validation fails)", () => {
     const content = "---\ntitle: 42\n---\n";
     const result = parseFrontmatter(content);
-    expect(result.metadata?.title).toBe("42");
+    expect(result.metadata).toBeUndefined();
   });
 
-  test("resets invalid tags to empty array and warns", () => {
+  test("returns undefined metadata when tags is not an array (schema validation fails)", () => {
     const content = "---\ntags: not-an-array\n---\n";
     const result = parseFrontmatter(content);
-    expect(result.metadata?.tags).toEqual([]);
+    expect(result.metadata).toBeUndefined();
   });
 
   test("preserves arbitrary extra metadata fields", () => {
@@ -88,7 +88,7 @@ describe("parseFrontmatterYamlString", () => {
     expect(result.success).toBe(false);
   });
 
-  test("returns success false for empty string (yaml parses to null)", () => {
+  test("returns success false for empty string (yaml parses to null, fails schema)", () => {
     const result = parseFrontmatterYamlString("");
     expect(result.success).toBe(false);
   });
