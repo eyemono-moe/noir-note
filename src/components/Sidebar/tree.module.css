@@ -275,6 +275,10 @@
   }
 }
 
+.HoverCardContent :global(.markdown-body) {
+  font-size: 13px;
+}
+
 .HoverCardContent {
   background: var(--color-surface-secondary);
   border: 1px solid var(--color-border-primary);
