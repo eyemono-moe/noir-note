@@ -11,12 +11,10 @@ interface ParsedFrontmatter {
 const FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---(\r?\n|$)/;
 
 // looseObject preserves unknown keys, matching MemoFrontmatter's [key: string]: unknown
-export const FrontmatterSchema = v.looseObject({
+const FrontmatterSchema = v.looseObject({
   title: v.optional(v.string()),
   tags: v.optional(v.array(v.string())),
 });
-
-export type ParsedFrontmatterData = v.InferOutput<typeof FrontmatterSchema>;
 
 /**
  * Parse frontmatter from markdown content.
