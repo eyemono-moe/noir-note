@@ -1,4 +1,3 @@
-import matter from "gray-matter";
 import * as v from "valibot";
 import { parse } from "yaml";
 
@@ -12,12 +11,25 @@ interface ParsedFrontmatter {
   contentWithoutFrontmatter: string;
 }
 
+const FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---(\r?\n|$)/;
+
 export function parseFrontmatter(content: string): ParsedFrontmatter {
   try {
-    const parsed = matter(content);
+    const match = FRONTMATTER_REGEX.exec(content);
 
-    // If no frontmatter found, return undefined metadata
-    if (!parsed.data || Object.keys(parsed.data).length === 0) {
+    if (!match) {
+      return {
+        metadata: undefined,
+        contentWithoutFrontmatter: content,
+      };
+    }
+
+    const yamlString = match[1];
+    const contentWithoutFrontmatter = content.slice(match[0].length);
+
+    const data = parse(yamlString) as Record<string, unknown> | null | undefined;
+
+    if (!data || typeof data !== "object" || Object.keys(data).length === 0) {
       return {
         metadata: undefined,
         contentWithoutFrontmatter: content,
@@ -25,9 +37,7 @@ export function parseFrontmatter(content: string): ParsedFrontmatter {
     }
 
     // Extract and validate metadata fields
-    const metadata: MemoFrontmatter = {
-      ...(parsed.data as Record<string, unknown>),
-    };
+    const metadata: MemoFrontmatter = { ...data };
 
     // Validate specific fields if present
     if (metadata.tags && !Array.isArray(metadata.tags)) {
@@ -42,7 +52,7 @@ export function parseFrontmatter(content: string): ParsedFrontmatter {
 
     return {
       metadata,
-      contentWithoutFrontmatter: parsed.content,
+      contentWithoutFrontmatter,
     };
   } catch (error) {
     console.warn("[Frontmatter] Failed to parse frontmatter:", error);
