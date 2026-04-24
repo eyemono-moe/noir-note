@@ -1,15 +1,19 @@
 import { TreeView, useTreeViewContext, type TreeCollection } from "@ark-ui/solid";
+import { HoverCard } from "@ark-ui/solid/hover-card";
 import { ReactiveSet } from "@solid-primitives/set";
 import {
   batch,
   createMemo,
   createSignal,
   For,
+  lazy,
   onMount,
   Show,
+  Suspense,
   type Accessor,
   type Component,
 } from "solid-js";
+import { Portal } from "solid-js/web";
 
 import type { Memo, MemoWithoutContent } from "../../types/memo";
 import { getParentPath } from "../../utils/path";
@@ -17,6 +21,8 @@ import { type TreeNode } from "../../utils/tree";
 import ConfirmDialog from "./ConfirmDialog";
 
 import styles from "./tree.module.css";
+
+const MemoPreview = lazy(() => import("./MemoPreview"));
 
 interface TreeNodeProps extends TreeView.NodeProviderProps<TreeNode> {
   onRemove?: (props: TreeView.NodeProviderProps<TreeNode>) => void;
@@ -107,32 +113,53 @@ const TreeItem: Component<TreeNodeProps> = (props) => {
       <TreeView.NodeContext>
         {(nodeState) => (
           <TreeView.Branch class={styles.Branch}>
-            <TreeView.BranchControl class={styles.BranchControl}>
-              <Show when={nodeState().isBranch} fallback={<span class="size-4 shrink-0" />}>
-                <TreeView.BranchIndicator class={styles.BranchIndicator}>
-                  <span class="i-material-symbols:chevron-right-rounded size-4 shrink-0" />
-                </TreeView.BranchIndicator>
-              </Show>
-              <TreeView.BranchText class={styles.BranchText}>
-                <Show
-                  when={nodeState().isBranch}
-                  fallback={
-                    <span class="i-material-symbols:description-outline-rounded size-4 shrink-0" />
-                  }
-                >
-                  <span
-                    class={`size-4 shrink-0 ${nodeState().expanded ? "i-material-symbols:folder-open" : "i-material-symbols:folder"}`}
-                  />
-                </Show>
-                <span class="w-full truncate">{props.node.name}</span>
-              </TreeView.BranchText>
-              <TreeItemActions
-                node={props.node}
-                indexPath={props.indexPath}
-                onAdd={props.onAdd}
-                onRemove={props.onRemove}
+            <HoverCard.Root
+              lazyMount
+              unmountOnExit
+              openDelay={600}
+              closeDelay={200}
+              positioning={{ placement: "right-start", offset: { mainAxis: 8, crossAxis: 0 } }}
+            >
+              <HoverCard.Trigger
+                asChild={(hoverProps) => (
+                  <TreeView.BranchControl class={styles.BranchControl} {...hoverProps()}>
+                    <Show when={nodeState().isBranch} fallback={<span class="size-4 shrink-0" />}>
+                      <TreeView.BranchIndicator class={styles.BranchIndicator}>
+                        <span class="i-material-symbols:chevron-right-rounded size-4 shrink-0" />
+                      </TreeView.BranchIndicator>
+                    </Show>
+                    <TreeView.BranchText class={styles.BranchText}>
+                      <Show
+                        when={nodeState().isBranch}
+                        fallback={
+                          <span class="i-material-symbols:description-outline-rounded size-4 shrink-0" />
+                        }
+                      >
+                        <span
+                          class={`size-4 shrink-0 ${nodeState().expanded ? "i-material-symbols:folder-open" : "i-material-symbols:folder"}`}
+                        />
+                      </Show>
+                      <span class="w-full truncate">{props.node.name}</span>
+                    </TreeView.BranchText>
+                    <TreeItemActions
+                      node={props.node}
+                      indexPath={props.indexPath}
+                      onAdd={props.onAdd}
+                      onRemove={props.onRemove}
+                    />
+                  </TreeView.BranchControl>
+                )}
               />
-            </TreeView.BranchControl>
+              <Portal>
+                <HoverCard.Positioner>
+                  <HoverCard.Content class={styles.HoverCardContent}>
+                    <Suspense>
+                      <MemoPreview path={props.node.path} />
+                    </Suspense>
+                  </HoverCard.Content>
+                </HoverCard.Positioner>
+              </Portal>
+            </HoverCard.Root>
             <TreeView.BranchContent class={styles.BranchContent}>
               <TreeView.BranchIndentGuide class={styles.BranchIndentGuide} />
 
