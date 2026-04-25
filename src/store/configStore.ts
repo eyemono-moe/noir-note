@@ -6,10 +6,12 @@ type ThemeMode = "light" | "dark" | "system";
 interface AppConfig {
   theme: ThemeMode;
   splitterSizes?: number[];
+  scrollSyncEnabled?: boolean;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
   theme: "system",
+  scrollSyncEnabled: true,
 };
 
 // Create reactive config store with localStorage persistence
@@ -28,4 +30,12 @@ export function updateTheme(theme: ThemeMode) {
 
 export function updateSplitterSizes(sizes: number[]) {
   setConfig((prev) => ({ ...prev, splitterSizes: sizes }));
+}
+
+export function updateScrollSyncEnabled(enabled: boolean) {
+  setConfig((prev) => ({ ...prev, scrollSyncEnabled: enabled }));
+}
+
+export function useScrollSyncEnabled() {
+  return () => config().scrollSyncEnabled ?? true;
 }
