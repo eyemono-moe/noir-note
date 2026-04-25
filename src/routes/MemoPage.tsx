@@ -38,6 +38,21 @@ const MemoPage: Component = () => {
     debouncedSave(currentPath(), newContent);
   };
 
+  // Handle task list checkbox toggle from the preview.
+  // Finds the `[ ]` / `[x]` marker near the list item's start offset and
+  // rewrites the inner character to toggle the checked state.
+  const handleCheckboxToggle = (offset: number, checked: boolean) => {
+    const current = localContent();
+    // Search for the opening bracket within a short window after the list
+    // item's start. This handles `- [ ]`, `* [ ]`, `1. [ ]`, indented lists, etc.
+    const searchEnd = Math.min(offset + 10, current.length);
+    const bracketPos = current.indexOf("[", offset);
+    if (bracketPos === -1 || bracketPos >= searchEnd) return;
+    const newContent =
+      current.slice(0, bracketPos + 1) + (checked ? " " : "x") + current.slice(bracketPos + 2);
+    handleContentChange(newContent);
+  };
+
   // All memos query for sidebar and command palette
   const allMemosQuery = useLiveQuery((q) => {
     const collection = memosCollectionResource();
@@ -101,7 +116,10 @@ const MemoPage: Component = () => {
             right={
               <Show when={isReady()}>
                 <Suspense fallback={<div class="text-text-secondary p-4">Loading preview...</div>}>
-                  <MarkdownRenderer content={localContent()} />
+                  <MarkdownRenderer
+                    content={localContent()}
+                    onCheckboxToggle={handleCheckboxToggle}
+                  />
                 </Suspense>
               </Show>
             }
