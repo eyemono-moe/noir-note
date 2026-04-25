@@ -6,6 +6,7 @@ import { type Component, createMemo, createSignal, lazy, Show, Suspense } from "
 import SplitView from "../components/Layout/SplitView";
 import { useMemosCollection } from "../context/db";
 import { useEditorSplit } from "../context/editorSplit";
+import { useCheckboxSync } from "../hooks/useCheckboxSync";
 import { useMemoContent, useMemoSaver } from "../hooks/useMemoOperations";
 import { useScrollSync } from "../hooks/useScrollSync";
 import { useScrollSyncEnabled } from "../store/configStore";
@@ -35,44 +36,29 @@ const MemoPage: Component = () => {
   } = useMemoContent(currentPath);
   const { save: debouncedSave } = useMemoSaver();
 
-  // Handle content changes
+  // Handle content changes from the editor (user typing)
   const handleContentChange = (newContent: string) => {
     setLocalContent(newContent);
     debouncedSave(currentPath(), newContent);
   };
 
-  // Handle task list checkbox toggle from the preview.
-  // Dispatches a single-character targeted change directly to the editor view
-  // rather than replacing the full document. This preserves the cursor position
-  // and avoids the scroll-to-top that a full-document replace would cause.
-  const handleCheckboxToggle = (offset: number, checked: boolean) => {
-    const view = editorView();
-    if (!view) return;
-
-    const content = view.state.doc.toString();
-    // Search for the opening bracket within a short window after the list
-    // item's start. This handles `- [ ]`, `* [ ]`, `1. [ ]`, indented lists, etc.
-    const searchEnd = Math.min(offset + 10, content.length);
-    const bracketPos = content.indexOf("[", offset);
-    if (bracketPos === -1 || bracketPos >= searchEnd) return;
-
-    view.dispatch({
-      changes: { from: bracketPos + 1, to: bracketPos + 2, insert: checked ? " " : "x" },
-    });
-  };
-
-  // ── Scroll sync setup ────────────────────────────────────────────────────
-  // `editorView` is a plain signal holding the CodeMirror EditorView instance.
-  // EditorView is a class instance (not a function), so SolidJS will not
-  // misinterpret it as a functional updater when passed to the signal setter.
+  // ── Editor / preview refs ─────────────────────────────────────────────────
+  // `editorView` holds the CodeMirror EditorView instance. EditorView is a
+  // class (not a function), so SolidJS will not misinterpret it as a functional
+  // updater when passed to the signal setter.
   const [editorView, setEditorView] = createSignal<EditorView | undefined>();
   const [previewContainer, setPreviewContainer] = createSignal<HTMLElement | undefined>();
+  // ─────────────────────────────────────────────────────────────────────────
 
+  // ── Scroll sync ───────────────────────────────────────────────────────────
   const scrollSyncEnabled = useScrollSyncEnabled();
-
   // oxlint-disable-next-line solid/reactivity
   useScrollSync(editorView, previewContainer, scrollSyncEnabled);
   // ─────────────────────────────────────────────────────────────────────────
+
+  // Handle task list checkbox toggle from the preview
+  // oxlint-disable-next-line solid/reactivity
+  const handleCheckboxToggle = useCheckboxSync(editorView);
 
   // All memos query for sidebar and command palette
   const allMemosQuery = useLiveQuery((q) => {
