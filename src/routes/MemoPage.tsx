@@ -1,15 +1,7 @@
 import type { EditorView } from "@codemirror/view";
 import { useLocation, useNavigate } from "@solidjs/router";
 import { useLiveQuery } from "@tanstack/solid-db";
-import {
-  type Accessor,
-  type Component,
-  createMemo,
-  createSignal,
-  lazy,
-  Show,
-  Suspense,
-} from "solid-js";
+import { type Component, createMemo, createSignal, lazy, Show, Suspense } from "solid-js";
 
 import SplitView from "../components/Layout/SplitView";
 import { useMemosCollection } from "../context/db";
@@ -65,16 +57,11 @@ const MemoPage: Component = () => {
   };
 
   // ── Scroll sync setup ────────────────────────────────────────────────────
-  // `editorViewAccessor` stores the Accessor<EditorView | undefined> that
-  // solid-codemirror provides. We hold it in a signal so MemoPage can remain
-  // reactive to when the editor eventually mounts (lazy-loaded).
-  const [editorViewAccessor, setEditorViewAccessor] = createSignal<
-    Accessor<EditorView | undefined> | undefined
-  >();
+  // `editorView` is a plain signal holding the CodeMirror EditorView instance.
+  // EditorView is a class instance (not a function), so SolidJS will not
+  // misinterpret it as a functional updater when passed to the signal setter.
+  const [editorView, setEditorView] = createSignal<EditorView | undefined>();
   const [previewContainer, setPreviewContainer] = createSignal<HTMLElement | undefined>();
-
-  // Flatten the nested accessor so useScrollSync gets a plain EditorView accessor.
-  const editorView = createMemo(() => editorViewAccessor()?.());
 
   const scrollSyncEnabled = useScrollSyncEnabled();
 
@@ -138,7 +125,7 @@ const MemoPage: Component = () => {
                     content={localContent()}
                     onChange={handleContentChange}
                     placeholder="Start typing..."
-                    onEditorView={setEditorViewAccessor}
+                    onEditorView={setEditorView}
                   />
                 </Suspense>
               </Show>
