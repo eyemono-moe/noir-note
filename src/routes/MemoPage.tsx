@@ -42,18 +42,23 @@ const MemoPage: Component = () => {
   };
 
   // Handle task list checkbox toggle from the preview.
-  // Finds the `[ ]` / `[x]` marker near the list item's start offset and
-  // rewrites the inner character to toggle the checked state.
+  // Dispatches a single-character targeted change directly to the editor view
+  // rather than replacing the full document. This preserves the cursor position
+  // and avoids the scroll-to-top that a full-document replace would cause.
   const handleCheckboxToggle = (offset: number, checked: boolean) => {
-    const current = localContent();
+    const view = editorView();
+    if (!view) return;
+
+    const content = view.state.doc.toString();
     // Search for the opening bracket within a short window after the list
     // item's start. This handles `- [ ]`, `* [ ]`, `1. [ ]`, indented lists, etc.
-    const searchEnd = Math.min(offset + 10, current.length);
-    const bracketPos = current.indexOf("[", offset);
+    const searchEnd = Math.min(offset + 10, content.length);
+    const bracketPos = content.indexOf("[", offset);
     if (bracketPos === -1 || bracketPos >= searchEnd) return;
-    const newContent =
-      current.slice(0, bracketPos + 1) + (checked ? " " : "x") + current.slice(bracketPos + 2);
-    handleContentChange(newContent);
+
+    view.dispatch({
+      changes: { from: bracketPos + 1, to: bracketPos + 2, insert: checked ? " " : "x" },
+    });
   };
 
   // ── Scroll sync setup ────────────────────────────────────────────────────
