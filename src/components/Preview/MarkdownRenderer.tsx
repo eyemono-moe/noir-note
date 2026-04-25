@@ -5,7 +5,17 @@ import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import type { Component, JSX } from "solid-js";
-import { For, Match, Show, Suspense, Switch, createMemo, createResource } from "solid-js";
+import {
+  For,
+  Match,
+  Show,
+  Suspense,
+  Switch,
+  createMemo,
+  createRenderEffect,
+  createResource,
+} from "solid-js";
+import { createStore, reconcile } from "solid-js/store";
 
 import "../../styles/markdown.css";
 import "../../styles/shiki.css";
@@ -576,12 +586,40 @@ const extractFootnotes = (
 };
 
 // ============================================================================
+// reconcile key helpers
+// ============================================================================
+
+/**
+ * Add a synthetic `_$$rckey` property to each node based on its local index and type.
+ * This is used as the reconcile key so that nodes of different types at the same
+ * array position are treated as different items (new proxy), preventing reconcile
+ * from overwriting e.g. a `table` proxy with `code` data, which would cause
+ * `children` to be undefined when components still try to read it.
+ */
+function addReconcileKey(node: RenderableNode, localKey: string): any {
+  const keyed = { ...node, _$$rckey: localKey };
+  if ("children" in keyed && Array.isArray(keyed.children)) {
+    keyed.children = keyed.children.map((child: RenderableNode, i: number) =>
+      addReconcileKey(child, `${i}:${child.type}`),
+    );
+  }
+  return keyed;
+}
+
+function withReconcileKeys(root: Root): Root {
+  return {
+    ...root,
+    children: root.children.map((child, i) => addReconcileKey(child, `${i}:${child.type}`)),
+  } as Root;
+}
+
+// ============================================================================
 // MarkdownRenderer - Top-level component
 // ============================================================================
 
 const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
-  // Parse markdown AST
-  const [ast] = createResource(
+  // Parse markdown AST asynchronously
+  const [parseResult] = createResource(
     () => props.content,
     async (content) => {
       try {
@@ -591,8 +629,7 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
           .use(remarkFootnoteBackLink) // Custom plugin to add back-links to footnotes
           .use(remarkGfm);
         const tree = processor.parse(content);
-        const transformed = await processor.run(tree);
-        return transformed as Root;
+        return await processor.run(tree);
       } catch (error) {
         console.error("Failed to parse markdown:", error);
         return null;
@@ -600,22 +637,32 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
     },
   );
 
-  const footnotes = createMemo(() => {
-    if (!ast.latest) return [];
-    return extractFootnotes(ast.latest.children);
+  // Stable store for the AST. Updated via reconcile so that For loops can track
+  // node identity by reference: unchanged nodes keep the same proxy object,
+  // preventing SyntaxHighlightedCode / MermaidDiagram from unmounting and losing
+  // their createResource state (which would trigger the fallback flash).
+  const [ast, setAst] = createStore<Root>({ type: "root", children: [] });
+
+  // createRenderEffect runs before the DOM commit, ensuring the store is updated
+  // before Show/NodesRenderer re-evaluate in the same reactive flush.
+  createRenderEffect(() => {
+    const newAst = parseResult.latest;
+    if (newAst) {
+      setAst(reconcile(withReconcileKeys(newAst), { key: "_$$rckey" }));
+    }
   });
+
+  const footnotes = createMemo(() => extractFootnotes(ast.children));
 
   return (
     <div class="markdown-body h-full w-full overflow-auto p-4">
-      <Show when={ast.latest} fallback={<p>Error parsing markdown</p>}>
-        {(tree) => (
-          <>
-            <NodesRenderer nodes={tree().children} />
-            <Show when={footnotes().length > 0}>
-              <FootNotesSection footnotes={footnotes()} />
-            </Show>
-          </>
-        )}
+      <Show when={parseResult.latest} fallback={<p>Error parsing markdown</p>}>
+        <>
+          <NodesRenderer nodes={ast.children} />
+          <Show when={footnotes().length > 0}>
+            <FootNotesSection footnotes={footnotes()} />
+          </Show>
+        </>
       </Show>
     </div>
   );
