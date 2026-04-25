@@ -596,12 +596,10 @@ const extractFootnotes = (
  * from overwriting e.g. a `table` proxy with `code` data, which would cause
  * `children` to be undefined when components still try to read it.
  */
-// oxlint-disable-next-line @typescript-eslint/no-explicit-any
-function addReconcileKey(node: any, localKey: string): any {
+function addReconcileKey(node: RenderableNode, localKey: string): any {
   const keyed = { ...node, _$$rckey: localKey };
-  if (Array.isArray(keyed.children)) {
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any
-    keyed.children = keyed.children.map((child: any, i: number) =>
+  if ("children" in keyed && Array.isArray(keyed.children)) {
+    keyed.children = keyed.children.map((child: RenderableNode, i: number) =>
       addReconcileKey(child, `${i}:${child.type}`),
     );
   }
