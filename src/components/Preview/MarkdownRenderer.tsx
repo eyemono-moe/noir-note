@@ -11,9 +11,11 @@ import {
   Show,
   Suspense,
   Switch,
+  createContext,
   createMemo,
   createRenderEffect,
   createResource,
+  useContext,
 } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
 
@@ -28,7 +30,18 @@ import { remarkFootnoteBackLink } from "../../utils/remark/remark-footnote-back-
 
 interface MarkdownRendererProps {
   content: string;
+  /** Called when a task list checkbox is clicked. offset is the document character
+   *  offset of the list item's start (node.position.start.offset). */
+  onCheckboxToggle?: (offset: number, checked: boolean) => void;
 }
+
+/**
+ * Context that carries the checkbox toggle callback down to ListItemNode without
+ * prop-drilling through NodesRenderer / ListNode.
+ * Stored as an accessor so that reactivity is preserved when the prop changes.
+ */
+type CheckboxToggleFn = (offset: number, checked: boolean) => void;
+const CheckboxToggleContext = createContext<() => CheckboxToggleFn | undefined>(() => undefined);
 
 /**
  * All possible mdast node types we handle in rendering
@@ -298,6 +311,8 @@ const ListItemNode: Component<{
   node: RootContentMap["listItem"];
   loose?: boolean;
 }> = (props) => {
+  const getOnToggle = useContext(CheckboxToggleContext);
+
   /**
    * Render list item children with proper paragraph handling.
    * Based on mdast-util-to-hast logic:
@@ -333,7 +348,16 @@ const ListItemNode: Component<{
     return results;
   };
 
-  const isTaskList = () => props.node.checked !== null;
+  const isTaskList = () => props.node.checked !== null && props.node.checked !== undefined;
+
+  const handleCheckboxClick = () => {
+    // The browser's default behavior toggles the checkbox immediately (good UX).
+    // We also update the source content so the mdast checked state follows.
+    const offset = props.node.position?.start?.offset;
+    if (offset !== undefined) {
+      getOnToggle()?.(offset, props.node.checked ?? false);
+    }
+  };
 
   return (
     <li
@@ -345,9 +369,10 @@ const ListItemNode: Component<{
         <input
           type="checkbox"
           checked={props.node.checked ?? undefined}
-          disabled
+          disabled={!getOnToggle()}
           class="task-list-item-checkbox"
           aria-label={props.node.checked ? "Completed task" : "Incomplete task"}
+          onClick={handleCheckboxClick}
         />
         {/* Add space after checkbox for better readability */}{" "}
       </Show>
@@ -653,18 +678,21 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
   });
 
   const footnotes = createMemo(() => extractFootnotes(ast.children));
+  const checkboxToggle = createMemo(() => props.onCheckboxToggle);
 
   return (
-    <div class="markdown-body h-full w-full overflow-auto p-4">
-      <Show when={parseResult.latest} fallback={<p>Error parsing markdown</p>}>
-        <>
-          <NodesRenderer nodes={ast.children} />
-          <Show when={footnotes().length > 0}>
-            <FootNotesSection footnotes={footnotes()} />
-          </Show>
-        </>
-      </Show>
-    </div>
+    <CheckboxToggleContext.Provider value={checkboxToggle}>
+      <div class="markdown-body h-full w-full overflow-auto p-4">
+        <Show when={parseResult.latest} fallback={<p>Error parsing markdown</p>}>
+          <>
+            <NodesRenderer nodes={ast.children} />
+            <Show when={footnotes().length > 0}>
+              <FootNotesSection footnotes={footnotes()} />
+            </Show>
+          </>
+        </Show>
+      </div>
+    </CheckboxToggleContext.Provider>
   );
 };
 
