@@ -1,3 +1,4 @@
+import { updateScrollSyncEnabled, useConfig } from "../../store/configStore";
 import type { Command } from "../types";
 
 const editModeCommand: Command = {
@@ -44,9 +45,21 @@ const toggleSidebarCommand: Command = {
   },
 };
 
+const toggleScrollSyncCommand: Command = {
+  id: "toggle-scroll-sync",
+  label: "Toggle Scroll Sync",
+  description: "Enable or disable scroll synchronisation between editor and preview",
+  category: "view",
+  execute: () => {
+    const [config] = useConfig();
+    updateScrollSyncEnabled(!(config().scrollSyncEnabled ?? true));
+  },
+};
+
 export const viewCommands: Command[] = [
   editModeCommand,
   splitModeCommand,
   previewModeCommand,
   toggleSidebarCommand,
+  toggleScrollSyncCommand,
 ];
