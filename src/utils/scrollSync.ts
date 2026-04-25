@@ -13,6 +13,31 @@ export interface ScrollAnchor {
 }
 
 /**
+ * Binary search: returns the index of the last anchor where `anchor[key] <= value`.
+ * Assumes `anchors` is sorted ascending by `key`.
+ * Returns -1 if every anchor is greater than `value` (caller must handle).
+ */
+function binarySearchFloor(
+  anchors: readonly ScrollAnchor[],
+  value: number,
+  key: keyof ScrollAnchor,
+): number {
+  let lo = 0;
+  let hi = anchors.length - 1;
+  let result = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (anchors[mid][key] <= value) {
+      result = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return result;
+}
+
+/**
  * Given a sorted list of anchor points and a target source line number,
  * returns the preview scrollTop that puts that line at the top of the viewport.
  *
@@ -30,18 +55,15 @@ export function getPreviewScrollTopForLine(
   if (targetLine <= first.line) return first.top;
   if (targetLine >= last.line) return last.top;
 
-  for (let i = 0; i < anchors.length - 1; i++) {
-    const prev = anchors[i];
-    const next = anchors[i + 1];
-    if (targetLine >= prev.line && targetLine <= next.line) {
-      const lineSpan = next.line - prev.line;
-      const topSpan = next.top - prev.top;
-      const frac = lineSpan === 0 ? 0 : (targetLine - prev.line) / lineSpan;
-      return prev.top + frac * topSpan;
-    }
-  }
+  // Binary search: find the last anchor whose line ≤ targetLine
+  const i = binarySearchFloor(anchors, targetLine, "line");
+  const prev = anchors[i];
+  const next = anchors[i + 1];
 
-  return last.top;
+  const lineSpan = next.line - prev.line;
+  const topSpan = next.top - prev.top;
+  const frac = lineSpan === 0 ? 0 : (targetLine - prev.line) / lineSpan;
+  return prev.top + frac * topSpan;
 }
 
 /**
@@ -62,24 +84,26 @@ export function getEditorLineForPreviewScrollTop(
   if (scrollTop <= first.top) return first.line;
   if (scrollTop >= last.top) return last.line;
 
-  for (let i = 0; i < anchors.length - 1; i++) {
-    const prev = anchors[i];
-    const next = anchors[i + 1];
-    if (scrollTop >= prev.top && scrollTop <= next.top) {
-      const topSpan = next.top - prev.top;
-      const lineSpan = next.line - prev.line;
-      const frac = topSpan === 0 ? 0 : (scrollTop - prev.top) / topSpan;
-      return Math.round(prev.line + frac * lineSpan);
-    }
-  }
+  // Binary search: find the last anchor whose top ≤ scrollTop
+  const i = binarySearchFloor(anchors, scrollTop, "top");
+  const prev = anchors[i];
+  const next = anchors[i + 1];
 
-  return last.line;
+  const topSpan = next.top - prev.top;
+  const lineSpan = next.line - prev.line;
+  const frac = topSpan === 0 ? 0 : (scrollTop - prev.top) / topSpan;
+  return Math.round(prev.line + frac * lineSpan);
 }
 
 /**
  * Collect anchor data from the preview DOM container.
  * Queries all elements with `data-source-line` and computes their position
  * relative to the top of the scrollable content.
+ *
+ * Elements are returned in DOM order, which matches source-line order by
+ * construction (the renderer emits nodes in AST order).
+ * All getBoundingClientRect() calls are batched (reads only, no DOM writes),
+ * so the browser performs a single layout flush for the entire loop.
  */
 export function collectAnchors(container: HTMLElement): ScrollAnchor[] {
   const elements = container.querySelectorAll<HTMLElement>("[data-source-line]");
@@ -95,7 +119,5 @@ export function collectAnchors(container: HTMLElement): ScrollAnchor[] {
     anchors.push({ line, top });
   }
 
-  // Ensure sorted by line (DOM order should already guarantee this, but be safe)
-  anchors.sort((a, b) => a.line - b.line);
   return anchors;
 }

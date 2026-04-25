@@ -13,6 +13,11 @@
  * Loop prevention: two boolean flags (`suppressEditorEvents` /
  * `suppressPreviewEvents`) block the *counterpart* listener for one RAF after
  * each programmatic scroll, preventing the sync from bouncing back and forth.
+ *
+ * Performance: anchor positions are cached and invalidated lazily via
+ * MutationObserver (DOM content changes) and ResizeObserver (pane resize).
+ * The expensive querySelectorAll + getBoundingClientRect pass therefore runs
+ * at most once per content/layout change rather than on every scroll frame.
  */
 
 import type { EditorView } from "@codemirror/view";
@@ -22,6 +27,7 @@ import {
   collectAnchors,
   getEditorLineForPreviewScrollTop,
   getPreviewScrollTopForLine,
+  type ScrollAnchor,
 } from "../utils/scrollSync";
 
 // ---------------------------------------------------------------------------
@@ -69,6 +75,39 @@ export function useScrollSync(
   let editorRaf: number | null = null;
   let previewRaf: number | null = null;
 
+  // ── Anchor cache ──────────────────────────────────────────────────────────
+  // Re-collecting anchors (querySelectorAll + N × getBoundingClientRect) on
+  // every scroll frame is expensive. Instead we cache the result and invalidate
+  // it whenever the preview DOM changes (MutationObserver) or the container is
+  // resized (ResizeObserver). The next scroll event after invalidation triggers
+  // a fresh collection.
+
+  let anchorCache: ScrollAnchor[] | null = null;
+  const invalidateAnchors = () => {
+    anchorCache = null;
+  };
+  const getAnchors = (container: HTMLElement): ScrollAnchor[] =>
+    (anchorCache ??= collectAnchors(container));
+
+  createEffect(() => {
+    const preview = previewContainer();
+    if (!preview) return;
+
+    // Invalidate when child nodes are added/removed (content re-render)
+    const mo = new MutationObserver(invalidateAnchors);
+    mo.observe(preview, { childList: true, subtree: true });
+
+    // Invalidate when the pane is resized (text reflow shifts element positions)
+    const ro = new ResizeObserver(invalidateAnchors);
+    ro.observe(preview);
+
+    onCleanup(() => {
+      mo.disconnect();
+      ro.disconnect();
+      anchorCache = null;
+    });
+  });
+
   // ── Editor → Preview ──────────────────────────────────────────────────────
 
   createEffect(() => {
@@ -88,7 +127,7 @@ export function useScrollSync(
         if (!preview || !enabled()) return;
 
         const topLine = getEditorTopLine(view);
-        const anchors = collectAnchors(preview);
+        const anchors = getAnchors(preview);
         if (anchors.length === 0) return;
 
         const targetScrollTop = getPreviewScrollTopForLine(anchors, topLine);
@@ -131,7 +170,7 @@ export function useScrollSync(
         const view = editorView();
         if (!view || !enabled()) return;
 
-        const anchors = collectAnchors(preview);
+        const anchors = getAnchors(preview);
         if (anchors.length === 0) return;
 
         const targetLine = getEditorLineForPreviewScrollTop(anchors, preview.scrollTop);
