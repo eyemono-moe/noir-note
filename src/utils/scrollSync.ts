@@ -100,6 +100,11 @@ export function getEditorLineForPreviewScrollTop(
  * Queries all elements with `data-source-line` and computes their position
  * relative to the top of the scrollable content.
  *
+ * Elements inside `[data-footnotes]` are excluded: footnote definitions are
+ * rendered at the visual bottom of the preview regardless of where they are
+ * defined in the source, so their `data-source-line` values do not correspond
+ * to their visual positions and would produce incorrect scroll mappings.
+ *
  * Elements are returned in DOM order, which matches source-line order by
  * construction (the renderer emits nodes in AST order).
  * All getBoundingClientRect() calls are batched (reads only, no DOM writes),
@@ -107,10 +112,15 @@ export function getEditorLineForPreviewScrollTop(
  */
 export function collectAnchors(container: HTMLElement): ScrollAnchor[] {
   const elements = container.querySelectorAll<HTMLElement>("[data-source-line]");
+  const footnotesSection = container.querySelector("[data-footnotes]");
   const containerRect = container.getBoundingClientRect();
   const anchors: ScrollAnchor[] = [];
 
   for (const el of elements) {
+    // Skip elements inside the footnotes section: their source-line positions
+    // point to the footnote definition location, not their visual position.
+    if (footnotesSection?.contains(el)) continue;
+
     const line = parseInt(el.getAttribute("data-source-line")!, 10);
     if (isNaN(line)) continue;
     const elRect = el.getBoundingClientRect();
