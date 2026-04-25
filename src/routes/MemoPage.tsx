@@ -1,11 +1,22 @@
+import type { EditorView } from "@codemirror/view";
 import { useLocation, useNavigate } from "@solidjs/router";
 import { useLiveQuery } from "@tanstack/solid-db";
-import { type Component, createMemo, lazy, Show, Suspense } from "solid-js";
+import {
+  type Accessor,
+  type Component,
+  createMemo,
+  createSignal,
+  lazy,
+  Show,
+  Suspense,
+} from "solid-js";
 
 import SplitView from "../components/Layout/SplitView";
 import { useMemosCollection } from "../context/db";
 import { useEditorSplit } from "../context/editorSplit";
 import { useMemoContent, useMemoSaver } from "../hooks/useMemoOperations";
+import { useScrollSync } from "../hooks/useScrollSync";
+import { useScrollSyncEnabled } from "../store/configStore";
 import { normalizePath } from "../utils/path";
 
 const Editor = lazy(() => import("../components/Editor/Editor"));
@@ -52,6 +63,24 @@ const MemoPage: Component = () => {
       current.slice(0, bracketPos + 1) + (checked ? " " : "x") + current.slice(bracketPos + 2);
     handleContentChange(newContent);
   };
+
+  // ── Scroll sync setup ────────────────────────────────────────────────────
+  // `editorViewAccessor` stores the Accessor<EditorView | undefined> that
+  // solid-codemirror provides. We hold it in a signal so MemoPage can remain
+  // reactive to when the editor eventually mounts (lazy-loaded).
+  const [editorViewAccessor, setEditorViewAccessor] = createSignal<
+    Accessor<EditorView | undefined> | undefined
+  >();
+  const [previewContainer, setPreviewContainer] = createSignal<HTMLElement | undefined>();
+
+  // Flatten the nested accessor so useScrollSync gets a plain EditorView accessor.
+  const editorView = createMemo(() => editorViewAccessor()?.());
+
+  const scrollSyncEnabled = useScrollSyncEnabled();
+
+  // oxlint-disable-next-line solid/reactivity
+  useScrollSync(editorView, previewContainer, scrollSyncEnabled);
+  // ─────────────────────────────────────────────────────────────────────────
 
   // All memos query for sidebar and command palette
   const allMemosQuery = useLiveQuery((q) => {
@@ -109,6 +138,7 @@ const MemoPage: Component = () => {
                     content={localContent()}
                     onChange={handleContentChange}
                     placeholder="Start typing..."
+                    onEditorView={setEditorViewAccessor}
                   />
                 </Suspense>
               </Show>
@@ -119,6 +149,7 @@ const MemoPage: Component = () => {
                   <MarkdownRenderer
                     content={localContent()}
                     onCheckboxToggle={handleCheckboxToggle}
+                    containerRef={setPreviewContainer}
                   />
                 </Suspense>
               </Show>

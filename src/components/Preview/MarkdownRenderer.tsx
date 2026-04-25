@@ -33,6 +33,8 @@ interface MarkdownRendererProps {
   /** Called when a task list checkbox is clicked. offset is the document character
    *  offset of the list item's start (node.position.start.offset). */
   onCheckboxToggle?: (offset: number, checked: boolean) => void;
+  /** Called with the scrollable container element once it is mounted. */
+  containerRef?: (el: HTMLElement) => void;
 }
 
 /**
@@ -58,33 +60,34 @@ const TextNode: Component<{ node: RootContentMap["text"] }> = (props) => {
 
 const ParagraphNode: Component<{ node: RootContentMap["paragraph"] }> = (props) => {
   return (
-    <p>
+    <p data-source-line={props.node.position?.start?.line}>
       <NodesRenderer nodes={props.node.children} />
     </p>
   );
 };
 
 const HeadingNode: Component<{ node: RootContentMap["heading"] }> = (props) => {
+  const sourceLine = () => props.node.position?.start?.line;
   const children = <NodesRenderer nodes={props.node.children} />;
   return (
     <Switch>
       <Match when={props.node.depth === 1}>
-        <h1>{children}</h1>
+        <h1 data-source-line={sourceLine()}>{children}</h1>
       </Match>
       <Match when={props.node.depth === 2}>
-        <h2>{children}</h2>
+        <h2 data-source-line={sourceLine()}>{children}</h2>
       </Match>
       <Match when={props.node.depth === 3}>
-        <h3>{children}</h3>
+        <h3 data-source-line={sourceLine()}>{children}</h3>
       </Match>
       <Match when={props.node.depth === 4}>
-        <h4>{children}</h4>
+        <h4 data-source-line={sourceLine()}>{children}</h4>
       </Match>
       <Match when={props.node.depth === 5}>
-        <h5>{children}</h5>
+        <h5 data-source-line={sourceLine()}>{children}</h5>
       </Match>
       <Match when={props.node.depth === 6}>
-        <h6>{children}</h6>
+        <h6 data-source-line={sourceLine()}>{children}</h6>
       </Match>
     </Switch>
   );
@@ -248,7 +251,7 @@ const CodeNode: Component<{ node: RootContentMap["code"] }> = (props) => {
   const isMermaid = () => props.node.lang === "mermaid";
 
   return (
-    <div class="parent relative">
+    <div class="parent relative" data-source-line={props.node.position?.start?.line}>
       {/* Clipboard button */}
       <Clipboard.Root
         class="parent-hover:block parent-focus-within:block absolute top-2 right-2 hidden"
@@ -291,13 +294,16 @@ const ListNode: Component<{ node: RootContentMap["list"] }> = (props) => {
   return (
     <>
       {props.node.ordered ? (
-        <ol start={props.node.start ?? undefined}>
+        <ol
+          start={props.node.start ?? undefined}
+          data-source-line={props.node.position?.start?.line}
+        >
           <For each={props.node.children}>
             {(item) => <ListItemNode node={item} loose={loose()} />}
           </For>
         </ol>
       ) : (
-        <ul>
+        <ul data-source-line={props.node.position?.start?.line}>
           <For each={props.node.children}>
             {(item) => <ListItemNode node={item} loose={loose()} />}
           </For>
@@ -383,14 +389,14 @@ const ListItemNode: Component<{
 
 const BlockquoteNode: Component<{ node: RootContentMap["blockquote"] }> = (props) => {
   return (
-    <blockquote>
+    <blockquote data-source-line={props.node.position?.start?.line}>
       <NodesRenderer nodes={props.node.children} />
     </blockquote>
   );
 };
 
-const ThematicBreakNode: Component = () => {
-  return <hr />;
+const ThematicBreakNode: Component<{ node: RootContentMap["thematicBreak"] }> = (props) => {
+  return <hr data-source-line={props.node.position?.start?.line} />;
 };
 
 const BreakNode: Component = () => {
@@ -399,7 +405,7 @@ const BreakNode: Component = () => {
 
 const TableNode: Component<{ node: RootContentMap["table"] }> = (props) => {
   return (
-    <table>
+    <table data-source-line={props.node.position?.start?.line}>
       <Show when={props.node.children[0]}>
         <thead>
           <For each={[props.node.children[0]]}>{(row) => <TableRowNode node={row} />}</For>
@@ -433,7 +439,7 @@ const TableCellNode: Component<{ node: RootContentMap["tableCell"] }> = (props) 
 const HtmlNode: Component<{ node: RootContentMap["html"] }> = (props) => {
   // HTML nodes are rendered as-is (potentially unsafe, consider sanitization)
   // oxlint-disable-next-line solid/no-innerhtml: HTML content from markdown
-  return <div innerHTML={props.node.value} />;
+  return <div data-source-line={props.node.position?.start?.line} innerHTML={props.node.value} />;
 };
 
 const YamlNode: Component<{ node: RootContentMap["yaml"] }> = (props) => {
@@ -446,7 +452,7 @@ const YamlNode: Component<{ node: RootContentMap["yaml"] }> = (props) => {
   });
 
   return (
-    <div class="">
+    <div class="" data-source-line={props.node.position?.start?.line}>
       {/* Title Display */}
       <Show when={parsed()?.title}>
         <h1 class="text-text-primary mb-4 text-3xl font-bold">{parsed()?.title}</h1>
@@ -557,7 +563,7 @@ const renderSingleNode = (node: RenderableNode): JSX.Element => {
     case "blockquote":
       return <BlockquoteNode node={node as RootContentMap["blockquote"]} />;
     case "thematicBreak":
-      return <ThematicBreakNode />;
+      return <ThematicBreakNode node={node as RootContentMap["thematicBreak"]} />;
     case "break":
       return <BreakNode />;
     case "table":
@@ -682,7 +688,7 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
 
   return (
     <CheckboxToggleContext.Provider value={checkboxToggle}>
-      <div class="markdown-body h-full w-full overflow-auto p-4">
+      <div ref={props.containerRef} class="markdown-body h-full w-full overflow-auto p-4">
         <Show when={parseResult.latest} fallback={<p>Error parsing markdown</p>}>
           <>
             <NodesRenderer nodes={ast.children} />
