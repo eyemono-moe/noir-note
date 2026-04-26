@@ -159,7 +159,10 @@ const CommandPalette: Component = () => {
               unmountOnExit
             >
               <Combobox.Control class={styles.Control}>
-                <span aria-hidden class={`${styles.SearchIcon} i-material-symbols:search`} />
+                <span
+                  aria-hidden
+                  class="text-text-secondary i-material-symbols:search size-5 shrink-0"
+                />
                 <Combobox.Input
                   asChild={(props) => (
                     <input
@@ -191,7 +194,9 @@ const CommandPalette: Component = () => {
                         <For each={group}>
                           {(item) => (
                             <Combobox.Item item={item} class={styles.Item}>
-                              <span class={`${styles.ItemIcon} ${getItemIcon(item)} shrink-0`} />
+                              <span
+                                class={`text-text-secondary size-[1.125rem] shrink-0 ${getItemIcon(item)}`}
+                              />
                               <div class={styles.ItemContent}>
                                 <Combobox.ItemText class={styles.ItemLabel}>
                                   {item.label}

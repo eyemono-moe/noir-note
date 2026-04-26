@@ -68,13 +68,6 @@
   border-bottom: 1px solid var(--color-border-primary);
 }
 
-.SearchIcon {
-  width: 1.25rem;
-  height: 1.25rem;
-  flex-shrink: 0;
-  color: var(--color-text-secondary);
-}
-
 .Input {
   flex: 1;
   min-width: 0;
@@ -192,13 +185,6 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
-}
-
-.ItemIcon {
-  width: 1.125rem;
-  height: 1.125rem;
-  color: var(--color-text-secondary);
-  flex-shrink: 0;
 }
 
 .ItemContent {
