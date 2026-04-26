@@ -139,7 +139,7 @@ const CommandPalette: Component = () => {
     <Dialog.Root onOpenChange={({ open: o }) => setOpen(o)} open={isOpen()}>
       <Portal>
         <Dialog.Backdrop class={styles.Backdrop} />
-        <Dialog.Positioner class={styles.Positioner}>
+        <Dialog.Positioner class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overscroll-y-none pt-[10vh] [scrollbar-gutter:stable_both-edges]">
           <Dialog.Content class={styles.DialogContent}>
             <Combobox.Root
               collection={collection()}
@@ -149,7 +149,7 @@ const CommandPalette: Component = () => {
                 filter(inputValue);
               }}
               onSelect={handleSelect}
-              class={styles.ComboboxRoot}
+              class="isolate flex h-full min-h-0 flex-col"
               closeOnSelect={false}
               disableLayer
               inputBehavior="autohighlight"
@@ -158,13 +158,16 @@ const CommandPalette: Component = () => {
               open
               unmountOnExit
             >
-              <Combobox.Control class={styles.Control}>
-                <span aria-hidden class={`${styles.SearchIcon} i-material-symbols:search`} />
+              <Combobox.Control class="border-border-primary relative flex items-center gap-3 border-b px-4 pt-4 pb-3.5">
+                <span
+                  aria-hidden
+                  class="text-text-secondary i-material-symbols:search size-5 shrink-0"
+                />
                 <Combobox.Input
                   asChild={(props) => (
                     <input
                       {...props()}
-                      class={styles.Input}
+                      class="text-text-primary placeholder:text-text-secondary min-w-0 flex-1 border-0 bg-transparent p-0 text-base leading-6 outline-none"
                       placeholder="Search for commands or pages..."
                     />
                   )}
@@ -174,34 +177,41 @@ const CommandPalette: Component = () => {
               <Combobox.Content class={styles.Content}>
                 <Show when={collection().items.length === 0}>
                   <Combobox.Empty>
-                    <div class={styles.Empty}>
+                    <div class="flex flex-col items-center justify-center gap-2 px-4 py-12 text-center">
                       <span class="i-material-symbols:search-off size-8 opacity-40" />
                       <p class="text-text-secondary m-0 text-sm">No results found</p>
                     </div>
                   </Combobox.Empty>
                 </Show>
 
-                <Combobox.List class={styles.List}>
+                <Combobox.List class="flex flex-col">
                   <For each={collection().group()}>
                     {([type, group]) => (
                       <Combobox.ItemGroup class={styles.ItemGroup}>
-                        <Combobox.ItemGroupLabel class={styles.GroupLabel}>
+                        <Combobox.ItemGroupLabel class="text-text-secondary px-3 py-1.5 text-xs leading-4 font-semibold tracking-[0.05em] uppercase select-none">
                           {type}
                         </Combobox.ItemGroupLabel>
                         <For each={group}>
                           {(item) => (
-                            <Combobox.Item item={item} class={styles.Item}>
-                              <span class={`${styles.ItemIcon} ${getItemIcon(item)} shrink-0`} />
-                              <div class={styles.ItemContent}>
-                                <Combobox.ItemText class={styles.ItemLabel}>
+                            <Combobox.Item
+                              item={item}
+                              class="focus-ring hover:bg-surface-transparent-hover data-[highlighted]:bg-surface-transparent-hover active:bg-surface-transparent-active data-[state=checked]:bg-surface-transparent-active flex cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 transition-colors duration-100 outline-none select-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50"
+                            >
+                              <span
+                                class={`text-text-secondary size-[1.125rem] shrink-0 ${getItemIcon(item)}`}
+                              />
+                              <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+                                <Combobox.ItemText class="text-text-primary truncate text-sm leading-5 font-medium">
                                   {item.label}
                                 </Combobox.ItemText>
                                 <Show when={item.description}>
-                                  <span class={styles.ItemDescription}>{item.description}</span>
+                                  <span class="text-text-secondary truncate text-xs leading-4">
+                                    {item.description}
+                                  </span>
                                 </Show>
                               </div>
                               <Show when={item.shortcut}>
-                                <kbd class={styles.ItemShortcut}>
+                                <kbd class="border-border-primary bg-surface-secondary text-text-secondary shrink-0 rounded border px-1.5 py-0.5 font-mono text-xs leading-4 select-none">
                                   {formatForDisplay(item.shortcut!)}
                                 </kbd>
                               </Show>

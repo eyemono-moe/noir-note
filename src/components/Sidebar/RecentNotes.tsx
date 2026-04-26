@@ -4,7 +4,6 @@ import { Portal } from "solid-js/web";
 
 import type { MemoWithoutContent } from "../../types/memo";
 
-import styles from "./sidebar.module.css";
 import treeStyles from "./tree.module.css";
 
 const MemoPreview = lazy(() => import("./MemoPreview"));
@@ -41,7 +40,7 @@ export const RecentNotes: Component<RecentNotesProps> = (props) => {
     [...props.allMemos].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 20);
 
   return (
-    <div class={styles.ListContainer}>
+    <div class="flex flex-col gap-0.5 p-1">
       <For
         each={sortedMemos()}
         fallback={
@@ -60,16 +59,17 @@ export const RecentNotes: Component<RecentNotesProps> = (props) => {
               asChild={(hoverProps) => (
                 <button
                   type="button"
-                  class={styles.ListItem}
-                  classList={{ [styles.ListItemActive]: memo.path === props.currentPath }}
+                  class={`focus-ring text-text-primary flex w-full cursor-pointer items-center gap-1.5 rounded-md border-0 bg-transparent px-2 py-1 text-start text-sm leading-5 select-none hover:bg-surface-transparent-hover${memo.path === props.currentPath ? " bg-surface-transparent-active" : ""}`}
                   onClick={() => props.onNavigate(memo.path)}
                   {...hoverProps()}
                 >
                   <span class="i-material-symbols:description-outline-rounded size-4 shrink-0" />
-                  <span class={styles.ListItemName}>
+                  <span class="flex-1 truncate">
                     {getMemoDisplayName(memo.path, memo.metadata?.title)}
                   </span>
-                  <span class={styles.ListItemMeta}>{formatRelativeTime(memo.updatedAt)}</span>
+                  <span class="text-text-secondary shrink-0 text-xs leading-4 whitespace-nowrap">
+                    {formatRelativeTime(memo.updatedAt)}
+                  </span>
                 </button>
               )}
             />

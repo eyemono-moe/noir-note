@@ -34,11 +34,7 @@ const ConfirmDialog: Component<ConfirmDialogProps> = (props) => {
             </button>
             <button
               onClick={() => props.onConfirm()}
-              classList={{
-                button: true,
-                "text-text-accent": props.variant === "default",
-                "text-text-danger": props.variant === "danger",
-              }}
+              class={`button ${props.variant === "danger" ? "text-text-danger" : "text-text-accent"}`}
             >
               {props.confirmLabel ?? "Confirm"}
             </button>
