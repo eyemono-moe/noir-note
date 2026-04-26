@@ -9,7 +9,7 @@ export default defineConfig({
     "*": "vp check --fix",
   },
   fmt: {
-    ignorePatterns: ["dist/**"],
+    ignorePatterns: ["dist/**", "preview-test.md"],
     sortImports: true,
     sortTailwindcss: true,
     sortPackageJson: true,
