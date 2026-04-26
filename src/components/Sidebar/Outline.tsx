@@ -82,8 +82,8 @@ export const Outline: Component = () => {
         {(heading) => (
           <button
             type="button"
-            class="focus-ring text-text-primary hover:bg-surface-transparent-hover flex w-full cursor-pointer items-center gap-1.5 rounded-md border-0 bg-transparent px-2 py-1 text-start text-sm leading-5 select-none"
-            style={{ "padding-left": `calc(${heading.level - minLevel()} * 0.75rem + 0.5rem)` }}
+            class="focus-ring text-text-primary hover:bg-surface-transparent-hover flex w-full cursor-pointer items-center gap-1.5 rounded-md border-0 bg-transparent py-1 pr-2 [padding-left:calc(var(--outline-depth,0)*0.75rem+0.5rem)] text-start text-sm leading-5 select-none"
+            style={{ "--outline-depth": heading.level - minLevel() }}
             onClick={() => handleClick(heading.lineIndex)}
             title={heading.text}
           >
