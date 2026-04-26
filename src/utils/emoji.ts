@@ -1,6 +1,6 @@
 import { nameToEmoji } from "gemoji";
 
-export interface EmojiEntry {
+interface EmojiEntry {
   shortcode: string;
   emoji: string;
 }
