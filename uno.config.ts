@@ -11,7 +11,6 @@ export default defineConfig({
         accent: "var(--color-text-accent)",
         danger: "var(--color-text-danger)",
       },
-
       surface: {
         primary: "var(--color-surface-primary)",
         secondary: "var(--color-surface-secondary)",
