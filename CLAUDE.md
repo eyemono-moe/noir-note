@@ -117,9 +117,10 @@ Pair them with `size-*` and `shrink-0`:
 
 ### UnoCSS shortcuts
 
-| Shortcut | Description                                                                   |
-| -------- | ----------------------------------------------------------------------------- |
-| `button` | Standard interactive button — border, surface background, hover/active states |
+| Shortcut     | Description                                                                   |
+| ------------ | ----------------------------------------------------------------------------- |
+| `button`     | Standard interactive button — border, surface background, hover/active states |
+| `focus-ring` | `focus-visible` outline using accent color with -2px offset                   |
 
 ## Design Decisions
 

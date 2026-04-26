@@ -4,8 +4,6 @@ import { createMemo, For, type Component } from "solid-js";
 import { useCurrentMemo } from "../../context/currentMemo";
 import { useEditorContext } from "../../context/editor";
 
-import styles from "./sidebar.module.css";
-
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface Heading {
@@ -76,7 +74,7 @@ export const Outline: Component = () => {
   };
 
   return (
-    <div class={styles.ListContainer}>
+    <div class="flex flex-col gap-0.5 p-1">
       <For
         each={headings()}
         fallback={<div class="text-text-secondary px-4 py-8 text-center text-sm">No headings</div>}
@@ -84,12 +82,14 @@ export const Outline: Component = () => {
         {(heading) => (
           <button
             type="button"
-            class={styles.ListItem}
+            class="focus-ring text-text-primary hover:bg-surface-transparent-hover flex w-full cursor-pointer items-center gap-1.5 rounded-md border-0 bg-transparent px-2 py-1 text-start text-sm leading-5 select-none"
             style={{ "padding-left": `calc(${heading.level - minLevel()} * 0.75rem + 0.5rem)` }}
             onClick={() => handleClick(heading.lineIndex)}
             title={heading.text}
           >
-            <span class={styles.OutlineLevel}>{"#".repeat(heading.level)}</span>
+            <span class="text-text-secondary shrink-0 font-mono text-[0.6875rem] leading-4">
+              {"#".repeat(heading.level)}
+            </span>
             <span class="w-full truncate">{heading.text}</span>
           </button>
         )}
