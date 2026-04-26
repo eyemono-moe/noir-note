@@ -4,7 +4,7 @@ import solidPlugin from "vite-plugin-solid";
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
-  plugins: [solidPlugin(), UnoCSS(), analyzer()],
+  plugins: [UnoCSS(), solidPlugin(), analyzer()],
   staged: {
     "*": "vp check --fix",
   },

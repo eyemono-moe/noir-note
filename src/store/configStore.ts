@@ -7,6 +7,7 @@ interface AppConfig {
   theme: ThemeMode;
   splitterSizes?: number[];
   scrollSyncEnabled?: boolean;
+  sidebarAccordionState?: string[];
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -38,4 +39,12 @@ export function updateScrollSyncEnabled(enabled: boolean) {
 
 export function useScrollSyncEnabled() {
   return () => config().scrollSyncEnabled ?? true;
+}
+
+export function updateSidebarAccordionState(state: string[]) {
+  setConfig((prev) => ({ ...prev, sidebarAccordionState: state }));
+}
+
+export function useSidebarAccordionState() {
+  return () => config().sidebarAccordionState ?? ["explorer"];
 }
