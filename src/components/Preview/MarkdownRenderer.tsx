@@ -26,6 +26,7 @@ import { unified } from "unified";
 import { useTheme } from "../../context/theme";
 import { bundledLanguages, codeToHtml } from "../../editor/shiki.bundle";
 import { parseFrontmatterYamlString } from "../../utils/frontmatter";
+import { remarkEmoji } from "../../utils/remark/remark-emoji";
 import { remarkFootnoteBackLink } from "../../utils/remark/remark-footnote-back-link";
 
 interface MarkdownRendererProps {
@@ -658,7 +659,8 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
           .use(remarkParse)
           .use(remarkFrontmatter, ["yaml"])
           .use(remarkFootnoteBackLink) // Custom plugin to add back-links to footnotes
-          .use(remarkGfm);
+          .use(remarkGfm)
+          .use(remarkEmoji);
         const tree = processor.parse(content);
         return await processor.run(tree);
       } catch (error) {

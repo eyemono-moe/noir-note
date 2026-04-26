@@ -8,6 +8,7 @@ import { EditorView, highlightWhitespace } from "@codemirror/view";
 import { lineNumbers, highlightActiveLineGutter, highlightActiveLine } from "@codemirror/view";
 import { keymap } from "@codemirror/view";
 
+import { emojiCompletionExtension } from "./emojiCompletion";
 import { formatKeyBindings } from "./formatter";
 import { darkTheme, lightTheme } from "./theme";
 
@@ -43,6 +44,7 @@ export function createEditorExtensions(isDark: boolean): Extension[] {
 
     // Language support
     markdown(),
+    emojiCompletionExtension,
 
     [highlightWhitespace(), highlightWhitespaceTheme], // 空白文字を可視化する（スペースは点、タブは矢印で表示される）
 
