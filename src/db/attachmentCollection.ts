@@ -18,10 +18,8 @@
 import { createCollection } from "@tanstack/solid-db";
 import type {
   ChangeMessageOrDeleteKeyMessage,
-  Collection,
   DeleteMutationFnParams,
   InsertMutationFnParams,
-  NonSingleResult,
   SyncConfig,
 } from "@tanstack/solid-db";
 
@@ -39,7 +37,10 @@ type AttachmentMsg = ChangeMessageOrDeleteKeyMessage<AttachmentMeta, string>;
 const BROADCAST_CHANNEL_ID = "eyemono-attachments";
 
 // ---------------------------------------------------------------------------
-// Collection options creator (Pattern B — built-in handlers)
+// Collection options creator
+// OPFS の読み書きは onInsert / onDelete ハンドラが直接担当し、呼び出し側には
+// addAttachment / removeAttachment だけを公開する設計。
+// ref: https://tanstack.com/db/latest/docs/guides/collection-options-creator
 // ---------------------------------------------------------------------------
 
 function opfsAttachmentCollectionOptions() {
@@ -145,16 +146,7 @@ function opfsAttachmentCollectionOptions() {
  * The TanStack DB collection for attachment metadata.
  * Use with `useLiveQuery(() => attachmentsCollection)` to get a reactive list.
  */
-// Double-cast so `useLiveQuery(() => attachmentsCollection)` picks overload 3
-// (non-single-result) and infers TResult = AttachmentMeta.
-//
-// Why: `Collection<T>` declares `singleResult?: true`, which conflicts with
-// overload 3's `& NonSingleResult` constraint. Adding `& NonSingleResult`
-// (≡ `& { singleResult?: never }`) resolves the ambiguity.
-// The `unknown` intermediate step bypasses the overlap check on `true` vs `never`.
-export const attachmentsCollection = createCollection(
-  opfsAttachmentCollectionOptions(),
-) as unknown as Collection<AttachmentMeta, string> & NonSingleResult;
+export const attachmentsCollection = createCollection(opfsAttachmentCollectionOptions());
 
 // ---------------------------------------------------------------------------
 // Public API
