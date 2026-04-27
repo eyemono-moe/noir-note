@@ -1,10 +1,57 @@
 import UnoCSS from "unocss/vite";
 import { analyzer } from "vite-bundle-analyzer";
+import { VitePWA } from "vite-plugin-pwa";
 import solidPlugin from "vite-plugin-solid";
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
-  plugins: [UnoCSS(), solidPlugin(), analyzer()],
+  plugins: [
+    UnoCSS(),
+    solidPlugin(),
+    VitePWA({
+      registerType: "autoUpdate",
+      includeAssets: ["favicon.svg", "apple-touch-icon-180x180.png"],
+      manifest: {
+        name: "eyemono.md",
+        short_name: "eyemono.md",
+        description:
+          "A markdown note-taking app that runs entirely in your browser. All notes are stored locally using IndexedDB.",
+        theme_color: "#010409",
+        background_color: "#010409",
+        display: "standalone",
+        icons: [
+          {
+            src: "pwa-64x64.png",
+            sizes: "64x64",
+            type: "image/png",
+          },
+          {
+            src: "pwa-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
+          {
+            src: "pwa-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+          },
+          {
+            src: "maskable-icon-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
+          },
+        ],
+      },
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,woff}"],
+        navigateFallback: "/index.html",
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
+      },
+    }),
+    analyzer(),
+  ],
   staged: {
     "*": "vp check --fix",
   },
