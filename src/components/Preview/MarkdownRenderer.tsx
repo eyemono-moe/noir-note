@@ -12,9 +12,11 @@ import {
   Suspense,
   Switch,
   createContext,
+  createEffect,
   createMemo,
   createRenderEffect,
   createResource,
+  onCleanup,
   useContext,
 } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
@@ -24,6 +26,7 @@ import "../../styles/shiki.css";
 import { unified } from "unified";
 
 import { useTheme } from "../../context/theme";
+import { getImageUrl } from "../../db/imageStore";
 import { bundledLanguages, codeToHtml } from "../../editor/shiki.bundle";
 import { parseFrontmatterYamlString } from "../../utils/frontmatter";
 import { remarkEmoji } from "../../utils/remark/remark-emoji";
@@ -134,9 +137,24 @@ const LinkNode: Component<{ node: RootContentMap["link"] }> = (props) => {
 };
 
 const ImageNode: Component<{ node: RootContentMap["image"] }> = (props) => {
-  return (
-    <img src={props.node.url} alt={props.node.alt ?? ""} title={props.node.title ?? undefined} />
-  );
+  const isAttachment = () => props.node.url.startsWith("attachment://");
+  const attachmentId = () => (isAttachment() ? props.node.url.slice("attachment://".length) : null);
+
+  // Fetch a blob object URL for local attachments; skip for remote URLs.
+  const [objectUrl] = createResource(attachmentId, (id) => getImageUrl(id));
+
+  // Revoke the object URL whenever it changes or the component is unmounted
+  // to prevent memory leaks.
+  createEffect(() => {
+    const url = objectUrl();
+    onCleanup(() => {
+      if (url) URL.revokeObjectURL(url);
+    });
+  });
+
+  const src = () => (isAttachment() ? (objectUrl() ?? "") : props.node.url);
+
+  return <img src={src()} alt={props.node.alt ?? ""} title={props.node.title ?? undefined} />;
 };
 
 const InlineCodeNode: Component<{ node: RootContentMap["inlineCode"] }> = (props) => {
