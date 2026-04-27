@@ -4,10 +4,15 @@ import { keymap } from "@codemirror/view";
 
 const BRACKET_PAIRS: Record<string, string> = {
   '"': '"',
+  _: "_",
   "'": "'",
+  "(": ")",
   "[": "]",
   "{": "}",
+  "*": "*",
   "`": "`",
+  "<": ">",
+  "~": "~",
 };
 
 function wrapSelectionWith(open: string, close: string): KeyBinding {
