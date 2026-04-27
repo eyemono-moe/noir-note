@@ -133,12 +133,18 @@ Pair them with `size-*` and `shrink-0`:
 ## Development Commands
 
 ```bash
-vp install   # Install dependencies
-vp dev       # Start dev server
-vp check     # Type check + lint + format
-vp build     # Production build
-vp preview   # Preview production build
+vp install          # Install dependencies
+vp dev              # Start dev server
+vp check            # Type check + lint + format
+vp build            # Production build (terminates after build completes)
+ANALYZE=true vp build  # Production build + open bundle analyzer server (does NOT terminate)
+vp preview          # Preview production build
 ```
+
+> **Note:** `vp build` normally terminates immediately after the build. The
+> `vite-bundle-analyzer` plugin is disabled unless `ANALYZE=true` is set; when
+> enabled it starts an interactive server and the process stays alive until
+> manually stopped.
 
 ---
 
