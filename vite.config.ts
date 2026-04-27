@@ -16,8 +16,8 @@ export default defineConfig({
         short_name: "eyemono.md",
         description:
           "A markdown note-taking app that runs entirely in your browser. All notes are stored locally using IndexedDB.",
-        theme_color: "#9940bb",
-        background_color: "#ffffff",
+        theme_color: "#010409",
+        background_color: "#010409",
         display: "standalone",
         icons: [
           {
