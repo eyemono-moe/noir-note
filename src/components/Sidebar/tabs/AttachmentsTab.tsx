@@ -1,73 +1,31 @@
+import { useLiveQuery } from "@tanstack/solid-db";
 import {
   type Component,
   For,
   Show,
   createEffect,
+  createMemo,
   createResource,
-  createSignal,
   onCleanup,
 } from "solid-js";
 
+import { useMemosCollection } from "../../../context/db";
 import {
-  deleteImage,
-  deleteOrphanedImages,
-  getImageUrl,
-  getStorageEstimate,
-  listImages,
-} from "../../../db/imageStore";
-import { queryAllMemos } from "../../../db/rxdb";
+  attachmentsCollection,
+  removeAttachment,
+  type AttachmentMeta,
+} from "../../../db/attachmentCollection";
+import { getImageUrl, getStorageEstimate } from "../../../db/imageStore";
 
 // ---------------------------------------------------------------------------
-// Types & data loading
+// Types
 // ---------------------------------------------------------------------------
 
-interface AttachmentInfo {
-  id: string;
-  size: number;
-  lastModified: number;
+interface AttachmentInfo extends AttachmentMeta {
   referencedBy: string[];
 }
 
-interface AttachmentData {
-  attachments: AttachmentInfo[];
-  totalSize: number;
-  estimate: StorageEstimate;
-}
-
 const ATTACHMENT_REF_RE = /attachment:\/\/([^\s)"']+)/g;
-
-async function loadAttachmentData(): Promise<AttachmentData> {
-  const [files, memos, estimate] = await Promise.all([
-    listImages(),
-    queryAllMemos(),
-    getStorageEstimate(),
-  ]);
-
-  const refMap = new Map<string, string[]>();
-  for (const memo of memos) {
-    for (const match of memo.content.matchAll(ATTACHMENT_REF_RE)) {
-      const id = match[1];
-      const existing = refMap.get(id) ?? [];
-      existing.push(memo.path);
-      refMap.set(id, existing);
-    }
-  }
-
-  const attachments: AttachmentInfo[] = files.map((f) => ({
-    ...f,
-    referencedBy: refMap.get(f.id) ?? [],
-  }));
-
-  // Unused first, then newest first
-  attachments.sort((a, b) => {
-    if (a.referencedBy.length === 0 && b.referencedBy.length > 0) return -1;
-    if (a.referencedBy.length > 0 && b.referencedBy.length === 0) return 1;
-    return b.lastModified - a.lastModified;
-  });
-
-  const totalSize = files.reduce((sum, f) => sum + f.size, 0);
-  return { attachments, totalSize, estimate };
-}
 
 // ---------------------------------------------------------------------------
 // Formatters
@@ -82,16 +40,14 @@ function formatBytes(bytes: number): string {
 
 // ---------------------------------------------------------------------------
 // ThumbnailImage
-// Same initialValue / .latest pattern as ImageNode to avoid Suspense throws.
+// Uses .latest to avoid throwing a Suspense-propagating Promise.
 // ---------------------------------------------------------------------------
 
 const ThumbnailImage: Component<{ id: string }> = (props) => {
   const [objectUrl] = createResource(
     () => props.id,
     (id) => getImageUrl(id),
-    {
-      initialValue: null,
-    },
+    { initialValue: null },
   );
 
   createEffect(() => {
@@ -191,71 +147,96 @@ const StorageBar: Component<{ used: number; quota: number }> = (props) => {
 // ---------------------------------------------------------------------------
 
 export const AttachmentsTab: Component = () => {
-  const [tick, setTick] = createSignal(0);
-  const [data, { refetch }] = createResource(tick, () => loadAttachmentData());
+  const memosCollectionResource = useMemosCollection();
 
-  const handleDelete = async (id: string) => {
-    await deleteImage(id);
-    void refetch();
+  // Reactive attachment list — auto-updates on paste/delete from any context
+  const attachmentsQuery = useLiveQuery(() => attachmentsCollection);
+
+  // Reactive memo content for computing referencedBy
+  const memoContentsQuery = useLiveQuery((q) => {
+    const mc = memosCollectionResource();
+    if (!mc) return null;
+    return q.from({ memos: mc }).select(({ memos }) => ({
+      path: memos.path,
+      content: memos.content,
+    }));
+  });
+
+  // Build a { attachmentId → notePaths[] } map reactively
+  const refMap = createMemo(() => {
+    const memos = memoContentsQuery() ?? [];
+    const map = new Map<string, string[]>();
+    for (const memo of memos) {
+      for (const match of memo.content.matchAll(ATTACHMENT_REF_RE)) {
+        const id = match[1];
+        map.set(id, [...(map.get(id) ?? []), memo.path]);
+      }
+    }
+    return map;
+  });
+
+  // Combine raw attachment list with computed referencedBy, sorted:
+  // orphans first, then newest first
+  const attachments = createMemo((): AttachmentInfo[] =>
+    (attachmentsQuery() ?? [])
+      .map((a) => ({ ...a, referencedBy: refMap().get(a.id) ?? [] }))
+      .sort((a, b) => {
+        if (a.referencedBy.length === 0 && b.referencedBy.length > 0) return -1;
+        if (a.referencedBy.length > 0 && b.referencedBy.length === 0) return 1;
+        return b.lastModified - a.lastModified;
+      }),
+  );
+
+  // Storage quota/usage — fetched once on mount
+  const [estimate] = createResource(getStorageEstimate);
+
+  const totalSize = createMemo(() =>
+    (attachmentsQuery() ?? []).reduce((sum, a) => sum + a.size, 0),
+  );
+
+  const unusedCount = createMemo(
+    () => attachments().filter((a) => a.referencedBy.length === 0).length,
+  );
+
+  const handleCleanUp = () => {
+    for (const att of attachments()) {
+      if (att.referencedBy.length === 0) {
+        removeAttachment(att.id);
+      }
+    }
   };
-
-  const handleCleanUp = async () => {
-    const attachments = data()?.attachments ?? [];
-    const referencedIds = new Set(
-      attachments.filter((a) => a.referencedBy.length > 0).map((a) => a.id),
-    );
-    await deleteOrphanedImages(referencedIds);
-    void refetch();
-  };
-
-  const unusedCount = () =>
-    data()?.attachments.filter((a) => a.referencedBy.length === 0).length ?? 0;
 
   return (
     <div class="flex h-full flex-col overflow-hidden">
       {/* Section header */}
-      <div class="flex shrink-0 items-center justify-between px-3 py-1.5">
+      <div class="flex shrink-0 items-center px-3 py-1.5">
         <span class="text-text-secondary text-[0.6875rem] font-bold tracking-[0.06em] uppercase">
           Attachments
         </span>
-        <button
-          type="button"
-          class="focus-ring text-text-secondary hover:text-text-primary inline-flex appearance-none rounded bg-transparent p-0.5 transition-colors"
-          title="Refresh"
-          onClick={() => setTick((n) => n + 1)}
-        >
-          <span class="i-material-symbols:refresh-rounded size-3.5" />
-        </button>
       </div>
 
       {/* Storage stats */}
-      <Show when={data()}>
-        {(d) => (
-          <div class="border-border-primary shrink-0 border-b px-3 pb-2">
-            <div class="mb-1 flex items-baseline justify-between">
-              <span class="text-text-primary text-xs font-medium">
-                {formatBytes(d().totalSize)}
-              </span>
-              <Show when={d().estimate.quota}>
-                {(q) => (
-                  <span class="text-text-secondary text-[0.625rem]">/ {formatBytes(q())}</span>
-                )}
-              </Show>
-            </div>
-            <Show when={d().estimate.quota && d().estimate.usage != null}>
-              <StorageBar used={d().estimate.usage!} quota={d().estimate.quota!} />
-              <p class="text-text-secondary mt-0.5 text-[0.625rem]">
-                Origin: {formatBytes(d().estimate.usage!)} used
-              </p>
+      <Show when={attachmentsQuery.isReady}>
+        <div class="border-border-primary shrink-0 border-b px-3 pb-2">
+          <div class="mb-1 flex items-baseline justify-between">
+            <span class="text-text-primary text-xs font-medium">{formatBytes(totalSize())}</span>
+            <Show when={estimate()?.quota}>
+              {(q) => <span class="text-text-secondary text-[0.625rem]">/ {formatBytes(q())}</span>}
             </Show>
           </div>
-        )}
+          <Show when={estimate()?.quota && estimate()?.usage != null}>
+            <StorageBar used={estimate()!.usage!} quota={estimate()!.quota!} />
+            <p class="text-text-secondary mt-0.5 text-[0.625rem]">
+              Origin: {formatBytes(estimate()!.usage!)} used
+            </p>
+          </Show>
+        </div>
       </Show>
 
       {/* File list */}
       <div class="min-h-0 flex-1 overflow-y-auto px-1 py-1">
         <Show
-          when={!data.loading}
+          when={attachmentsQuery.isReady}
           fallback={
             <div class="text-text-secondary flex h-16 items-center justify-center text-xs">
               Loading…
@@ -263,7 +244,7 @@ export const AttachmentsTab: Component = () => {
           }
         >
           <Show
-            when={(data()?.attachments.length ?? 0) > 0}
+            when={attachments().length > 0}
             fallback={
               <div class="text-text-secondary flex h-24 flex-col items-center justify-center gap-1 text-xs">
                 <span class="i-material-symbols:image-not-supported-outline size-6 opacity-40" />
@@ -271,8 +252,8 @@ export const AttachmentsTab: Component = () => {
               </div>
             }
           >
-            <For each={data()?.attachments}>
-              {(att) => <AttachmentRow att={att} onDelete={handleDelete} />}
+            <For each={attachments()}>
+              {(att) => <AttachmentRow att={att} onDelete={removeAttachment} />}
             </For>
           </Show>
         </Show>

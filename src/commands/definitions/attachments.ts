@@ -1,4 +1,4 @@
-import { deleteOrphanedImages, listImages } from "../../db/imageStore";
+import { attachmentsCollection, cleanupOrphanedAttachments } from "../../db/attachmentCollection";
 import { queryAllMemoContents } from "../../db/rxdb";
 import { updateSidebarTab } from "../../store/configStore";
 import type { Command } from "../types";
@@ -36,16 +36,23 @@ const cleanupUnusedAttachmentsCommand: Command = {
   description: "Delete attachment images that are no longer referenced by any note",
   category: "attachments",
   execute: async () => {
-    const [referencedIds, allImages] = await Promise.all([collectReferencedIds(), listImages()]);
+    const referencedIds = await collectReferencedIds();
 
-    const orphanCount = allImages.filter(({ id }) => !referencedIds.has(id)).length;
-    if (orphanCount === 0) {
-      console.info("[attachments] No unused attachments found.");
+    // Use the collection for a quick count check if it's ready
+    const total = attachmentsCollection.isReady()
+      ? attachmentsCollection.size
+      : Number.POSITIVE_INFINITY;
+    if (total === 0) {
+      console.info("[attachments] No attachments found.");
       return;
     }
 
-    const deleted = await deleteOrphanedImages(referencedIds);
-    console.info(`[attachments] Deleted ${deleted.length} unused attachment(s):`, deleted);
+    const deleted = await cleanupOrphanedAttachments(referencedIds);
+    if (deleted.length === 0) {
+      console.info("[attachments] No unused attachments found.");
+    } else {
+      console.info(`[attachments] Deleted ${deleted.length} unused attachment(s):`, deleted);
+    }
   },
 };
 

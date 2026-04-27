@@ -13,9 +13,10 @@
 
 const ATTACHMENTS_DIR = "attachments";
 
-interface ImageMeta {
+export interface ImageMeta {
   id: string;
   size: number;
+  mimeType: string;
   lastModified: number;
 }
 
@@ -128,7 +129,12 @@ export async function listImages(): Promise<ImageMeta[]> {
   for await (const [name, handle] of dir.entries()) {
     if (handle.kind === "file") {
       const file = await (handle as FileSystemFileHandle).getFile();
-      results.push({ id: name, size: file.size, lastModified: file.lastModified });
+      results.push({
+        id: name,
+        size: file.size,
+        mimeType: file.type,
+        lastModified: file.lastModified,
+      });
     }
   }
 
@@ -140,22 +146,4 @@ export async function listImages(): Promise<ImageMeta[]> {
  */
 export async function getStorageEstimate(): Promise<StorageEstimate> {
   return navigator.storage.estimate();
-}
-
-/**
- * Delete all attachments whose IDs are not present in `referencedIds`.
- * Returns the list of deleted IDs.
- */
-export async function deleteOrphanedImages(referencedIds: Set<string>): Promise<string[]> {
-  const all = await listImages();
-  const deleted: string[] = [];
-
-  for (const { id } of all) {
-    if (!referencedIds.has(id)) {
-      await deleteImage(id);
-      deleted.push(id);
-    }
-  }
-
-  return deleted;
 }

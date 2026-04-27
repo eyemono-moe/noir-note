@@ -6,7 +6,7 @@
 
 import { EditorView } from "@codemirror/view";
 
-import { saveImage } from "../db/imageStore";
+import { addAttachment } from "../db/attachmentCollection";
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -25,7 +25,7 @@ function buildMarkdown(id: string, originalName: string): string {
 async function insertImages(files: File[], view: EditorView, pos: number): Promise<void> {
   const markdowns = await Promise.all(
     files.map(async (file) => {
-      const id = await saveImage(file);
+      const id = await addAttachment(file);
       return buildMarkdown(id, file.name);
     }),
   );
