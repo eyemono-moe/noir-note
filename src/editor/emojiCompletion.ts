@@ -1,9 +1,19 @@
 import { autocompletion } from "@codemirror/autocomplete";
 import type { CompletionContext, CompletionResult } from "@codemirror/autocomplete";
 
-import { emojiList } from "../utils/emoji";
-
 const MAX_RESULTS = 50;
+
+type EmojiEntry = { shortcode: string; emoji: string };
+
+// Lazily loaded and cached after first access
+let emojiListCache: Promise<readonly EmojiEntry[]> | null = null;
+
+function loadEmojiList(): Promise<readonly EmojiEntry[]> {
+  if (!emojiListCache) {
+    emojiListCache = import("../utils/emoji").then((m) => m.emojiList);
+  }
+  return emojiListCache;
+}
 
 /**
  * CodeMirror completion source for emoji shortcodes.
@@ -12,7 +22,7 @@ const MAX_RESULTS = 50;
  * a word character or `/` (to avoid false positives on URLs and times like
  * `10:30`). Starts-with matches are ranked before contains matches.
  */
-function emojiCompletionSource(context: CompletionContext): CompletionResult | null {
+async function emojiCompletionSource(context: CompletionContext): Promise<CompletionResult | null> {
   // (?<![/\w]) — exclude ':' preceded by '/', letters, digits, or '_'
   // so 'https://' and '10:30' won't trigger completion
   const match = context.matchBefore(/(?<![/\w]):[+\w-]*/);
@@ -20,10 +30,11 @@ function emojiCompletionSource(context: CompletionContext): CompletionResult | n
   // Only show completions if the user has started typing (or explicitly requested)
   if (match.from === match.to && !context.explicit) return null;
 
+  const emojiList = await loadEmojiList();
   const query = match.text.slice(1).toLowerCase(); // strip leading ':'
 
-  const startsWith: (typeof emojiList)[number][] = [];
-  const contains: (typeof emojiList)[number][] = [];
+  const startsWith: EmojiEntry[] = [];
+  const contains: EmojiEntry[] = [];
 
   for (const entry of emojiList) {
     if (startsWith.length >= MAX_RESULTS) break;

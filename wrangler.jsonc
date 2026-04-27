@@ -16,4 +16,6 @@
       "pattern": "md.eyemono.moe",
     },
   ],
+  "preview_urls": true,
+  "workers_dev": true,
 }

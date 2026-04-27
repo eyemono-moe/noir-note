@@ -7,27 +7,31 @@ import type { FormatRequest, FormatResponse } from "../workers/formatter.worker"
 import formatWorker from "../workers/formatter.worker?worker";
 
 class FormatService {
-  private worker: Worker;
+  private worker: Worker | null = null;
   private currentRequestId = 0;
 
-  constructor() {
-    this.worker = new formatWorker();
+  private getWorker(): Worker {
+    if (!this.worker) {
+      this.worker = new formatWorker();
+    }
+    return this.worker;
   }
 
   async requestFormat(text: string): Promise<FormatResponse["changes"]> {
     const requestId = ++this.currentRequestId;
+    const worker = this.getWorker();
 
     return new Promise((resolve, reject) => {
       const handler = (e: MessageEvent<FormatResponse>) => {
         if (e.data.requestId !== requestId) return;
-        this.worker.removeEventListener("message", handler);
+        worker.removeEventListener("message", handler);
 
         if (e.data.error) reject(e.data.error);
         else resolve(e.data.changes);
       };
 
-      this.worker.addEventListener("message", handler);
-      this.worker.postMessage({
+      worker.addEventListener("message", handler);
+      worker.postMessage({
         text,
         wasmUrl: markdownWasmUrl,
         requestId,

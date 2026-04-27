@@ -50,7 +50,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
       },
     }),
-    analyzer(),
+    analyzer({ enabled: process.env.ANALYZE === "true" }),
   ],
   staged: {
     "*": "vp check --fix",
