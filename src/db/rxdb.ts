@@ -92,6 +92,23 @@ export interface NoirNotesCollections {
  */
 export type NoirNotesDatabase = RxDatabase<NoirNotesCollections>;
 
+// Module-level singleton — set once after `createNoirNotesDB` resolves.
+// Exposed only for imperative / non-reactive operations (e.g. the
+// cleanup-unused-attachments command).  Reactive UI should always use the
+// TanStack DB collection via `useMemosCollection()` instead.
+let _db: NoirNotesDatabase | null = null;
+
+/**
+ * One-shot query that returns the `content` field of every memo.
+ * Safe to call outside a reactive context (does not require SolidJS owner).
+ * Returns an empty array if the database has not been initialized yet.
+ */
+export async function queryAllMemoContents(): Promise<string[]> {
+  if (!_db) return [];
+  const docs = await _db.memos.find().exec();
+  return docs.map((doc) => doc.content);
+}
+
 /**
  * Create and initialize RxDB database
  */
@@ -143,5 +160,6 @@ This app is under active development.
     });
   }
 
+  _db = db;
   return db;
 }
