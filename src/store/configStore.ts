@@ -8,6 +8,7 @@ interface AppConfig {
   splitterSizes?: number[];
   scrollSyncEnabled?: boolean;
   sidebarAccordionState?: string[];
+  sidebarTab?: string;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -47,4 +48,12 @@ export function updateSidebarAccordionState(state: string[]) {
 
 export function useSidebarAccordionState() {
   return () => config().sidebarAccordionState ?? ["explorer"];
+}
+
+export function updateSidebarTab(tab: string) {
+  setConfig((prev) => ({ ...prev, sidebarTab: tab }));
+}
+
+export function useSidebarTab() {
+  return () => config().sidebarTab ?? "explorer";
 }

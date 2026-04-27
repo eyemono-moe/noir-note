@@ -11,9 +11,11 @@ import {
   Suspense,
   Switch,
   createContext,
+  createEffect,
   createMemo,
   createRenderEffect,
   createResource,
+  onCleanup,
   useContext,
 } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
@@ -23,6 +25,7 @@ import "../../styles/shiki.css";
 import { unified } from "unified";
 
 import { useTheme } from "../../context/theme";
+import { getImageUrl } from "../../db/imageStore";
 import { bundledLanguages, codeToHtml } from "../../editor/shiki.bundle";
 import { parseFrontmatterYamlString } from "../../utils/frontmatter";
 import { remarkEmoji } from "../../utils/remark/remark-emoji";
@@ -133,9 +136,30 @@ const LinkNode: Component<{ node: RootContentMap["link"] }> = (props) => {
 };
 
 const ImageNode: Component<{ node: RootContentMap["image"] }> = (props) => {
-  return (
-    <img src={props.node.url} alt={props.node.alt ?? ""} title={props.node.title ?? undefined} />
-  );
+  const isAttachment = () => props.node.url.startsWith("attachment://");
+  const attachmentId = () => (isAttachment() ? props.node.url.slice("attachment://".length) : null);
+
+  // `initialValue: null` ensures the resource has a defined value from the start
+  // and therefore never throws a Promise to Suspense — even when re-fetching
+  // after an unnecessary remount caused by a reconcile-key shift.
+  // Always access via `.latest` (not the call form) to avoid propagating the
+  // pending state to the nearest <Suspense> boundary (= the root preview).
+  // This mirrors the SyntaxHighlightedCode pattern.
+  const [objectUrl] = createResource(attachmentId, (id) => getImageUrl(id), {
+    initialValue: null,
+  });
+
+  // Revoke the object URL whenever it changes or the component is unmounted.
+  createEffect(() => {
+    const url = objectUrl.latest;
+    onCleanup(() => {
+      if (url) URL.revokeObjectURL(url);
+    });
+  });
+
+  const src = () => (isAttachment() ? (objectUrl.latest ?? "") : props.node.url);
+
+  return <img src={src()} alt={props.node.alt ?? ""} title={props.node.title ?? undefined} />;
 };
 
 const InlineCodeNode: Component<{ node: RootContentMap["inlineCode"] }> = (props) => {
