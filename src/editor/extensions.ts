@@ -10,6 +10,7 @@ import { keymap } from "@codemirror/view";
 
 import { emojiCompletionExtension } from "./emojiCompletion";
 import { formatKeyBindings } from "./formatter";
+import { imagePasteExtension } from "./imagePaste";
 import { darkTheme, lightTheme } from "./theme";
 import { wrapSelectionExtension } from "./wrapSelection";
 
@@ -43,6 +44,7 @@ export function createEditorExtensions(isDark: boolean): Extension[] {
     EditorState.tabSize.of(2), // Tab（\t）をスペース4個分の大きさにする
     keymap.of(formatKeyBindings), // フォーマット用のキーバインドを有効化
     wrapSelectionExtension, // 選択文字列を括弧で囲む
+    imagePasteExtension, // 画像ペースト/ドロップ
 
     // Language support
     markdown(),
