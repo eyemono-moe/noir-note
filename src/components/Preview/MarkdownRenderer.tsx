@@ -140,19 +140,25 @@ const ImageNode: Component<{ node: RootContentMap["image"] }> = (props) => {
   const isAttachment = () => props.node.url.startsWith("attachment://");
   const attachmentId = () => (isAttachment() ? props.node.url.slice("attachment://".length) : null);
 
-  // Fetch a blob object URL for local attachments; skip for remote URLs.
-  const [objectUrl] = createResource(attachmentId, (id) => getImageUrl(id));
+  // `initialValue: null` ensures the resource has a defined value from the start
+  // and therefore never throws a Promise to Suspense — even when re-fetching
+  // after an unnecessary remount caused by a reconcile-key shift.
+  // Always access via `.latest` (not the call form) to avoid propagating the
+  // pending state to the nearest <Suspense> boundary (= the root preview).
+  // This mirrors the SyntaxHighlightedCode pattern.
+  const [objectUrl] = createResource(attachmentId, (id) => getImageUrl(id), {
+    initialValue: null,
+  });
 
-  // Revoke the object URL whenever it changes or the component is unmounted
-  // to prevent memory leaks.
+  // Revoke the object URL whenever it changes or the component is unmounted.
   createEffect(() => {
-    const url = objectUrl();
+    const url = objectUrl.latest;
     onCleanup(() => {
       if (url) URL.revokeObjectURL(url);
     });
   });
 
-  const src = () => (isAttachment() ? (objectUrl() ?? "") : props.node.url);
+  const src = () => (isAttachment() ? (objectUrl.latest ?? "") : props.node.url);
 
   return <img src={src()} alt={props.node.alt ?? ""} title={props.node.title ?? undefined} />;
 };
