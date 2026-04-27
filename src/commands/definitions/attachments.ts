@@ -1,5 +1,6 @@
 import { deleteOrphanedImages, listImages } from "../../db/imageStore";
 import { queryAllMemoContents } from "../../db/rxdb";
+import { openAttachmentManager } from "../../store/attachmentManagerStore";
 import type { Command } from "../types";
 
 /** Regex that matches every `attachment://` reference inside a markdown string. */
@@ -40,4 +41,17 @@ const cleanupUnusedAttachmentsCommand: Command = {
   },
 };
 
-export const attachmentCommands: Command[] = [cleanupUnusedAttachmentsCommand];
+const openAttachmentManagerCommand: Command = {
+  id: "open-attachment-manager",
+  label: "Attachments: Open Manager",
+  description: "View and manage all attachment images stored in this app",
+  category: "attachments",
+  execute: () => {
+    openAttachmentManager();
+  },
+};
+
+export const attachmentCommands: Command[] = [
+  openAttachmentManagerCommand,
+  cleanupUnusedAttachmentsCommand,
+];

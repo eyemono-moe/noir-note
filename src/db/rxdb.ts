@@ -110,6 +110,17 @@ export async function queryAllMemoContents(): Promise<string[]> {
 }
 
 /**
+ * One-shot query that returns `{ path, content }` for every memo.
+ * Used by the attachment manager to cross-reference which notes reference
+ * which attachment IDs.
+ */
+export async function queryAllMemos(): Promise<{ path: string; content: string }[]> {
+  if (!_db) return [];
+  const docs = await _db.memos.find().exec();
+  return docs.map((doc) => ({ path: doc.path, content: doc.content }));
+}
+
+/**
  * Create and initialize RxDB database
  */
 export async function createNoirNotesDB(): Promise<NoirNotesDatabase> {
