@@ -46,6 +46,8 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,woff}"],
         navigateFallback: "/index.html",
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
       },
     }),
     analyzer(),
