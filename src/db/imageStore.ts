@@ -13,7 +13,7 @@
 
 const ATTACHMENTS_DIR = "attachments";
 
-export interface ImageMeta {
+interface ImageMeta {
   id: string;
   size: number;
   lastModified: number;
@@ -133,14 +133,6 @@ export async function listImages(): Promise<ImageMeta[]> {
   }
 
   return results;
-}
-
-/**
- * Sum of all attachment file sizes in bytes.
- */
-export async function getTotalSize(): Promise<number> {
-  const images = await listImages();
-  return images.reduce((sum, img) => sum + img.size, 0);
 }
 
 /**

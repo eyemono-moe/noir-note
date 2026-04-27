@@ -1,6 +1,6 @@
 import { deleteOrphanedImages, listImages } from "../../db/imageStore";
 import { queryAllMemoContents } from "../../db/rxdb";
-import { openAttachmentManager } from "../../store/attachmentManagerStore";
+import { updateSidebarTab } from "../../store/configStore";
 import type { Command } from "../types";
 
 /** Regex that matches every `attachment://` reference inside a markdown string. */
@@ -20,6 +20,16 @@ async function collectReferencedIds(): Promise<Set<string>> {
   return ids;
 }
 
+const openAttachmentsTabCommand: Command = {
+  id: "open-attachment-manager",
+  label: "Attachments: Open Manager",
+  description: "Switch to the Attachments tab in the sidebar",
+  category: "attachments",
+  execute: () => {
+    updateSidebarTab("attachments");
+  },
+};
+
 const cleanupUnusedAttachmentsCommand: Command = {
   id: "cleanup-unused-attachments",
   label: "Attachments: Clean Up Unused",
@@ -30,8 +40,6 @@ const cleanupUnusedAttachmentsCommand: Command = {
 
     const orphanCount = allImages.filter(({ id }) => !referencedIds.has(id)).length;
     if (orphanCount === 0) {
-      // Nothing to clean up — surface this to the user via the console for now;
-      // a toast/notification layer can replace this in a future iteration.
       console.info("[attachments] No unused attachments found.");
       return;
     }
@@ -41,17 +49,7 @@ const cleanupUnusedAttachmentsCommand: Command = {
   },
 };
 
-const openAttachmentManagerCommand: Command = {
-  id: "open-attachment-manager",
-  label: "Attachments: Open Manager",
-  description: "View and manage all attachment images stored in this app",
-  category: "attachments",
-  execute: () => {
-    openAttachmentManager();
-  },
-};
-
 export const attachmentCommands: Command[] = [
-  openAttachmentManagerCommand,
+  openAttachmentsTabCommand,
   cleanupUnusedAttachmentsCommand,
 ];

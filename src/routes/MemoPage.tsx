@@ -16,7 +16,6 @@ import { normalizePath } from "../utils/path";
 const Editor = lazy(() => import("../components/Editor/Editor"));
 const MarkdownRenderer = lazy(() => import("../components/Preview/MarkdownRenderer"));
 const Sidebar = lazy(() => import("../components/Sidebar/Sidebar"));
-const AttachmentManager = lazy(() => import("../components/Attachments/AttachmentManager"));
 
 const MemoPageContent: Component = () => {
   const location = useLocation();
@@ -126,11 +125,6 @@ const MemoPage: Component = () => {
           <MemoPageContent />
         </CurrentMemoProvider>
       </EditorProvider>
-      {/* Rendered outside the editor/preview tree so it can always be opened
-          regardless of the current split-view state. */}
-      <Suspense>
-        <AttachmentManager />
-      </Suspense>
     </main>
   );
 };
