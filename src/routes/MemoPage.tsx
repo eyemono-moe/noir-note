@@ -21,7 +21,7 @@ const MemoPageContent: Component = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const editorSplitter = useEditorSplit();
-  const memosCollectionResource = useMemosCollection();
+  const collection = useMemosCollection();
   const currentPath = createMemo(() => normalizePath(location.pathname));
 
   const { content, setContent, isReady } = useCurrentMemo();
@@ -41,21 +41,19 @@ const MemoPageContent: Component = () => {
   // oxlint-disable-next-line solid/reactivity
   const handleCheckboxToggle = useCheckboxSync(editorView);
 
-  const allMemosQuery = useLiveQuery((q) => {
-    const collection = memosCollectionResource();
-    if (!collection) return null;
-    return q.from({ memos: collection }).select(({ memos }) => ({
+  const allMemosQuery = useLiveQuery((q) =>
+    q.from({ memos: collection }).select(({ memos }) => ({
       path: memos.path,
       title: memos.metadata?.title,
       metadata: memos.metadata,
       createdAt: memos.createdAt,
       updatedAt: memos.updatedAt,
-    }));
-  });
+    })),
+  );
 
   return (
     <Show
-      when={memosCollectionResource() && allMemosQuery.isReady}
+      when={allMemosQuery.isReady}
       fallback={
         <div class="flex h-screen w-screen items-center justify-center">
           <div class="text-text-secondary text-lg">Initializing database...</div>
@@ -71,20 +69,14 @@ const MemoPageContent: Component = () => {
                 currentPath={currentPath()}
                 onNavigate={(path) => navigate(path)}
                 onDelete={(path) => {
-                  const collection = memosCollectionResource();
-                  if (collection) {
-                    collection.delete(path);
-                  }
+                  collection.delete(path);
                 }}
                 onInsert={(memo) => {
-                  const collection = memosCollectionResource();
-                  if (collection) {
-                    const now = Date.now();
-                    collection.insert({ ...memo, content: "", createdAt: now, updatedAt: now });
-                  }
+                  const now = Date.now();
+                  collection.insert({ ...memo, content: "", createdAt: now, updatedAt: now });
                 }}
                 allMemos={allMemosQuery() || []}
-                memosCollection={memosCollectionResource()!}
+                memosCollection={collection}
               />
             </Suspense>
           }

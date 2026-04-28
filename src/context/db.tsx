@@ -1,57 +1,44 @@
 import { createContext, useContext, type ParentComponent } from "solid-js";
-import { createResource, type Resource } from "solid-js";
 
-import { createNoirNotesDB, type NoirNotesDatabase } from "../db/rxdb";
-import { createMemosCollection, type MemosCollection } from "../db/tanstack";
+import { memosCollection, type MemoDocument } from "../db/memoCollection";
 
-/**
- * Database context value
- */
+export type { MemoDocument };
+
+// ---------------------------------------------------------------------------
+// Context
+// ---------------------------------------------------------------------------
+
 interface DBContext {
-  memosCollection: Resource<MemosCollection | undefined>;
+  memosCollection: typeof memosCollection;
 }
 
 const DBContext = createContext<DBContext>();
 
-/**
- * Initialize databases
- */
-async function initializeDatabases(): Promise<{
-  rxdb: NoirNotesDatabase;
-  memosCollection: MemosCollection;
-}> {
-  // Create RxDB
-  const rxdb = await createNoirNotesDB();
-
-  // Create TanStack DB collection
-  const memosCollection = createMemosCollection(rxdb);
-
-  return { rxdb, memosCollection };
-}
+// ---------------------------------------------------------------------------
+// Provider
+// ---------------------------------------------------------------------------
 
 /**
- * Database provider component
+ * Database provider component.
+ * The OPFS-backed collection starts syncing as soon as the module loads, so
+ * no async initialization is required here — we just make it available via
+ * context.
  */
 export const DBProvider: ParentComponent = (props) => {
-  const [dbResource] = createResource(initializeDatabases);
-
-  // Create a derived resource for memosCollection
-  const [memosCollectionResource] = createResource(
-    () => dbResource(),
-    (db) => db.memosCollection,
-  );
-
-  const value: DBContext = {
-    memosCollection: memosCollectionResource,
-  };
-
+  const value: DBContext = { memosCollection };
   return <DBContext.Provider value={value}>{props.children}</DBContext.Provider>;
 };
 
+// ---------------------------------------------------------------------------
+// Hook
+// ---------------------------------------------------------------------------
+
 /**
- * Hook to access Memos Collection
+ * Hook to access the memos TanStack DB collection.
+ * The collection may not have finished its initial OPFS enumerate yet;
+ * check `useLiveQuery(...).isReady` before rendering note content.
  */
-export function useMemosCollection(): Resource<MemosCollection | undefined> {
+export function useMemosCollection(): typeof memosCollection {
   const context = useContext(DBContext);
   if (!context) {
     throw new Error("useMemosCollection must be used within DBProvider");
