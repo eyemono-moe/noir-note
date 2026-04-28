@@ -175,7 +175,12 @@ const ImageNode: Component<{ node: RootContentMap["image"] }> = (props) => {
     });
   });
 
-  const src = () => (isAttachment() ? (objectUrl.latest ?? "") : props.node.url);
+  // Returns null while the attachment object-URL is being resolved so we never
+  // pass an empty string to <img src>, which would render a broken-image icon.
+  const src = (): string | null => {
+    if (!isAttachment()) return props.node.url;
+    return objectUrl.latest ?? null;
+  };
 
   return (
     <button
@@ -183,7 +188,25 @@ const ImageNode: Component<{ node: RootContentMap["image"] }> = (props) => {
       class="focus-ring cursor-zoom-in appearance-none border-0 bg-transparent p-0"
       onClick={() => openLightbox(props.node.url)}
     >
-      <img src={src()} alt={props.node.alt ?? ""} title={props.node.title ?? undefined} />
+      <Show
+        when={src()}
+        fallback={
+          // Skeleton reserves space while the URL resolves, reducing CLS.
+          <div class="bg-surface-secondary flex min-h-24 min-w-32 animate-pulse items-center justify-center rounded">
+            <span class="i-material-symbols:image-outline text-text-secondary size-8 shrink-0 opacity-50" />
+          </div>
+        }
+      >
+        {(s) => (
+          <img
+            src={s()}
+            alt={props.node.alt ?? ""}
+            title={props.node.title ?? undefined}
+            loading="lazy"
+            decoding="async"
+          />
+        )}
+      </Show>
     </button>
   );
 };
@@ -225,16 +248,30 @@ const LightboxImage: Component<{ url: string }> = (props) => {
     });
   });
 
-  const src = () => (attachmentId() ? (objectUrl.latest ?? "") : props.url);
+  const src = (): string | null => {
+    if (!attachmentId()) return props.url;
+    return objectUrl.latest ?? null;
+  };
 
   return (
-    <img
-      src={src()}
-      alt=""
-      class="max-h-full max-w-full rounded shadow-2xl"
-      onClick={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.stopPropagation()}
-    />
+    <Show
+      when={src()}
+      fallback={
+        <div class="flex size-32 items-center justify-center">
+          <span class="i-material-symbols:hourglass-empty text-text-secondary size-8 shrink-0 animate-spin" />
+        </div>
+      }
+    >
+      {(s) => (
+        <img
+          src={s()}
+          alt=""
+          class="max-h-full max-w-full rounded shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        />
+      )}
+    </Show>
   );
 };
 
@@ -370,12 +407,10 @@ const CodeNode: Component<{ node: RootContentMap["code"] }> = (props) => {
       {/* Render based on language */}
       <Switch>
         <Match when={isMermaid()}>
+          {/* Skeleton while Mermaid downloads and renders. On error, MermaidDiagram
+              falls back to showing the source code with an error message. */}
           <Suspense
-            fallback={
-              <pre>
-                <code>{props.node.value}</code>
-              </pre>
-            }
+            fallback={<div class="bg-surface-secondary mb-4 min-h-32 animate-pulse rounded-lg" />}
           >
             <MermaidDiagram code={props.node.value} />
           </Suspense>
