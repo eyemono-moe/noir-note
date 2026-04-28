@@ -1,16 +1,11 @@
-import { createTreeCollection } from "@ark-ui/solid";
-import { Accordion } from "@ark-ui/solid/accordion";
-import { createMemo, Show, type Component } from "solid-js";
+import { Tabs } from "@ark-ui/solid/tabs";
+import { type Component, For } from "solid-js";
 
 import type { MemosCollection } from "../../db/tanstack";
-import { updateSidebarAccordionState, useSidebarAccordionState } from "../../store/configStore";
+import { updateSidebarTab, useSidebarTab } from "../../store/configStore";
 import type { Memo, MemoWithoutContent } from "../../types/memo";
-import { buildTree, type TreeNode } from "../../utils/tree";
-import { Outline } from "./Outline";
-import { RecentNotes } from "./RecentNotes";
-import { Tree } from "./Tree";
-
-import styles from "./sidebar.module.css";
+import { AttachmentsTab } from "./tabs/AttachmentsTab";
+import { ExplorerTab } from "./tabs/ExplorerTab";
 
 interface SidebarProps {
   currentPath: string;
@@ -21,89 +16,86 @@ interface SidebarProps {
   memosCollection: MemosCollection;
 }
 
+// ---------------------------------------------------------------------------
+// Tab registry
+// To add a new tab: push an entry here and add a <Tabs.Content> block below.
+// ---------------------------------------------------------------------------
+
+interface TabDef {
+  id: string;
+  /** UnoCSS icon class (Material Symbols) */
+  icon: string;
+  label: string;
+}
+
+const TAB_DEFS: TabDef[] = [
+  {
+    id: "explorer",
+    icon: "i-material-symbols:folder-outline-rounded",
+    label: "Explorer",
+  },
+  {
+    id: "attachments",
+    icon: "i-material-symbols:image-outline-rounded",
+    label: "Attachments",
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Sidebar
+// ---------------------------------------------------------------------------
+
 const Sidebar: Component<SidebarProps> = (props) => {
-  const accordionState = useSidebarAccordionState();
-
-  const tree = createMemo(() => buildTree(props.allMemos));
-
-  const collection = createMemo(() =>
-    createTreeCollection<TreeNode>({
-      nodeToValue: (node) => node.path,
-      nodeToString: (node) => node.name,
-      rootNode: { name: "ROOT", path: "", children: tree() },
-    }),
-  );
+  const activeTab = useSidebarTab();
 
   return (
-    <Accordion.Root
-      class="text-text-primary flex h-full w-full flex-col overflow-hidden"
-      multiple
-      collapsible
+    <Tabs.Root
+      orientation="vertical"
+      value={activeTab()}
+      onValueChange={(details) => updateSidebarTab(details.value)}
       lazyMount
-      value={accordionState()}
-      onValueChange={(details) => updateSidebarAccordionState(details.value)}
+      class="flex h-full w-full overflow-hidden"
     >
-      <Accordion.Item
-        class="flex shrink-0 flex-col overflow-hidden data-[state=open]:min-h-0 data-[state=open]:flex-1"
-        value="explorer"
-      >
-        <Accordion.ItemTrigger class="focus-ring text-text-secondary hover:bg-surface-transparent-hover hover:text-text-primary flex w-full shrink-0 cursor-pointer items-center justify-between bg-transparent px-3 py-1.5 text-[0.6875rem] font-bold tracking-[0.06em] uppercase select-none">
-          <span>Explorer</span>
-          <Accordion.ItemIndicator class="inline-flex items-center justify-center [transition:rotate_150ms_ease] data-[state=open]:[rotate:90deg]">
-            <span class="i-material-symbols:chevron-right-rounded size-3.5 shrink-0" />
-          </Accordion.ItemIndicator>
-        </Accordion.ItemTrigger>
-        <Accordion.ItemContent class={styles.ItemContent}>
-          <Show when={tree().length === 0}>
-            <div class="text-text-secondary px-4 py-8 text-center text-sm">No pages yet</div>
-          </Show>
-          <div class="p-1">
-            <Tree
-              collection={collection()}
-              onNavigate={props.onNavigate}
-              currentPath={props.currentPath}
-              onDelete={props.onDelete}
-              onInsert={props.onInsert}
-              allMemos={props.allMemos}
-            />
-          </div>
-        </Accordion.ItemContent>
-      </Accordion.Item>
+      {/* ── Narrow icon activity bar ─────────────────────────────────────── */}
+      <Tabs.List class="border-border-primary bg-surface-primary flex w-10 shrink-0 flex-col items-center gap-0.5 border-r py-1">
+        <For each={TAB_DEFS}>
+          {(tab) => (
+            <Tabs.Trigger
+              value={tab.id}
+              title={tab.label}
+              // `group` enables group-data-[selected] on the indicator child
+              class="group focus-ring text-text-secondary text-text-primary data-[selected]:text-text-accent hover:bg-surface-transparent-hover relative flex size-8 items-center justify-center rounded bg-transparent transition-colors"
+            >
+              {/* Left-edge active indicator (VS Code-style) */}
+              <span class="bg-text-accent pointer-events-none absolute inset-y-1.5 left-0 w-0.5 rounded-r opacity-0 transition-opacity group-data-[selected]:opacity-100" />
+              <span class={`${tab.icon} size-[1.125rem] shrink-0`} />
+            </Tabs.Trigger>
+          )}
+        </For>
+      </Tabs.List>
 
-      <Accordion.Item
-        class="flex shrink-0 flex-col overflow-hidden data-[state=open]:min-h-0 data-[state=open]:flex-1"
-        value="recent"
-      >
-        <Accordion.ItemTrigger class="focus-ring text-text-secondary hover:bg-surface-transparent-hover hover:text-text-primary flex w-full shrink-0 cursor-pointer items-center justify-between bg-transparent px-3 py-1.5 text-[0.6875rem] font-bold tracking-[0.06em] uppercase select-none">
-          <span>Recent</span>
-          <Accordion.ItemIndicator class="inline-flex items-center justify-center [transition:rotate_150ms_ease] data-[state=open]:[rotate:90deg]">
-            <span class="i-material-symbols:chevron-right-rounded size-3.5 shrink-0" />
-          </Accordion.ItemIndicator>
-        </Accordion.ItemTrigger>
-        <Accordion.ItemContent class={styles.ItemContent}>
-          <RecentNotes
-            allMemos={props.allMemos}
+      {/* ── Tab content panels ─────────────────────────────────────────── */}
+      {/*
+        data-[state=inactive]:hidden hides inactive panels without affecting
+        layout of the active panel (Ark UI sets data-state on Tabs.Content).
+      */}
+      <div class="min-w-0 flex-1 overflow-hidden">
+        <Tabs.Content value="explorer" class="h-full data-[state=inactive]:hidden">
+          <ExplorerTab
             currentPath={props.currentPath}
             onNavigate={props.onNavigate}
+            onDelete={props.onDelete}
+            onInsert={props.onInsert}
+            allMemos={props.allMemos}
+            memosCollection={props.memosCollection}
           />
-        </Accordion.ItemContent>
-      </Accordion.Item>
+        </Tabs.Content>
 
-      <Accordion.Item
-        class="flex shrink-0 flex-col overflow-hidden data-[state=open]:min-h-0 data-[state=open]:flex-1"
-        value="outline"
-      >
-        <Accordion.ItemTrigger class="focus-ring text-text-secondary hover:bg-surface-transparent-hover hover:text-text-primary flex w-full shrink-0 cursor-pointer items-center justify-between bg-transparent px-3 py-1.5 text-[0.6875rem] font-bold tracking-[0.06em] uppercase select-none">
-          <span>Outline</span>
-          <Accordion.ItemIndicator class="inline-flex items-center justify-center [transition:rotate_150ms_ease] data-[state=open]:[rotate:90deg]">
-            <span class="i-material-symbols:chevron-right-rounded size-3.5 shrink-0" />
-          </Accordion.ItemIndicator>
-        </Accordion.ItemTrigger>
-        <Accordion.ItemContent class={styles.ItemContent}>
-          <Outline />
-        </Accordion.ItemContent>
-      </Accordion.Item>
-    </Accordion.Root>
+        <Tabs.Content value="attachments" class="h-full data-[state=inactive]:hidden">
+          <AttachmentsTab />
+        </Tabs.Content>
+      </div>
+    </Tabs.Root>
   );
 };
 
