@@ -24,6 +24,7 @@ import type {
   UpdateMutationFnParams,
 } from "@tanstack/solid-db";
 
+import { migrateNotesFromRxDB } from "./migration";
 import { encodeNoteId, noteStore, type MemoDocument } from "./noteStore";
 import { createOpfsBroadcastSync } from "./opfsSync";
 
@@ -70,6 +71,10 @@ function opfsMemosCollectionOptions() {
     startSync: true,
     sync: {
       sync: createOpfsBroadcastSync<MemoDocument, string>(BROADCAST_CHANNEL_ID, async () => {
+        // Run the one-time migration from the old RxDB/IndexedDB store.
+        // This is a no-op once the migration flag is set in localStorage.
+        await migrateNotesFromRxDB();
+
         const docs = await noteStore.list();
 
         // First-run: seed the welcome note when OPFS is empty.
@@ -132,3 +137,42 @@ function opfsMemosCollectionOptions() {
  * Use with `useLiveQuery(() => memosCollection)` to get a reactive list.
  */
 export const memosCollection = createCollection(opfsMemosCollectionOptions());
+
+/** Type of the TanStack DB memos collection (used by Sidebar components). */
+export type MemosCollection = typeof memosCollection;
+
+// ---------------------------------------------------------------------------
+// Imperative query helpers
+// Used for operations that run outside of a reactive SolidJS context
+// (e.g. the "clean up unused attachments" command).
+// ---------------------------------------------------------------------------
+
+const ATTACHMENT_REF_RE = /attachment:\/\/([^\s)"']+)/g;
+
+/**
+ * One-shot query that returns the `content` field of every memo.
+ * Safe to call outside a reactive context.
+ */
+export async function queryAllMemoContents(): Promise<string[]> {
+  const docs = await noteStore.list();
+  return docs.map((doc) => doc.content);
+}
+
+/**
+ * One-shot query that returns the paths of every memo that references the
+ * given attachment ID at least once.
+ * Safe to call outside a reactive context.
+ */
+export async function queryMemoPathsReferencingAttachment(attachmentId: string): Promise<string[]> {
+  const docs = await noteStore.list();
+  const paths: string[] = [];
+  for (const doc of docs) {
+    for (const match of doc.content.matchAll(ATTACHMENT_REF_RE)) {
+      if (match[1] === attachmentId) {
+        paths.push(doc.path);
+        break; // count each note at most once
+      }
+    }
+  }
+  return paths;
+}

@@ -1,7 +1,7 @@
 import { Tabs } from "@ark-ui/solid/tabs";
 import { type Component, For } from "solid-js";
 
-import type { MemosCollection } from "../../db/tanstack";
+import type { MemosCollection } from "../../db/memoCollection";
 import { updateSidebarTab, useSidebarTab } from "../../store/configStore";
 import type { Memo, MemoWithoutContent } from "../../types/memo";
 import { AttachmentsTab } from "./tabs/AttachmentsTab";

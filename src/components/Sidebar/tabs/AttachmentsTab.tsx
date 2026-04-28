@@ -25,7 +25,7 @@ import {
   type AttachmentMeta,
 } from "../../../db/attachmentCollection";
 import { getImageUrl, getStorageEstimate } from "../../../db/imageStore";
-import { queryMemoPathsReferencingAttachment } from "../../../db/rxdb";
+import { queryMemoPathsReferencingAttachment } from "../../../db/memoCollection";
 
 import treeStyles from "../tree.module.css";
 

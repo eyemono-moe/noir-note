@@ -1,5 +1,5 @@
 import { attachmentsCollection, cleanupOrphanedAttachments } from "../../db/attachmentCollection";
-import { queryAllMemoContents } from "../../db/rxdb";
+import { queryAllMemoContents } from "../../db/memoCollection";
 import { updateSidebarTab } from "../../store/configStore";
 import type { Command } from "../types";
 
