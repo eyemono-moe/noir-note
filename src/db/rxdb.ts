@@ -109,15 +109,26 @@ export async function queryAllMemoContents(): Promise<string[]> {
   return docs.map((doc) => doc.content);
 }
 
+const ATTACHMENT_REF_RE = /attachment:\/\/([^\s)"']+)/g;
+
 /**
- * One-shot query that returns `{ path, content }` for every memo.
- * Used by the attachment manager to cross-reference which notes reference
- * which attachment IDs.
+ * One-shot query that returns the paths of every memo that references the given
+ * attachment ID at least once.
+ * Safe to call outside a reactive context (does not require SolidJS owner).
  */
-export async function queryAllMemos(): Promise<{ path: string; content: string }[]> {
+export async function queryMemoPathsReferencingAttachment(attachmentId: string): Promise<string[]> {
   if (!_db) return [];
   const docs = await _db.memos.find().exec();
-  return docs.map((doc) => ({ path: doc.path, content: doc.content }));
+  const paths: string[] = [];
+  for (const doc of docs) {
+    for (const match of doc.content.matchAll(ATTACHMENT_REF_RE)) {
+      if (match[1] === attachmentId) {
+        paths.push(doc.path);
+        break; // count each note at most once
+      }
+    }
+  }
+  return paths;
 }
 
 /**

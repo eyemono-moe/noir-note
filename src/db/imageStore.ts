@@ -128,7 +128,7 @@ export async function listImages(): Promise<ImageMeta[]> {
 
   for await (const [name, handle] of dir.entries()) {
     if (handle.kind === "file") {
-      const file = await (handle as FileSystemFileHandle).getFile();
+      const file = await handle.getFile();
       results.push({
         id: name,
         size: file.size,

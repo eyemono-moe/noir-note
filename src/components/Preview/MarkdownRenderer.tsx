@@ -1,4 +1,4 @@
-import { Clipboard } from "@ark-ui/solid";
+import { Carousel, Clipboard, Dialog } from "@ark-ui/solid";
 import type { Node, Root, RootContent, RootContentMap } from "mdast";
 import mermaid from "mermaid";
 import remarkFrontmatter from "remark-frontmatter";
@@ -16,6 +16,7 @@ import {
   createMemo,
   createRenderEffect,
   createResource,
+  createSignal,
   onCleanup,
   useContext,
 } from "solid-js";
@@ -48,6 +49,12 @@ interface MarkdownRendererProps {
  */
 type CheckboxToggleFn = (offset: number, checked: boolean) => void;
 const CheckboxToggleContext = createContext<() => CheckboxToggleFn | undefined>(() => undefined);
+
+/**
+ * Context that allows any ImageNode in the tree to open the lightbox.
+ * Receives the raw image URL (attachment://id or external URL).
+ */
+const LightboxContext = createContext<(url: string) => void>(() => {});
 
 /**
  * All possible mdast node types we handle in rendering
@@ -137,6 +144,8 @@ const LinkNode: Component<{ node: RootContentMap["link"] }> = (props) => {
 };
 
 const ImageNode: Component<{ node: RootContentMap["image"] }> = (props) => {
+  const openLightbox = useContext(LightboxContext);
+
   const isAttachment = () => props.node.url.startsWith("attachment://");
   const attachmentId = () => (isAttachment() ? props.node.url.slice("attachment://".length) : null);
 
@@ -160,7 +169,57 @@ const ImageNode: Component<{ node: RootContentMap["image"] }> = (props) => {
 
   const src = () => (isAttachment() ? (objectUrl.latest ?? "") : props.node.url);
 
-  return <img src={src()} alt={props.node.alt ?? ""} title={props.node.title ?? undefined} />;
+  return (
+    <button
+      type="button"
+      class="focus-ring cursor-zoom-in appearance-none border-0 bg-transparent p-0"
+      onClick={() => openLightbox(props.node.url)}
+    >
+      <img src={src()} alt={props.node.alt ?? ""} title={props.node.title ?? undefined} />
+    </button>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Lightbox helpers (used by MarkdownRenderer)
+// ---------------------------------------------------------------------------
+
+/**
+ * Collect all image URLs from an AST subtree in document order.
+ * Used to build the prev/next navigation list for the lightbox.
+ */
+function collectImageUrls(nodes: readonly RootContent[]): string[] {
+  const urls: string[] = [];
+  function walk(node: RootContent) {
+    if (node.type === "image") urls.push((node as RootContentMap["image"]).url);
+    if ("children" in node) {
+      for (const child of (node as { children: RootContent[] }).children) walk(child);
+    }
+  }
+  for (const node of nodes) walk(node);
+  return urls;
+}
+
+/**
+ * Full-size image rendered inside the lightbox dialog.
+ * Resolves attachment:// URLs the same way ImageNode does.
+ */
+const LightboxImage: Component<{ url: string }> = (props) => {
+  const attachmentId = () =>
+    props.url.startsWith("attachment://") ? props.url.slice("attachment://".length) : null;
+
+  const [objectUrl] = createResource(attachmentId, (id) => getImageUrl(id), { initialValue: null });
+
+  createEffect(() => {
+    const url = objectUrl.latest;
+    onCleanup(() => {
+      if (url) URL.revokeObjectURL(url);
+    });
+  });
+
+  const src = () => (attachmentId() ? (objectUrl.latest ?? "") : props.url);
+
+  return <img src={src()} alt="" class="size-full object-contain shadow-2xl" />;
 };
 
 const InlineCodeNode: Component<{ node: RootContentMap["inlineCode"] }> = (props) => {
@@ -674,6 +733,8 @@ function withReconcileKeys(root: Root): Root {
 // ============================================================================
 
 const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
+  const [carouselContainerRef, setCarouselContainerRef] = createSignal<HTMLDivElement | null>(null);
+
   // Parse markdown AST asynchronously
   const [parseResult] = createResource(
     () => props.content,
@@ -712,19 +773,105 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
   const footnotes = createMemo(() => extractFootnotes(ast.children));
   const checkboxToggle = createMemo(() => props.onCheckboxToggle);
 
+  // ── Lightbox ──────────────────────────────────────────────────────────────
+
+  // All image URLs in document order — rebuilt when the AST changes.
+  const imageUrls = createMemo(() => collectImageUrls(ast.children));
+
+  // null = dialog closed; number = index of the currently displayed image.
+  const [lightboxIndex, setLightboxIndex] = createSignal<number | null>(null);
+
+  const openLightbox = (url: string) => {
+    const idx = imageUrls().indexOf(url);
+    setLightboxIndex(idx !== -1 ? idx : 0);
+  };
+
   return (
-    <CheckboxToggleContext.Provider value={checkboxToggle}>
-      <div ref={props.containerRef} class="markdown-body h-full w-full overflow-auto p-4">
-        <Show when={parseResult.latest} fallback={<p>Error parsing markdown</p>}>
-          <>
-            <NodesRenderer nodes={ast.children} />
-            <Show when={footnotes().length > 0}>
-              <FootNotesSection footnotes={footnotes()} />
+    <>
+      <LightboxContext.Provider value={openLightbox}>
+        <CheckboxToggleContext.Provider value={checkboxToggle}>
+          <div ref={props.containerRef} class="markdown-body h-full w-full overflow-auto p-4">
+            <Show when={parseResult.latest} fallback={<p>Error parsing markdown</p>}>
+              <>
+                <NodesRenderer nodes={ast.children} />
+                <Show when={footnotes().length > 0}>
+                  <FootNotesSection footnotes={footnotes()} />
+                </Show>
+              </>
             </Show>
-          </>
-        </Show>
-      </div>
-    </CheckboxToggleContext.Provider>
+          </div>
+        </CheckboxToggleContext.Provider>
+      </LightboxContext.Provider>
+
+      {/* ── Lightbox Dialog ─────────────────────────────────────────────── */}
+      <Dialog.Root
+        open={lightboxIndex() !== null}
+        onOpenChange={(details) => {
+          if (!details.open) setLightboxIndex(null);
+        }}
+        lazyMount
+        unmountOnExit
+        initialFocusEl={carouselContainerRef}
+      >
+        <Dialog.Backdrop class="bg-overlay fixed inset-0 z-50" />
+        {/*
+          Positioner covers the entire viewport. Content fills it so that the
+          close button can be absolutely anchored to the top-right corner
+          independent of image size.
+        */}
+        <Dialog.Positioner class="fixed inset-0 z-50">
+          <Dialog.Content class="size-screen relative flex flex-col items-center justify-center gap-3 p-8 outline-none">
+            {/* Close — always top-right regardless of image size */}
+            <Dialog.CloseTrigger class="focus-ring hover:bg-surface-transparent-hover text-text-secondary absolute top-4 right-4 inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors">
+              <span class="i-material-symbols:close-rounded size-5" />
+            </Dialog.CloseTrigger>
+
+            {/* Carousel — one slide per image */}
+            <Carousel.Root
+              slideCount={imageUrls().length}
+              loop
+              page={lightboxIndex() ?? 0}
+              onPageChange={(d) => setLightboxIndex(d.page)}
+              class="flex w-full flex-col gap-3 overflow-hidden"
+            >
+              <Carousel.ItemGroup
+                class="flex-1 overflow-hidden rounded outline-none"
+                ref={setCarouselContainerRef}
+              >
+                <For each={imageUrls()}>
+                  {(url, i) => (
+                    <Carousel.Item
+                      index={i()}
+                      class="flex items-center justify-center overflow-hidden"
+                    >
+                      <LightboxImage url={url} />
+                    </Carousel.Item>
+                  )}
+                </For>
+              </Carousel.ItemGroup>
+
+              <Show when={imageUrls().length > 1}>
+                <Carousel.Control class="flex shrink-0 items-center justify-center gap-3">
+                  <Carousel.PrevTrigger
+                    title="Previous image (←)"
+                    class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors"
+                  >
+                    <span class="i-material-symbols:chevron-left-rounded size-5" />
+                  </Carousel.PrevTrigger>
+                  <Carousel.ProgressText class="text-text-secondary min-w-12 text-center text-sm tabular-nums select-none" />
+                  <Carousel.NextTrigger
+                    title="Next image (→)"
+                    class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors"
+                  >
+                    <span class="i-material-symbols:chevron-right-rounded size-5" />
+                  </Carousel.NextTrigger>
+                </Carousel.Control>
+              </Show>
+            </Carousel.Root>
+          </Dialog.Content>
+        </Dialog.Positioner>
+      </Dialog.Root>
+    </>
   );
 };
 
