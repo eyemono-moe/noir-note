@@ -6,11 +6,9 @@ import { useMemosCollection } from "../../context/db";
 const MarkdownRenderer = lazy(() => import("../Preview/MarkdownRenderer"));
 
 const MemoPreview: Component<{ path: string }> = (props) => {
-  const memosCollectionResource = useMemosCollection();
+  const collection = useMemosCollection();
 
   const memoQuery = useLiveQuery((q) => {
-    const collection = memosCollectionResource();
-    if (!collection) return null;
     const path = props.path;
     return q
       .from({ memos: collection })

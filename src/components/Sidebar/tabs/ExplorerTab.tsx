@@ -2,7 +2,7 @@ import { createTreeCollection } from "@ark-ui/solid";
 import { Accordion } from "@ark-ui/solid/accordion";
 import { type Component, Show, createMemo } from "solid-js";
 
-import type { MemosCollection } from "../../../db/tanstack";
+import type { MemosCollection } from "../../../db/memoCollection";
 import { updateSidebarAccordionState, useSidebarAccordionState } from "../../../store/configStore";
 import type { Memo, MemoWithoutContent } from "../../../types/memo";
 import { buildTree, type TreeNode } from "../../../utils/tree";

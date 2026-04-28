@@ -25,7 +25,8 @@ import {
   type AttachmentMeta,
 } from "../../../db/attachmentCollection";
 import { getImageUrl, getStorageEstimate } from "../../../db/imageStore";
-import { queryMemoPathsReferencingAttachment } from "../../../db/rxdb";
+import { queryMemoPathsReferencingAttachment } from "../../../db/memoCollection";
+import { noteStore } from "../../../db/noteStore";
 
 import treeStyles from "../tree.module.css";
 
@@ -378,9 +379,12 @@ export const AttachmentsTab: Component = () => {
   // Storage quota/usage — fetched once on mount
   const [estimate] = createResource(getStorageEstimate);
 
-  const totalSize = createMemo(() =>
+  const attachmentsSize = createMemo(() =>
     (attachmentsQuery() ?? []).reduce((sum, a) => sum + a.size, 0),
   );
+
+  // Notes OPFS size — fetched once on mount via the worker
+  const [notesSize] = createResource(() => noteStore.getSize());
 
   const handleFileChange = async (e: Event) => {
     const input = e.currentTarget as HTMLInputElement;
@@ -418,16 +422,26 @@ export const AttachmentsTab: Component = () => {
       {/* Storage stats */}
       <Show when={attachmentsQuery.isReady}>
         <div class="border-border-primary shrink-0 border-b px-3 pb-2">
-          <div class="mb-1 flex items-baseline justify-between">
-            <span class="text-text-primary text-xs font-medium">{formatBytes(totalSize())}</span>
-            <Show when={estimate()?.quota}>
-              {(q) => <span class="text-text-secondary text-[0.625rem]">/ {formatBytes(q())}</span>}
-            </Show>
+          {/* Per-category breakdown */}
+          <div class="mb-1.5 flex flex-col gap-0.5">
+            <div class="flex items-baseline justify-between">
+              <span class="text-text-secondary text-[0.625rem]">Notes</span>
+              <span class="text-text-primary text-[0.625rem] font-medium tabular-nums">
+                {notesSize.loading ? "…" : formatBytes(notesSize() ?? 0)}
+              </span>
+            </div>
+            <div class="flex items-baseline justify-between">
+              <span class="text-text-secondary text-[0.625rem]">Attachments</span>
+              <span class="text-text-primary text-[0.625rem] font-medium tabular-nums">
+                {formatBytes(attachmentsSize())}
+              </span>
+            </div>
           </div>
+          {/* Origin-wide quota bar */}
           <Show when={estimate()?.quota && estimate()?.usage != null}>
             <StorageBar used={estimate()!.usage!} quota={estimate()!.quota!} />
             <p class="text-text-secondary mt-0.5 text-[0.625rem]">
-              Origin: {formatBytes(estimate()!.usage!)} used
+              Origin: {formatBytes(estimate()!.usage!)} / {formatBytes(estimate()!.quota!)}
             </p>
           </Show>
         </div>

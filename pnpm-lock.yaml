@@ -63,9 +63,6 @@ importers:
       '@solidjs/router':
         specifier: ^0.16.1
         version: 0.16.1(solid-js@1.9.12)
-      '@tanstack/rxdb-db-collection':
-        specifier: ^0.1.71
-        version: 0.1.71(rxdb@17.1.0(rxjs@7.8.2))(rxjs@7.8.2)(typescript@6.0.2)
       '@tanstack/solid-db':
         specifier: ^0.2.19
         version: 0.2.19(solid-js@1.9.12)(typescript@6.0.2)
@@ -2381,13 +2378,6 @@ packages:
   '@tanstack/pacer-lite@0.2.1':
     resolution: {integrity: sha512-3PouiFjR4B6x1c969/Pl4ZIJleof1M0n6fNX8NRiC9Sqv1g06CVDlEaXUR4212ycGFyfq4q+t8Gi37Xy+z34iQ==}
     engines: {node: '>=18'}
-
-  '@tanstack/rxdb-db-collection@0.1.71':
-    resolution: {integrity: sha512-B4wH+wQ1Xt+hyMdNIjBrqsjV10PAKllh/rLtnogPaLXyObznKm3dMWEUApPZFuV2sR1AEPSbw0d8DmqX8Klt2Q==}
-    peerDependencies:
-      rxdb: '>=16.17.2'
-      rxjs: '>=7.8.2'
-      typescript: '>=4.7'
 
   '@tanstack/solid-db@0.2.19':
     resolution: {integrity: sha512-3pbTO3p+yznbJfVcSU+oq4r52Wd3vsDIeeokoi7G8S81FgztRgT+6jkPBUUxZdN/fH6pOIDqCFTB1ahS+ZVKWw==}
@@ -7944,18 +7934,6 @@ snapshots:
       '@tanstack/store': 0.9.3
 
   '@tanstack/pacer-lite@0.2.1': {}
-
-  '@tanstack/rxdb-db-collection@0.1.71(rxdb@17.1.0(rxjs@7.8.2))(rxjs@7.8.2)(typescript@6.0.2)':
-    dependencies:
-      '@standard-schema/spec': 1.1.0
-      '@tanstack/db': 0.6.5(typescript@6.0.2)
-      '@tanstack/store': 0.9.3
-      debug: 4.4.3
-      rxdb: 17.1.0(rxjs@7.8.2)
-      rxjs: 7.8.2
-      typescript: 6.0.2
-    transitivePeerDependencies:
-      - supports-color
 
   '@tanstack/solid-db@0.2.19(solid-js@1.9.12)(typescript@6.0.2)':
     dependencies:

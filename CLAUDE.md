@@ -1,11 +1,11 @@
 # eyemono.md
 
-A browser-based markdown note-taking app. All notes stored locally in IndexedDB. No backend.
+A browser-based markdown note-taking app. All notes and attachments stored locally using OPFS (Origin Private File System). No backend.
 
 ## Technology Stack
 
 - **Frontend**: SolidJS 1.9.12, @solidjs/router
-- **Database**: RxDB 17.1.0 (Dexie storage) + TanStack DB for reactivity
+- **Storage**: OPFS via Web Worker (`FileSystemSyncAccessHandle`) + TanStack DB for reactivity
 - **Editor**: CodeMirror 6.x with markdown extensions and formatting worker
 - **UI Components**: Ark UI 5.36.0, @solid-primitives/\*
 - **Markdown**: unified + remark plugins
@@ -13,11 +13,46 @@ A browser-based markdown note-taking app. All notes stored locally in IndexedDB.
 
 ## Architecture
 
-### Database Pattern
+### Storage Pattern
 
-RxDB handles IndexedDB persistence with automatic multi-tab sync. TanStack DB wraps the RxDB collection for reactive UI queries via `useLiveQuery`. Updates go through `collection.update()` which applies optimistically.
+All persistent data lives in OPFS, accessed through dedicated Web Workers using the synchronous `FileSystemSyncAccessHandle` API (worker-only, lower latency than async writes on the main thread).
 
-Key files: `src/db/rxdb.ts`, `src/db/tanstack.ts`, `src/context/db.tsx`
+**Notes** (`src/db/noteStore.worker.ts` + `src/db/noteStore.ts`):
+
+- Each note is stored as `OPFS/notes/{base64url(path)}.json` containing the full `MemoDocument`
+- Worker handles list / write / delete / getSize operations
+- Main thread communicates with the worker via a Promise-based message bridge (`noteStore`)
+
+**Attachments** (`src/db/imageStore.ts`):
+
+- Binary files stored as `OPFS/attachments/{uuid}-{filename}`
+- Accessed directly from the main thread using the async OPFS API (no worker needed for binary blobs)
+
+**TanStack DB** wraps both OPFS stores with reactive query primitives via `useLiveQuery`. Updates go through `collection.insert()` / `collection.update()` / `collection.delete()`, which apply optimistically and then persist to OPFS.
+
+**Cross-tab sync** uses `BroadcastChannel`. The shared helper `createOpfsBroadcastSync()` (`src/db/opfsSync.ts`) implements the subscribe-before-fetch + event-buffer pattern to avoid losing events during the initial enumerate.
+
+Key files:
+
+```text
+src/db/
+  opfsSync.ts              ← shared BroadcastChannel sync helper
+  noteStore.ts             ← main-thread bridge (Promise API over postMessage)
+  noteStore.worker.ts      ← OPFS Worker (FileSystemSyncAccessHandle writes)
+  memoCollection.ts        ← TanStack DB notes collection + imperative queries
+  imageStore.ts            ← async OPFS helpers for attachment binary files
+  attachmentCollection.ts  ← TanStack DB attachments collection
+  migration.ts             ← one-time IndexedDB → OPFS migration (runs on startup)
+src/context/db.tsx         ← DBProvider + useMemosCollection() hook
+```
+
+### BroadcastChannel message types
+
+When writing mutations, broadcast the correct TanStack DB message type:
+
+- `onInsert` → `{ type: "insert", value: modified }`
+- `onUpdate` → `{ type: "update", value: modified }` ← **not** "insert"; using "insert" for an existing key crashes TanStack DB with a `Symbol(liveQueryInternal)` error
+- `onDelete` → `{ type: "delete", key }`
 
 ### Command System
 
@@ -35,7 +70,7 @@ Edit/split/preview mode is controlled by adjusting Ark UI Splitter panel sizes v
 
 ### Frontmatter
 
-Notes support YAML frontmatter for metadata (title, tags, etc.). Parsed via `src/utils/frontmatter.ts`; the parsed `metadata` object is stored alongside `content` in RxDB.
+Notes support YAML frontmatter for metadata (title, tags, etc.). Parsed via `src/utils/frontmatter.ts`; the parsed `metadata` object is stored alongside `content` in the OPFS JSON file.
 
 ## Styling
 
@@ -124,11 +159,13 @@ Pair them with `size-*` and `shrink-0`:
 
 ## Design Decisions
 
-1. **RxDB + TanStack DB** — RxDB provides IndexedDB persistence and multi-tab sync; TanStack DB adds reactive query primitives on top
-2. **unified over marked** — More composable remark plugin ecosystem
-3. **Web Worker for formatting** — Non-blocking markdown formatting; fast-diff minimizes diff computation cost
-4. **Ark UI** — Accessible headless components with minimal styling assumptions
-5. **LocalStorage for UI state** — Simple persistence for theme and other UI preferences; kept separate from note data
+1. **OPFS + Web Worker** — `FileSystemSyncAccessHandle` (worker-only) gives synchronous, lower-latency writes. Main thread accesses storage via a Promise-based message bridge (`noteStore.ts`)
+2. **TanStack DB** — provides reactive query primitives (`useLiveQuery`) on top of the OPFS store; optimistic updates apply immediately to the UI
+3. **BroadcastChannel for cross-tab sync** — each mutation handler broadcasts the change; the sync function buffers events received during the initial OPFS enumerate
+4. **unified over marked** — More composable remark plugin ecosystem
+5. **Web Worker for formatting** — Non-blocking markdown formatting; fast-diff minimizes diff computation cost
+6. **Ark UI** — Accessible headless components with minimal styling assumptions
+7. **LocalStorage for UI state** — Simple persistence for theme and other UI preferences; kept separate from note data
 
 ## Development Commands
 
@@ -136,6 +173,7 @@ Pair them with `size-*` and `shrink-0`:
 vp install   # Install dependencies
 vp dev       # Start dev server
 vp run check # Type check + lint + format + knip
+vp run fix   # Auto-fix lint/format + knip --fix (remove unused exports/deps)
 vp build     # Production build
 vp preview   # Preview production build
 ```
@@ -218,8 +256,20 @@ These commands map to their corresponding tools. For example, `vp dev --port 300
 - **Import JavaScript modules from `vite-plus`:** Instead of importing from `vite` or `vitest`, all modules should be imported from the project's `vite-plus` dependency. For example, `import { defineConfig } from 'vite-plus';` or `import { expect, test, vi } from 'vite-plus/test';`. You must not install `vitest` to import test utilities.
 - **Type-Aware Linting:** There is no need to install `oxlint-tsgolint`, `vp lint --type-aware` works out of the box.
 
+## CI Integration
+
+For GitHub Actions, consider using [`voidzero-dev/setup-vp`](https://github.com/voidzero-dev/setup-vp) to replace separate `actions/setup-node`, package-manager setup, cache, and install steps with a single action.
+
+```yaml
+- uses: voidzero-dev/setup-vp@v1
+  with:
+    cache: true
+- run: vp check
+- run: vp test
+```
+
 ## Review Checklist for Agents
 
 - [ ] Run `vp install` after pulling remote changes and before getting started.
-- [ ] Run `vp run check` and `vp test` to validate changes.
+- [ ] Run `vp check` and `vp test` to validate changes.
 <!--VITE PLUS END-->

@@ -11,15 +11,12 @@ import { parseFrontmatter } from "../utils/frontmatter";
  * Returns a debounced save function and immediate save function
  */
 export function useMemoSaver() {
-  const memosCollectionResource = useMemosCollection();
+  const collection = useMemosCollection();
 
   // Track existing memo to determine insert vs update
   const [currentPath, setCurrentPath] = createSignal("");
 
   const existingMemoQuery = useLiveQuery((q) => {
-    const collection = memosCollectionResource();
-    if (!collection) return null;
-
     const path = currentPath();
     if (!path) return null;
 
@@ -30,12 +27,6 @@ export function useMemoSaver() {
   });
 
   const saveImmediate = (path: string, content: string) => {
-    const collection = memosCollectionResource();
-    if (!collection) {
-      console.error("[useMemoSaver] Cannot save: collection not ready");
-      return;
-    }
-
     try {
       const now = Date.now();
       const { metadata } = parseFrontmatter(content);
@@ -81,14 +72,11 @@ export function useMemoSaver() {
  * Hook for managing memo content with auto-sync
  */
 export function useMemoContent(path: Accessor<string>) {
-  const memosCollectionResource = useMemosCollection();
+  const collection = useMemosCollection();
   const [localContent, setLocalContent] = createSignal("");
 
   // Query for current memo
   const currentMemoQuery = useLiveQuery((q) => {
-    const collection = memosCollectionResource();
-    if (!collection) return null;
-
     const currentPath = path();
     return q
       .from({ memos: collection })

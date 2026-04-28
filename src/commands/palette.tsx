@@ -34,16 +34,14 @@ const CommandPalette: Component = () => {
   const [inputValue, setInputValue] = createSignal("");
 
   // Get all memos for palette
-  const memosCollectionResource = useMemosCollection();
-  const allMemosQuery = useLiveQuery((q) => {
-    const collection = memosCollectionResource();
-    if (!collection) return null;
-    return q.from({ memos: collection }).select(({ memos }) => ({
+  const memosCollection = useMemosCollection();
+  const allMemosQuery = useLiveQuery((q) =>
+    q.from({ memos: memosCollection }).select(({ memos }) => ({
       path: memos.path,
       title: memos.metadata?.title,
       metadata: memos.metadata,
-    }));
-  });
+    })),
+  );
 
   const { collection, filter, upsert, remove } = useListCollection(() => {
     const items: PaletteItem[] = [];
