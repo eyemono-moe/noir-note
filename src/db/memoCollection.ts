@@ -110,7 +110,8 @@ function opfsMemosCollectionOptions() {
       const channel = new BroadcastChannel(BROADCAST_CHANNEL_ID);
       for (const { modified } of params.transaction.mutations) {
         await noteStore.write(modified);
-        channel.postMessage({ type: "insert", value: modified });
+        // "update" (not "insert") so receiving tabs know the row already exists.
+        channel.postMessage({ type: "update", value: modified });
       }
       channel.close();
     },

@@ -38,15 +38,6 @@ export function encodeNoteId(path: string): string {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
-/** Reverse of encodeNoteId. */
-export function decodeNoteId(id: string): string {
-  const padded = id + "=".repeat((4 - (id.length % 4)) % 4);
-  const binary = atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return new TextDecoder().decode(bytes);
-}
-
 // ---------------------------------------------------------------------------
 // Worker message protocol
 // ---------------------------------------------------------------------------

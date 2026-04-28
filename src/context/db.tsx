@@ -1,8 +1,6 @@
 import { createContext, useContext, type ParentComponent } from "solid-js";
 
-import { memosCollection, type MemoDocument } from "../db/memoCollection";
-
-export type { MemoDocument };
+import { memosCollection } from "../db/memoCollection";
 
 // ---------------------------------------------------------------------------
 // Context
