@@ -16,14 +16,10 @@
  */
 
 import { createCollection } from "@tanstack/solid-db";
-import type {
-  ChangeMessageOrDeleteKeyMessage,
-  DeleteMutationFnParams,
-  InsertMutationFnParams,
-  SyncConfig,
-} from "@tanstack/solid-db";
+import type { DeleteMutationFnParams, InsertMutationFnParams } from "@tanstack/solid-db";
 
 import { deleteImage, listImages, saveImage, type ImageMeta } from "./imageStore";
+import { createOpfsBroadcastSync } from "./opfsSync";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,8 +27,6 @@ import { deleteImage, listImages, saveImage, type ImageMeta } from "./imageStore
 
 /** Attachment metadata stored in the TanStack DB collection. */
 export type AttachmentMeta = ImageMeta;
-
-type AttachmentMsg = ChangeMessageOrDeleteKeyMessage<AttachmentMeta, string>;
 
 const BROADCAST_CHANNEL_ID = "eyemono-attachments";
 
@@ -44,66 +38,12 @@ const BROADCAST_CHANNEL_ID = "eyemono-attachments";
 // ---------------------------------------------------------------------------
 
 function opfsAttachmentCollectionOptions() {
-  // ── sync ────────────────────────────────────────────────────────────────
-  const sync: SyncConfig<AttachmentMeta, string>["sync"] = ({
-    begin,
-    write,
-    commit,
-    markReady,
-  }) => {
-    let initialSyncComplete = false;
-    const eventBuffer: AttachmentMsg[] = [];
-
-    // Start BroadcastChannel listener BEFORE the initial OPFS enumerate so
-    // that events arriving during the async enumerate are buffered rather
-    // than lost.
-    const channel = new BroadcastChannel(BROADCAST_CHANNEL_ID);
-    channel.onmessage = (evt: MessageEvent<AttachmentMsg>) => {
-      if (!initialSyncComplete) {
-        eventBuffer.push(evt.data);
-        return;
-      }
-      begin({ immediate: true });
-      write(evt.data);
-      commit();
-    };
-
-    // Initial state: enumerate every file in OPFS/attachments/
-    void (async () => {
-      try {
-        const files = await listImages();
-        begin();
-        for (const f of files) {
-          write({ type: "insert", value: f });
-        }
-        commit();
-
-        // Flush events that arrived while the initial fetch was in flight
-        initialSyncComplete = true;
-        if (eventBuffer.length > 0) {
-          begin();
-          for (const msg of eventBuffer) write(msg);
-          commit();
-          eventBuffer.splice(0);
-        }
-      } catch (err) {
-        console.error("[attachments] Initial OPFS sync failed:", err);
-        initialSyncComplete = true; // prevent buffer from growing unboundedly
-      } finally {
-        // Always mark ready so the UI doesn't stay in the loading state
-        markReady();
-      }
-    })();
-
-    return () => channel.close();
-  };
-
   return {
     id: "attachments",
     getKey: (item: AttachmentMeta) => item.id,
     startSync: true,
     sync: {
-      sync,
+      sync: createOpfsBroadcastSync<AttachmentMeta, string>(BROADCAST_CHANNEL_ID, listImages),
       // Every write carries the full record, not just a delta
       rowUpdateMode: "full" as const,
     },
@@ -116,7 +56,7 @@ function opfsAttachmentCollectionOptions() {
     onInsert: async (params: InsertMutationFnParams<AttachmentMeta, string>) => {
       const channel = new BroadcastChannel(BROADCAST_CHANNEL_ID);
       for (const { modified } of params.transaction.mutations) {
-        channel.postMessage({ type: "insert", value: modified } satisfies AttachmentMsg);
+        channel.postMessage({ type: "insert", value: modified });
       }
       channel.close();
     },
@@ -131,7 +71,7 @@ function opfsAttachmentCollectionOptions() {
       await Promise.all(ids.map(deleteImage));
       const channel = new BroadcastChannel(BROADCAST_CHANNEL_ID);
       for (const id of ids) {
-        channel.postMessage({ type: "delete", key: id } satisfies AttachmentMsg);
+        channel.postMessage({ type: "delete", key: id });
       }
       channel.close();
     },
