@@ -28,8 +28,6 @@ import { migrateNotesFromRxDB } from "./migration";
 import { encodeNoteId, noteStore, type MemoDocument } from "./noteStore";
 import { createOpfsBroadcastSync } from "./opfsSync";
 
-export type { MemoDocument };
-
 const BROADCAST_CHANNEL_ID = "eyemono-memos";
 
 // ---------------------------------------------------------------------------

@@ -52,60 +52,51 @@ const MemoPageContent: Component = () => {
   );
 
   return (
-    <Show
-      when={allMemosQuery.isReady}
-      fallback={
-        <div class="flex h-screen w-screen items-center justify-center">
-          <div class="text-text-secondary text-lg">Initializing database...</div>
-        </div>
-      }
-    >
-      <div class="bg-surface-primary text-text-primary h-screen w-screen overflow-hidden">
-        <SplitView
-          splitter={editorSplitter}
-          left={
-            <Suspense fallback={<div class="text-text-secondary p-4">Loading sidebar...</div>}>
-              <Sidebar
-                currentPath={currentPath()}
-                onNavigate={(path) => navigate(path)}
-                onDelete={(path) => {
-                  collection.delete(path);
-                }}
-                onInsert={(memo) => {
-                  const now = Date.now();
-                  collection.insert({ ...memo, content: "", createdAt: now, updatedAt: now });
-                }}
-                allMemos={allMemosQuery() || []}
-                memosCollection={collection}
+    <div class="bg-surface-primary text-text-primary h-screen w-screen overflow-hidden">
+      <SplitView
+        splitter={editorSplitter}
+        left={
+          <Suspense fallback={<div class="text-text-secondary p-4">Loading sidebar...</div>}>
+            <Sidebar
+              currentPath={currentPath()}
+              onNavigate={(path) => navigate(path)}
+              onDelete={(path) => {
+                collection.delete(path);
+              }}
+              onInsert={(memo) => {
+                const now = Date.now();
+                collection.insert({ ...memo, content: "", createdAt: now, updatedAt: now });
+              }}
+              allMemos={allMemosQuery() || []}
+              memosCollection={collection}
+            />
+          </Suspense>
+        }
+        center={
+          <Show when={isReady()}>
+            <Suspense fallback={<div class="text-text-secondary p-4">Loading editor...</div>}>
+              <Editor
+                content={content()}
+                onChange={handleContentChange}
+                placeholder="Start typing..."
+                onEditorView={setEditorView}
               />
             </Suspense>
-          }
-          center={
-            <Show when={isReady()}>
-              <Suspense fallback={<div class="text-text-secondary p-4">Loading editor...</div>}>
-                <Editor
-                  content={content()}
-                  onChange={handleContentChange}
-                  placeholder="Start typing..."
-                  onEditorView={setEditorView}
-                />
-              </Suspense>
-            </Show>
-          }
-          right={
-            <Show when={isReady()}>
-              <Suspense fallback={<div class="text-text-secondary p-4">Loading preview...</div>}>
-                <MarkdownRenderer
-                  content={content()}
-                  onCheckboxToggle={handleCheckboxToggle}
-                  containerRef={setPreviewContainer}
-                />
-              </Suspense>
-            </Show>
-          }
-        />
-      </div>
-    </Show>
+          </Show>
+        }
+        right={
+          <Show when={isReady()}>
+            <Suspense fallback={<div class="text-text-secondary p-4">Loading preview...</div>}>
+              <MarkdownRenderer
+                content={content()}
+                onCheckboxToggle={handleCheckboxToggle}
+                containerRef={setPreviewContainer}
+              />
+            </Suspense>
+          </Show>
+        }
+      />
+    </div>
   );
 };
 
