@@ -1,6 +1,5 @@
 import { Carousel, Clipboard, Dialog } from "@ark-ui/solid";
 import type { Node, Root, RootContent, RootContentMap } from "mdast";
-import mermaid from "mermaid";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
@@ -244,6 +243,7 @@ const MermaidDiagram: Component<{ code: string }> = (props) => {
     () => ({ code: props.code, dark: isDark() }),
     async (params) => {
       try {
+        const { default: mermaid } = await import("mermaid");
         const id = `mermaid-${Math.random().toString(36).substring(2, 11)}`;
         mermaid.initialize({
           startOnLoad: false,

@@ -140,6 +140,11 @@ vp build     # Production build
 vp preview   # Preview production build
 ```
 
+> **Note:** `vp build` normally terminates immediately after the build. The
+> `vite-bundle-analyzer` plugin is disabled unless `ANALYZE=true` is set; when
+> enabled it starts an interactive server and the process stays alive until
+> manually stopped.
+
 ---
 
 <!--VITE PLUS START-->
