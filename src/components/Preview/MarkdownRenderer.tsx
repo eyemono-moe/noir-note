@@ -32,6 +32,15 @@ import { parseFrontmatterYamlString } from "../../utils/frontmatter";
 import { remarkEmoji } from "../../utils/remark/remark-emoji";
 import { remarkFootnoteBackLink } from "../../utils/remark/remark-footnote-back-link";
 
+// Processor is created once at module load and reused across all renders.
+// All remark plugins are stateless transformers so this is safe.
+const processor = unified()
+  .use(remarkParse)
+  .use(remarkFrontmatter, ["yaml"])
+  .use(remarkFootnoteBackLink)
+  .use(remarkGfm)
+  .use(remarkEmoji);
+
 interface MarkdownRendererProps {
   content: string;
   /** Called when a task list checkbox is clicked. offset is the document character
@@ -747,12 +756,6 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
     () => props.content,
     async (content) => {
       try {
-        const processor = unified()
-          .use(remarkParse)
-          .use(remarkFrontmatter, ["yaml"])
-          .use(remarkFootnoteBackLink) // Custom plugin to add back-links to footnotes
-          .use(remarkGfm)
-          .use(remarkEmoji);
         const tree = processor.parse(content);
         return await processor.run(tree);
       } catch (error) {

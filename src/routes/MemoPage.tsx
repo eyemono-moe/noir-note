@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from "@solidjs/router";
 import { useLiveQuery } from "@tanstack/solid-db";
-import { type Component, createMemo, lazy, Show, Suspense } from "solid-js";
+import { type Component, createDeferred, createMemo, lazy, Show, Suspense } from "solid-js";
 
 import SplitView from "../components/Layout/SplitView";
 import { CurrentMemoProvider, useCurrentMemo } from "../context/currentMemo";
@@ -13,7 +13,11 @@ import { useScrollSync } from "../hooks/useScrollSync";
 import { useScrollSyncEnabled } from "../store/configStore";
 import { normalizePath } from "../utils/path";
 
-const Editor = lazy(() => import("../components/Editor/Editor"));
+// Start downloading the Editor chunk immediately at module-evaluation time,
+// before the DB sync completes. This overlaps the network download with DB
+// initialization so the editor can mount as soon as isReady() becomes true.
+const editorImport = import("../components/Editor/Editor");
+const Editor = lazy(() => editorImport);
 const MarkdownRenderer = lazy(() => import("../components/Preview/MarkdownRenderer"));
 const Sidebar = lazy(() => import("../components/Sidebar/Sidebar"));
 
@@ -26,6 +30,11 @@ const MemoPageContent: Component = () => {
 
   const { content, setContent, isReady } = useCurrentMemo();
   const { editorView, setEditorView, previewContainer, setPreviewContainer } = useEditorContext();
+
+  // Defer preview updates so editor keystrokes are never blocked by the
+  // markdown parse + render pipeline. The preview catches up within 300 ms
+  // of the last change (or sooner during browser idle time).
+  const deferredContent = createDeferred(content, { timeoutMs: 300 });
 
   const { save: debouncedSave } = useMemoSaver();
 
@@ -88,7 +97,7 @@ const MemoPageContent: Component = () => {
           <Show when={isReady()}>
             <Suspense fallback={<div class="text-text-secondary p-4">Loading preview...</div>}>
               <MarkdownRenderer
-                content={content()}
+                content={deferredContent()}
                 onCheckboxToggle={handleCheckboxToggle}
                 containerRef={setPreviewContainer}
               />

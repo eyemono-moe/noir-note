@@ -90,8 +90,19 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    // Add both @codemirror/state and @codemirror/view to included deps to optimize
-    include: ["@codemirror/state", "@codemirror/view"],
+    // Pre-bundle heavy CommonJS/ESM deps that are imported by lazy chunks.
+    // Avoids a waterfall of individual module requests on dev-server cold start.
+    include: [
+      "@codemirror/state",
+      "@codemirror/view",
+      "@codemirror/commands",
+      "@codemirror/language",
+      "@codemirror/autocomplete",
+      "unified",
+      "remark-parse",
+      "remark-gfm",
+      "remark-frontmatter",
+    ],
   },
   build: {
     license: { fileName: "LICENSE.md" },
