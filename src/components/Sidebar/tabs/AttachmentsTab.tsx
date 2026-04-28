@@ -84,11 +84,6 @@ const NoteItem: Component<{
   path: string;
   onNavigate: (path: string) => void;
 }> = (props) => {
-  const name = () => {
-    const segments = props.path.split("/").filter(Boolean);
-    return segments[segments.length - 1] ?? props.path;
-  };
-
   return (
     <HoverCard.Root
       lazyMount
@@ -106,8 +101,8 @@ const NoteItem: Component<{
             onClick={() => props.onNavigate(props.path)}
             {...hoverProps()}
           >
-            <span class="i-material-symbols:article-outline-rounded size-3 shrink-0" />
-            <span class="truncate">{name()}</span>
+            <span class="i-material-symbols:description-outline-rounded size-3 shrink-0" />
+            <span class="truncate">{props.path}</span>
           </button>
         )}
       />
@@ -176,6 +171,11 @@ const AttachmentRow: Component<{
   // oxlint-disable-next-line solid/reactivity --- called only inside JSX (tracked scope)
   const refCount = () => refs.latest?.length ?? null;
 
+  // Auto-close when refs load and turn out to be empty.
+  createEffect(() => {
+    if (!refs.loading && refCount() === 0 && expanded()) setExpanded(false);
+  });
+
   return (
     <>
       <Collapsible.Root
@@ -198,36 +198,50 @@ const AttachmentRow: Component<{
               </p>
               <p class="text-text-secondary mt-0.5 text-xs leading-tight">
                 {formatBytes(props.att.size)}
-                {/* Note count / expand trigger — shown once refs are known */}
-                <Show when={refCount() !== null}>
-                  <Show
-                    when={refCount()! > 0}
-                    fallback={
-                      <span class="bg-surface-secondary text-text-secondary ml-1 rounded px-1 py-px text-[0.625rem]">
-                        Unused
-                      </span>
-                    }
-                  >
-                    <Collapsible.Trigger
-                      asChild={(triggerProps) => (
-                        <button
-                          type="button"
-                          class="text-text-secondary hover:text-text-primary ml-1 inline-flex items-center gap-0.5 bg-transparent p-0 text-xs transition-colors"
-                          {...triggerProps()}
+
+                {/* Spinner while loading */}
+                <Show when={refs.loading}>
+                  <span class="i-material-symbols:progress-activity ml-1 inline-block size-3 animate-spin align-middle" />
+                </Show>
+
+                {/* Unused badge — loaded with 0 refs */}
+                <Show when={!refs.loading && refCount() === 0}>
+                  <span class="bg-surface-secondary text-text-secondary ml-1 rounded px-1 py-px text-[0.625rem]">
+                    Unused
+                  </span>
+                </Show>
+
+                {/*
+                  Expand trigger — visible when not loading AND refCount is not 0.
+                  `refCount() !== 0` is true for both null (unloaded) and N > 0,
+                  so the trigger is always present before the first load, giving the
+                  user a way to initiate the lazy fetch.
+                */}
+                <Show when={!refs.loading && refCount() !== 0}>
+                  <Collapsible.Trigger
+                    asChild={(triggerProps) => (
+                      <button
+                        type="button"
+                        class="text-text-secondary hover:text-text-primary ml-1 inline-flex items-center gap-0.5 bg-transparent p-0 text-xs transition-colors"
+                        {...triggerProps()}
+                      >
+                        <Show
+                          when={refCount() !== null}
+                          fallback={<span class="mr-0.5">Check refs</span>}
                         >
                           · {refCount()} note{refCount()! > 1 ? "s" : ""}
-                          <Collapsible.Indicator
-                            asChild={(indicatorProps) => (
-                              <span
-                                class="i-material-symbols:expand-more-rounded inline-block size-3 transition-transform data-[state=open]:rotate-180"
-                                {...indicatorProps()}
-                              />
-                            )}
-                          />
-                        </button>
-                      )}
-                    />
-                  </Show>
+                        </Show>
+                        <Collapsible.Indicator
+                          asChild={(indicatorProps) => (
+                            <span
+                              class="i-material-symbols:expand-more-rounded inline-block size-3 transition-transform data-[state=open]:rotate-180"
+                              {...indicatorProps()}
+                            />
+                          )}
+                        />
+                      </button>
+                    )}
+                  />
                 </Show>
               </p>
             </div>
@@ -281,9 +295,10 @@ const AttachmentRow: Component<{
         onOpenChange={(d) => {
           if (!d.open) setDeleteRefs(null);
         }}
+        role="alertdialog"
       >
         <Dialog.Backdrop class="bg-overlay fixed inset-0 z-50" />
-        <Dialog.Positioner class="fixed inset-0 z-50 flex items-center justify-center">
+        <Dialog.Positioner class="translate-y--1/2 pointer-events-auto fixed inset-x-0 top-1/2 z-50 flex max-h-full items-start justify-center overflow-y-auto overscroll-y-contain p-4">
           <Dialog.Content class="border-border-primary bg-surface-primary w-96 max-w-[90vw] rounded-xl border p-6 shadow-xl">
             <Dialog.Title class="text-text-primary text-base font-semibold">
               Delete attachment?
@@ -295,27 +310,13 @@ const AttachmentRow: Component<{
             </Dialog.Description>
 
             {/* List of referencing notes */}
-            <ul class="border-border-primary mt-3 max-h-36 overflow-y-auto rounded border">
+            <div class="mt-4 flex flex-col gap-0.5">
               <For each={deleteRefs() ?? []}>
-                {(path) => (
-                  <li class="border-border-primary text-text-secondary border-b px-3 py-1.5 text-xs last:border-b-0">
-                    <button
-                      type="button"
-                      class="focus-ring hover:text-text-primary truncate bg-transparent p-0 text-left transition-colors"
-                      title={path}
-                      onClick={() => {
-                        setDeleteRefs(null);
-                        props.onNavigate(path);
-                      }}
-                    >
-                      {path}
-                    </button>
-                  </li>
-                )}
+                {(path) => <NoteItem path={path} onNavigate={props.onNavigate} />}
               </For>
-            </ul>
+            </div>
 
-            <div class="mt-5 flex justify-end gap-3">
+            <div class="mt-6 flex justify-end gap-3">
               <Dialog.CloseTrigger class="button text-text-primary">Cancel</Dialog.CloseTrigger>
               <button
                 type="button"
