@@ -28,7 +28,6 @@ self.onmessage = async (e: MessageEvent<FormatRequest>) => {
       formatter.setConfig({ indentWidth: 2, lineWidth: 80 }, {});
     }
 
-    // 1. フォーマット実行
     const formatted = formatter.formatText({
       filePath: "file.md",
       fileText: text,
@@ -39,10 +38,9 @@ self.onmessage = async (e: MessageEvent<FormatRequest>) => {
       return;
     }
 
-    // 2. 差分計算 (fast-diff)
     const diffs = diff(text, formatted);
 
-    // 3. 差分をCodeMirrorのchangeSpec形式に変換
+    // 差分をCodeMirrorのchangeSpec形式に変換
     const changes: { from: number; to: number; insert: string }[] = [];
     let currentPos = 0;
     for (const [type, value] of diffs) {

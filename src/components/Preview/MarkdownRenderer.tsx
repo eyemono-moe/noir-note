@@ -529,7 +529,6 @@ const TableCellNode: Component<{ node: RootContentMap["tableCell"] }> = (props) 
 };
 
 const HtmlNode: Component<{ node: RootContentMap["html"] }> = (props) => {
-  // HTML nodes are rendered as-is (potentially unsafe, consider sanitization)
   // oxlint-disable-next-line solid/no-innerhtml: HTML content from markdown
   return <div data-source-line={props.node.position?.start?.line} innerHTML={props.node.value} />;
 };

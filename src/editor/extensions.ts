@@ -36,21 +36,21 @@ export function createEditorExtensions(isDark: boolean): Extension[] {
     history(),
     bracketMatching(),
 
-    keymap.of(defaultKeymap), // defaultKeymapを有効化
-    keymap.of(historyKeymap), // historyKeymapを有効化
-    keymap.of([indentWithTab]), // タブキーをbindしてインデントの上げ下げに使用する。入力される文字列はindentUnitで設定する
+    keymap.of(defaultKeymap),
+    keymap.of(historyKeymap),
+    keymap.of([indentWithTab]),
     indentUnit.of("  "), // インデントの単位をスペース4個にする。@codemirror/lang-markdownでネストしたリストに正しい挙動をさせるには2-5の範囲にする必要がある
-    EditorView.lineWrapping, // テキストの折返しを有効化
-    EditorState.tabSize.of(2), // Tab（\t）をスペース4個分の大きさにする
+    EditorView.lineWrapping,
+    EditorState.tabSize.of(2),
     keymap.of(formatKeyBindings), // フォーマット用のキーバインドを有効化
-    wrapSelectionExtension, // 選択文字列を括弧で囲む
-    imagePasteExtension, // 画像ペースト/ドロップ
+    wrapSelectionExtension,
+    imagePasteExtension,
 
     // Language support
     markdown(),
     emojiCompletionExtension,
 
-    [highlightWhitespace(), highlightWhitespaceTheme], // 空白文字を可視化する（スペースは点、タブは矢印で表示される）
+    [highlightWhitespace(), highlightWhitespaceTheme],
 
     // Theme
     ...(isDark ? darkTheme : lightTheme),
