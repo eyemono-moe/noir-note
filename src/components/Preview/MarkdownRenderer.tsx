@@ -219,7 +219,15 @@ const LightboxImage: Component<{ url: string }> = (props) => {
 
   const src = () => (attachmentId() ? (objectUrl.latest ?? "") : props.url);
 
-  return <img src={src()} alt="" class="size-full object-contain shadow-2xl" />;
+  return (
+    <img
+      src={src()}
+      alt=""
+      class="max-h-full max-w-full rounded shadow-2xl"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    />
+  );
 };
 
 const InlineCodeNode: Component<{ node: RootContentMap["inlineCode"] }> = (props) => {
@@ -820,7 +828,10 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
           independent of image size.
         */}
         <Dialog.Positioner class="fixed inset-0 z-50">
-          <Dialog.Content class="size-screen relative flex flex-col items-center justify-center gap-3 p-8 outline-none">
+          <Dialog.Content
+            class="size-screen relative flex flex-col items-center justify-center gap-3 p-8 outline-none"
+            onClick={() => setLightboxIndex(null)}
+          >
             {/* Close — always top-right regardless of image size */}
             <Dialog.CloseTrigger class="focus-ring hover:bg-surface-transparent-hover text-text-secondary absolute top-4 right-4 inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors">
               <span class="i-material-symbols:close-rounded size-5" />
@@ -832,7 +843,7 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
               loop
               page={lightboxIndex() ?? 0}
               onPageChange={(d) => setLightboxIndex(d.page)}
-              class="flex w-full flex-col gap-3 overflow-hidden"
+              class="flex w-full flex-col items-center gap-3 overflow-hidden"
             >
               <Carousel.ItemGroup
                 class="flex-1 overflow-hidden rounded outline-none"
@@ -851,7 +862,10 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
               </Carousel.ItemGroup>
 
               <Show when={imageUrls().length > 1}>
-                <Carousel.Control class="flex shrink-0 items-center justify-center gap-3">
+                <Carousel.Control
+                  class="flex shrink-0 items-center justify-center gap-3"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <Carousel.PrevTrigger
                     title="Previous image (←)"
                     class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors"
