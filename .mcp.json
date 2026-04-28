@@ -5,6 +5,12 @@
       "command": "npx",
       "args": ["-y", "@ark-ui/mcp"],
       "env": {}
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"],
+      "env": {}
     }
   }
 }
