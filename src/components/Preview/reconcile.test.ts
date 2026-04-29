@@ -1,12 +1,7 @@
 import type { RootContent } from "mdast";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
-import {
-  type KeyedEntry,
-  _resetKeyCounter,
-  lcsRootMatch,
-  withStableRootKeys,
-} from "./MarkdownRenderer";
+import { type KeyedEntry, _resetKeyCounter, lcsRootMatch, withStableRootKeys } from "./reconcile";
 
 // ---------------------------------------------------------------------------
 // Helpers
