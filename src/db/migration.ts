@@ -22,7 +22,12 @@ const MIGRATION_KEY = "notes-migrated-to-opfs-v1";
  * so that migrated notes are picked up in the same startup pass.
  */
 export async function migrateNotesFromRxDB(): Promise<number> {
-  if (localStorage.getItem(MIGRATION_KEY)) return 0;
+  try {
+    if (localStorage.getItem(MIGRATION_KEY)) return 0;
+  } catch {
+    // localStorage is blocked — skip migration entirely.
+    return 0;
+  }
 
   let migrated = 0;
 
@@ -117,6 +122,12 @@ export async function migrateNotesFromRxDB(): Promise<number> {
     console.info("[migration] RxDB→OPFS: skipped or failed:", err);
   }
 
-  localStorage.setItem(MIGRATION_KEY, "1");
+  try {
+    localStorage.setItem(MIGRATION_KEY, "1");
+  } catch {
+    // localStorage blocked — the migration flag won't persist, but migrated
+    // notes were already written to OPFS so duplicates will just be skipped
+    // next time (noteStore.write is idempotent by path).
+  }
   return migrated;
 }
