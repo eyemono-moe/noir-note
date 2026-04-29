@@ -304,7 +304,11 @@ const LightboxMermaid: Component<{ code: string }> = (props) => {
       try {
         const { default: mermaid } = await import("mermaid");
         const id = `mermaid-lb-${Math.random().toString(36).substring(2, 11)}`;
-        mermaid.initialize({ startOnLoad: false, theme: params.dark ? "dark" : "default" });
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: params.dark ? "dark" : "default",
+          suppressErrorRendering: true,
+        });
         const { svg } = await mermaid.render(id, params.code);
 
         // Extract max-width from the SVG's inline style (e.g. style="max-width: 629.78px;")
@@ -369,6 +373,7 @@ const MermaidDiagram: Component<{ code: string; offset: number }> = (props) => {
         mermaid.initialize({
           startOnLoad: false,
           theme: params.dark ? "dark" : "default",
+          suppressErrorRendering: true,
         });
 
         const { svg } = await mermaid.render(id, params.code);
