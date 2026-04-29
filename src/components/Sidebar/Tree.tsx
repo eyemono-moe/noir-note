@@ -113,53 +113,37 @@ const TreeItem: Component<TreeNodeProps> = (props) => {
       <TreeView.NodeContext>
         {(nodeState) => (
           <TreeView.Branch class={styles.Branch}>
-            <HoverCard.Root
-              lazyMount
-              unmountOnExit
-              openDelay={600}
-              closeDelay={200}
-              positioning={{ placement: "right-start", offset: { mainAxis: 8, crossAxis: 0 } }}
-            >
-              <HoverCard.Trigger
-                asChild={(hoverProps) => (
-                  <TreeView.BranchControl class={styles.BranchControl} {...hoverProps()}>
-                    <Show when={nodeState().isBranch} fallback={<span class="size-4 shrink-0" />}>
-                      <TreeView.BranchIndicator class={styles.BranchIndicator}>
-                        <span class="i-material-symbols:chevron-right-rounded size-4 shrink-0" />
-                      </TreeView.BranchIndicator>
+            <HoverCard.Trigger
+              value={props.node.path}
+              asChild={(hoverProps) => (
+                <TreeView.BranchControl class={styles.BranchControl} {...hoverProps()}>
+                  <Show when={nodeState().isBranch} fallback={<span class="size-4 shrink-0" />}>
+                    <TreeView.BranchIndicator class={styles.BranchIndicator}>
+                      <span class="i-material-symbols:chevron-right-rounded size-4 shrink-0" />
+                    </TreeView.BranchIndicator>
+                  </Show>
+                  <TreeView.BranchText class={styles.BranchText}>
+                    <Show
+                      when={nodeState().isBranch}
+                      fallback={
+                        <span class="i-material-symbols:description-outline-rounded size-4 shrink-0" />
+                      }
+                    >
+                      <span
+                        class={`size-4 shrink-0 ${nodeState().expanded ? "i-material-symbols:folder-open" : "i-material-symbols:folder"}`}
+                      />
                     </Show>
-                    <TreeView.BranchText class={styles.BranchText}>
-                      <Show
-                        when={nodeState().isBranch}
-                        fallback={
-                          <span class="i-material-symbols:description-outline-rounded size-4 shrink-0" />
-                        }
-                      >
-                        <span
-                          class={`size-4 shrink-0 ${nodeState().expanded ? "i-material-symbols:folder-open" : "i-material-symbols:folder"}`}
-                        />
-                      </Show>
-                      <span class="w-full truncate">{props.node.name}</span>
-                    </TreeView.BranchText>
-                    <TreeItemActions
-                      node={props.node}
-                      indexPath={props.indexPath}
-                      onAdd={props.onAdd}
-                      onRemove={props.onRemove}
-                    />
-                  </TreeView.BranchControl>
-                )}
-              />
-              <Portal>
-                <HoverCard.Positioner>
-                  <HoverCard.Content class={styles.HoverCardContent}>
-                    <Suspense>
-                      <MemoPreview path={props.node.path} />
-                    </Suspense>
-                  </HoverCard.Content>
-                </HoverCard.Positioner>
-              </Portal>
-            </HoverCard.Root>
+                    <span class="w-full truncate">{props.node.name}</span>
+                  </TreeView.BranchText>
+                  <TreeItemActions
+                    node={props.node}
+                    indexPath={props.indexPath}
+                    onAdd={props.onAdd}
+                    onRemove={props.onRemove}
+                  />
+                </TreeView.BranchControl>
+              )}
+            />
             <TreeView.BranchContent class={styles.BranchContent}>
               <TreeView.BranchIndentGuide class={styles.BranchIndentGuide} />
 
@@ -211,6 +195,8 @@ export const Tree: Component<TreeProps> = (props) => {
     parentPath: string;
     inputValue: string;
   } | null>(null);
+
+  const [activePath, setActivePath] = createSignal<string | null>(null);
 
   const expandedPaths = new ReactiveSet<string>([]); // [TODO] 開閉状態の永続化
 
@@ -277,53 +263,71 @@ export const Tree: Component<TreeProps> = (props) => {
 
   return (
     <>
-      <TreeView.Root
-        collection={props.collection}
-        class={styles.Root}
-        selectedValue={[props.currentPath]}
-        expandedValue={effectiveExpandedPaths()}
-        onExpandedChange={(details) => {
-          batch(() => {
-            expandedPaths.clear();
-            for (const path of details.expandedValue) {
-              expandedPaths.add(path);
-            }
-          });
-        }}
-        onSelectionChange={(details) => {
-          props.onNavigate(details.selectedNodes[0].path);
-        }}
+      <HoverCard.Root
+        lazyMount
+        unmountOnExit
+        openDelay={600}
+        closeDelay={200}
+        positioning={{ placement: "right-start", offset: { mainAxis: 8, crossAxis: 0 } }}
+        onTriggerValueChange={(e) => setActivePath(e.value)}
       >
-        <TreeView.Tree class={styles.Tree}>
-          <For each={props.collection.rootNode.children}>
-            {(node, index) => (
-              <TreeItem
-                node={node}
-                indexPath={[index()]}
-                onAdd={(e) => {
-                  // 親ノードを展開
-                  const parentPath = e.node.path;
-                  expandedPaths.add(parentPath);
+        <TreeView.Root
+          collection={props.collection}
+          class={styles.Root}
+          selectedValue={[props.currentPath]}
+          expandedValue={effectiveExpandedPaths()}
+          onExpandedChange={(details) => {
+            batch(() => {
+              expandedPaths.clear();
+              for (const path of details.expandedValue) {
+                expandedPaths.add(path);
+              }
+            });
+          }}
+          onSelectionChange={(details) => {
+            props.onNavigate(details.selectedNodes[0].path);
+          }}
+        >
+          <TreeView.Tree class={styles.Tree}>
+            <For each={props.collection.rootNode.children}>
+              {(node, index) => (
+                <TreeItem
+                  node={node}
+                  indexPath={[index()]}
+                  onAdd={(e) => {
+                    // 親ノードを展開
+                    const parentPath = e.node.path;
+                    expandedPaths.add(parentPath);
 
-                  setCreatingState({
-                    parentPath: e.node.path,
-                    inputValue: "",
-                  });
-                }}
-                onRemove={(e) => {
-                  setDeleteConfirmState({
-                    path: e.node.path,
-                    name: e.node.name,
-                  });
-                }}
-                creatingState={creatingState}
-                onCreateConfirm={handleCreateConfirm}
-                onCreateCancel={handleCreateCancel}
-              />
-            )}
-          </For>
-        </TreeView.Tree>
-      </TreeView.Root>
+                    setCreatingState({
+                      parentPath: e.node.path,
+                      inputValue: "",
+                    });
+                  }}
+                  onRemove={(e) => {
+                    setDeleteConfirmState({
+                      path: e.node.path,
+                      name: e.node.name,
+                    });
+                  }}
+                  creatingState={creatingState}
+                  onCreateConfirm={handleCreateConfirm}
+                  onCreateCancel={handleCreateCancel}
+                />
+              )}
+            </For>
+          </TreeView.Tree>
+        </TreeView.Root>
+        <Portal>
+          <HoverCard.Positioner>
+            <HoverCard.Content class={styles.HoverCardContent}>
+              <Suspense>
+                <Show when={activePath()}>{(path) => <MemoPreview path={path()} />}</Show>
+              </Suspense>
+            </HoverCard.Content>
+          </HoverCard.Positioner>
+        </Portal>
+      </HoverCard.Root>
 
       <Show when={deleteConfirmState()}>
         {(state) => (

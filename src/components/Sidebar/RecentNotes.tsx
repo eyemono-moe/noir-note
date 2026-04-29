@@ -1,5 +1,5 @@
 import { HoverCard } from "@ark-ui/solid/hover-card";
-import { For, Suspense, lazy, type Component } from "solid-js";
+import { For, Show, Suspense, createSignal, lazy, type Component } from "solid-js";
 import { Portal } from "solid-js/web";
 
 import type { MemoWithoutContent } from "../../types/memo";
@@ -36,26 +36,30 @@ function getMemoDisplayName(path: string, title?: string | null): string {
 }
 
 export const RecentNotes: Component<RecentNotesProps> = (props) => {
+  const [activePath, setActivePath] = createSignal<string | null>(null);
+
   const sortedMemos = () =>
     [...props.allMemos].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 20);
 
   return (
-    <div class="flex flex-col gap-0.5 p-1">
-      <For
-        each={sortedMemos()}
-        fallback={
-          <div class="text-text-secondary px-4 py-8 text-center text-sm">No recent notes</div>
-        }
-      >
-        {(memo) => (
-          <HoverCard.Root
-            lazyMount
-            unmountOnExit
-            openDelay={600}
-            closeDelay={200}
-            positioning={{ placement: "right-start", offset: { mainAxis: 8, crossAxis: 0 } }}
-          >
+    <HoverCard.Root
+      lazyMount
+      unmountOnExit
+      openDelay={600}
+      closeDelay={200}
+      positioning={{ placement: "right-start", offset: { mainAxis: 8, crossAxis: 0 } }}
+      onTriggerValueChange={(e) => setActivePath(e.value)}
+    >
+      <div class="flex flex-col gap-0.5 p-1">
+        <For
+          each={sortedMemos()}
+          fallback={
+            <div class="text-text-secondary px-4 py-8 text-center text-sm">No recent notes</div>
+          }
+        >
+          {(memo) => (
             <HoverCard.Trigger
+              value={memo.path}
               asChild={(hoverProps) => (
                 <button
                   type="button"
@@ -73,18 +77,18 @@ export const RecentNotes: Component<RecentNotesProps> = (props) => {
                 </button>
               )}
             />
-            <Portal>
-              <HoverCard.Positioner>
-                <HoverCard.Content class={treeStyles.HoverCardContent}>
-                  <Suspense>
-                    <MemoPreview path={memo.path} />
-                  </Suspense>
-                </HoverCard.Content>
-              </HoverCard.Positioner>
-            </Portal>
-          </HoverCard.Root>
-        )}
-      </For>
-    </div>
+          )}
+        </For>
+      </div>
+      <Portal>
+        <HoverCard.Positioner>
+          <HoverCard.Content class={treeStyles.HoverCardContent}>
+            <Suspense>
+              <Show when={activePath()}>{(path) => <MemoPreview path={path()} />}</Show>
+            </Suspense>
+          </HoverCard.Content>
+        </HoverCard.Positioner>
+      </Portal>
+    </HoverCard.Root>
   );
 };
