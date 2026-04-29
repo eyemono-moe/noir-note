@@ -957,11 +957,114 @@ function addReconcileKey(node: RenderableNode, localKey: string): any {
   return keyed;
 }
 
-function withReconcileKeys(root: Root): Root {
-  return {
-    ...root,
-    children: root.children.map((child, i) => addReconcileKey(child, `${i}:${child.type}`)),
-  } as Root;
+// ---------------------------------------------------------------------------
+// Stable root-level key assignment via Myers LCS
+// ---------------------------------------------------------------------------
+
+/**
+ * Metadata stored for each root child after a render, used to match nodes
+ * across successive parses.
+ */
+export interface KeyedEntry {
+  /** The stable `_$$rckey` assigned to this root node. */
+  key: string;
+  /** The mdast node type (e.g. "paragraph", "code"). Used as the match predicate. */
+  nodeType: string;
+}
+
+/**
+ * Module-level counter that generates globally unique keys for new root nodes.
+ * Monotonically increasing — never reused even across component instances.
+ */
+let _globalKeyCounter = 0;
+
+/** Reset the counter (test use only). */
+export function _resetKeyCounter(): void {
+  _globalKeyCounter = 0;
+}
+
+/**
+ * Compute the Longest Common Subsequence between `prev` and `next` using
+ * `nodeType` equality as the match predicate.
+ *
+ * Returns matched index pairs `{ prevIdx, nextIdx }` in ascending order.
+ * Unmatched entries in `next` will receive fresh keys.
+ *
+ * Complexity: O(m·n) time and space — acceptable for typical document sizes
+ * (< 200 root blocks, so < 40 000 cell operations per parse).
+ */
+export function lcsRootMatch(
+  prev: readonly KeyedEntry[],
+  next: readonly RootContent[],
+): Array<{ prevIdx: number; nextIdx: number }> {
+  const m = prev.length;
+  const n = next.length;
+
+  // dp[i][j] = length of LCS of prev[0..i-1] and next[0..j-1]
+  const dp: number[][] = Array.from({ length: m + 1 }, () =>
+    Array.from({ length: n + 1 }, () => 0),
+  );
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] =
+        prev[i - 1].nodeType === next[j - 1].type
+          ? dp[i - 1][j - 1] + 1
+          : Math.max(dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+
+  // Backtrack to recover the matched pairs.
+  // Tiebreak `>=`: when there is ambiguity, skip from `prev` (i--) rather than
+  // from `next` (j--). In practice this means that when a node is inserted at
+  // the beginning of the document, the new node at next[0] stays unmatched
+  // (fresh key) while all the old nodes match their shifted counterparts in
+  // `next` — exactly the behaviour we want.
+  const matches: Array<{ prevIdx: number; nextIdx: number }> = [];
+  let i = m;
+  let j = n;
+  while (i > 0 && j > 0) {
+    if (prev[i - 1].nodeType === next[j - 1].type) {
+      matches.unshift({ prevIdx: i - 1, nextIdx: j - 1 });
+      i--;
+      j--;
+    } else if (dp[i - 1][j] >= dp[i][j - 1]) {
+      i--;
+    } else {
+      j--;
+    }
+  }
+  return matches;
+}
+
+/**
+ * Assign stable `_$$rckey` values to the root children of a new AST, reusing
+ * keys from `prevKeyed` wherever the LCS match finds a corresponding node.
+ * New (unmatched) nodes receive a fresh `k${counter}` key.
+ *
+ * Returns both the keyed root (ready for `reconcile`) and the updated
+ * `KeyedEntry[]` to store for the next render.
+ */
+export function withStableRootKeys(
+  root: Root,
+  prevKeyed: readonly KeyedEntry[],
+): { root: Root; newKeyed: KeyedEntry[] } {
+  const newChildren = root.children;
+  const matches = lcsRootMatch(prevKeyed, newChildren);
+  const matchedByNext = new Map(matches.map(({ prevIdx, nextIdx }) => [nextIdx, prevIdx]));
+
+  const newKeyed: KeyedEntry[] = [];
+  const keyedChildren = newChildren.map((child, j) => {
+    const prevIdx = matchedByNext.get(j);
+    const key =
+      prevIdx !== undefined
+        ? prevKeyed[prevIdx].key // reuse existing key → no remount
+        : `k${++_globalKeyCounter}`; // fresh key for inserted node
+    newKeyed.push({ key, nodeType: child.type });
+    return addReconcileKey(child, key);
+  });
+
+  return { root: { ...root, children: keyedChildren } as Root, newKeyed };
 }
 
 // ============================================================================
@@ -991,12 +1094,20 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
   // their createResource state (which would trigger the fallback flash).
   const [ast, setAst] = createStore<Root>({ type: "root", children: [] });
 
+  // Mutable ref (not reactive) that tracks the KeyedEntry for each root child
+  // from the previous render. Used by withStableRootKeys to reuse keys across
+  // parses so that inserting/deleting a node above a code block does not cause
+  // that code block to unmount.
+  let prevKeyedChildren: KeyedEntry[] = [];
+
   // createRenderEffect runs before the DOM commit, ensuring the store is updated
   // before Show/NodesRenderer re-evaluate in the same reactive flush.
   createRenderEffect(() => {
     const newAst = parseResult.latest;
     if (newAst) {
-      setAst(reconcile(withReconcileKeys(newAst), { key: "_$$rckey" }));
+      const { root: keyed, newKeyed } = withStableRootKeys(newAst as Root, prevKeyedChildren);
+      prevKeyedChildren = newKeyed;
+      setAst(reconcile(keyed, { key: "_$$rckey" }));
     }
   });
 
