@@ -79,6 +79,7 @@ const ThumbnailImage: Component<{ id: string }> = (props) => {
 // ---------------------------------------------------------------------------
 // NoteItem
 // Reuses the HoverCard + MemoPreview pattern from RecentNotes / Tree.
+// HoverCard.Root is lifted to AttachmentsTab; this component only renders the trigger.
 // ---------------------------------------------------------------------------
 
 const NoteItem: Component<{
@@ -86,37 +87,21 @@ const NoteItem: Component<{
   onNavigate: (path: string) => void;
 }> = (props) => {
   return (
-    <HoverCard.Root
-      lazyMount
-      unmountOnExit
-      openDelay={600}
-      closeDelay={200}
-      positioning={{ placement: "right-start", offset: { mainAxis: 8, crossAxis: 0 } }}
-    >
-      <HoverCard.Trigger
-        asChild={(hoverProps) => (
-          <button
-            type="button"
-            class="focus-ring text-text-secondary hover:text-text-primary flex w-full min-w-0 items-center gap-1 rounded bg-transparent px-1 py-0.5 text-left text-[0.625rem] transition-colors"
-            title={props.path}
-            onClick={() => props.onNavigate(props.path)}
-            {...hoverProps()}
-          >
-            <span class="i-material-symbols:description-outline-rounded size-3 shrink-0" />
-            <span class="truncate">{props.path}</span>
-          </button>
-        )}
-      />
-      <Portal>
-        <HoverCard.Positioner>
-          <HoverCard.Content class={treeStyles.HoverCardContent}>
-            <Suspense>
-              <MemoPreview path={props.path} />
-            </Suspense>
-          </HoverCard.Content>
-        </HoverCard.Positioner>
-      </Portal>
-    </HoverCard.Root>
+    <HoverCard.Trigger
+      value={props.path}
+      asChild={(hoverProps) => (
+        <button
+          type="button"
+          class="focus-ring text-text-secondary hover:text-text-primary flex w-full min-w-0 items-center gap-1 rounded bg-transparent px-1 py-0.5 text-left text-[0.625rem] transition-colors"
+          title={props.path}
+          onClick={() => props.onNavigate(props.path)}
+          {...hoverProps()}
+        >
+          <span class="i-material-symbols:description-outline-rounded size-3 shrink-0" />
+          <span class="truncate">{props.path}</span>
+        </button>
+      )}
+    />
   );
 };
 
@@ -362,6 +347,8 @@ export const AttachmentsTab: Component = () => {
   // oxlint-disable-next-line no-unassigned-vars --- needed for ref
   let fileInputRef!: HTMLInputElement;
 
+  const [activePath, setActivePath] = createSignal<string | null>(null);
+
   // Reactive attachment list — auto-updates on paste/delete from any context
   const attachmentsQuery = useLiveQuery(() => attachmentsCollection);
 
@@ -395,85 +382,103 @@ export const AttachmentsTab: Component = () => {
   };
 
   return (
-    <div class="flex h-full flex-col overflow-hidden">
-      {/* Section header */}
-      <div class="flex shrink-0 items-center gap-1 px-3 py-1.5">
-        <span class="text-text-secondary flex-1 text-[0.6875rem] font-bold tracking-[0.06em] uppercase">
-          Attachments
-        </span>
-        <button
-          type="button"
-          class="focus-ring text-text-secondary hover:text-text-primary inline-flex appearance-none rounded bg-transparent p-0.5 transition-colors"
-          title="Upload image"
-          onClick={() => fileInputRef.click()}
-        >
-          <span class="i-material-symbols:upload-rounded size-4" />
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          class="hidden"
-          onChange={handleFileChange}
-        />
-      </div>
-
-      {/* Storage stats */}
-      <Show when={attachmentsQuery.isReady}>
-        <div class="border-border-primary shrink-0 border-b px-3 pb-2">
-          {/* Per-category breakdown */}
-          <div class="mb-1.5 flex flex-col gap-0.5">
-            <div class="flex items-baseline justify-between">
-              <span class="text-text-secondary text-[0.625rem]">Notes</span>
-              <span class="text-text-primary text-[0.625rem] font-medium tabular-nums">
-                {notesSize.loading ? "…" : formatBytes(notesSize() ?? 0)}
-              </span>
-            </div>
-            <div class="flex items-baseline justify-between">
-              <span class="text-text-secondary text-[0.625rem]">Attachments</span>
-              <span class="text-text-primary text-[0.625rem] font-medium tabular-nums">
-                {formatBytes(attachmentsSize())}
-              </span>
-            </div>
-          </div>
-          {/* Origin-wide quota bar */}
-          <Show when={estimate()?.quota && estimate()?.usage != null}>
-            <StorageBar used={estimate()!.usage!} quota={estimate()!.quota!} />
-            <p class="text-text-secondary mt-0.5 text-[0.625rem]">
-              Origin: {formatBytes(estimate()!.usage!)} / {formatBytes(estimate()!.quota!)}
-            </p>
-          </Show>
+    <HoverCard.Root
+      lazyMount
+      unmountOnExit
+      openDelay={600}
+      closeDelay={200}
+      positioning={{ placement: "right-start", offset: { mainAxis: 8, crossAxis: 0 } }}
+      onTriggerValueChange={(e) => setActivePath(e.value)}
+    >
+      <div class="flex h-full flex-col overflow-hidden">
+        {/* Section header */}
+        <div class="flex shrink-0 items-center gap-1 px-3 py-1.5">
+          <span class="text-text-secondary flex-1 text-[0.6875rem] font-bold tracking-[0.06em] uppercase">
+            Attachments
+          </span>
+          <button
+            type="button"
+            class="focus-ring text-text-secondary hover:text-text-primary inline-flex appearance-none rounded bg-transparent p-0.5 transition-colors"
+            title="Upload image"
+            onClick={() => fileInputRef.click()}
+          >
+            <span class="i-material-symbols:upload-rounded size-4" />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            class="hidden"
+            onChange={handleFileChange}
+          />
         </div>
-      </Show>
 
-      {/* File list */}
-      <div class="min-h-0 flex-1 overflow-y-auto px-1 py-1">
-        <Show
-          when={attachmentsQuery.isReady}
-          fallback={
-            <div class="text-text-secondary flex h-16 items-center justify-center text-xs">
-              Loading…
+        {/* Storage stats */}
+        <Show when={attachmentsQuery.isReady}>
+          <div class="border-border-primary shrink-0 border-b px-3 pb-2">
+            {/* Per-category breakdown */}
+            <div class="mb-1.5 flex flex-col gap-0.5">
+              <div class="flex items-baseline justify-between">
+                <span class="text-text-secondary text-[0.625rem]">Notes</span>
+                <span class="text-text-primary text-[0.625rem] font-medium tabular-nums">
+                  {notesSize.loading ? "…" : formatBytes(notesSize() ?? 0)}
+                </span>
+              </div>
+              <div class="flex items-baseline justify-between">
+                <span class="text-text-secondary text-[0.625rem]">Attachments</span>
+                <span class="text-text-primary text-[0.625rem] font-medium tabular-nums">
+                  {formatBytes(attachmentsSize())}
+                </span>
+              </div>
             </div>
-          }
-        >
+            {/* Origin-wide quota bar */}
+            <Show when={estimate()?.quota && estimate()?.usage != null}>
+              <StorageBar used={estimate()!.usage!} quota={estimate()!.quota!} />
+              <p class="text-text-secondary mt-0.5 text-[0.625rem]">
+                Origin: {formatBytes(estimate()!.usage!)} / {formatBytes(estimate()!.quota!)}
+              </p>
+            </Show>
+          </div>
+        </Show>
+
+        {/* File list */}
+        <div class="min-h-0 flex-1 overflow-y-auto px-1 py-1">
           <Show
-            when={sortedAttachments().length > 0}
+            when={attachmentsQuery.isReady}
             fallback={
-              <div class="text-text-secondary flex h-24 flex-col items-center justify-center gap-1 text-xs">
-                <span class="i-material-symbols:image-not-supported-outline size-6 opacity-40" />
-                <span>No attachments yet</span>
+              <div class="text-text-secondary flex h-16 items-center justify-center text-xs">
+                Loading…
               </div>
             }
           >
-            <For each={sortedAttachments()}>
-              {(att) => (
-                <AttachmentRow att={att} onDelete={removeAttachment} onNavigate={navigate} />
-              )}
-            </For>
+            <Show
+              when={sortedAttachments().length > 0}
+              fallback={
+                <div class="text-text-secondary flex h-24 flex-col items-center justify-center gap-1 text-xs">
+                  <span class="i-material-symbols:image-not-supported-outline size-6 opacity-40" />
+                  <span>No attachments yet</span>
+                </div>
+              }
+            >
+              <For each={sortedAttachments()}>
+                {(att) => (
+                  <AttachmentRow att={att} onDelete={removeAttachment} onNavigate={navigate} />
+                )}
+              </For>
+            </Show>
           </Show>
-        </Show>
+        </div>
       </div>
-    </div>
+      <Portal>
+        <HoverCard.Positioner>
+          <HoverCard.Content class={treeStyles.HoverCardContent}>
+            <Suspense>
+              <Show when={activePath()}>{(path) => <MemoPreview path={path()} />}</Show>
+            </Suspense>
+          </HoverCard.Content>
+        </HoverCard.Positioner>
+      </Portal>
+    </HoverCard.Root>
   );
 };
