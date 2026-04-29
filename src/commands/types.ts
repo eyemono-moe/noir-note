@@ -20,7 +20,7 @@ export interface Command {
 }
 
 // Unified palette item type for commands and pages
-export type PaletteItemType = "command" | "page";
+type PaletteItemType = "command" | "page";
 
 export interface PaletteItem {
   type: PaletteItemType;

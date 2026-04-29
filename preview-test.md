@@ -6,6 +6,8 @@ tags:
   - preview
 ---
 
+<!-- markdownlint-disable-file MD025 MD028 MD034 -->
+
 # Inline Formatting
 
 ## Bold / Italic / Strikethrough
@@ -35,17 +37,53 @@ Internal-style relative link: [About](/about)
 
 ## Reference-Style Links
 
-> **Note:** `linkReference` / `imageReference` nodes are currently rendered as
-> `null` in this app's custom renderer — reference-style syntax is intentionally
-> unsupported. The entries below demonstrate this known behavior.
+Full reference — label differs from identifier:
 
-[This link will not render][ref-id]
+[Visit example.com][example]
 
-[ref-id]: https://example.com "This definition is silently dropped"
+Collapsed reference — label equals identifier:
+
+[example.com][]
+
+Shortcut reference — brackets omitted:
+
+[example.com]
+
+Inline elements inside a reference link:
+
+[**bold** and _italic_ inside a reference][example]
+
+<!-- markdownlint-disable-next-line MD052 -->
+Undefined reference (rendered as plain text): [broken][no-such-def]
+
+[example]: https://example.com "Example Domain"
+[example.com]: https://example.com
 
 ## Images
 
+Inline image syntax with alt text and title:
+
 ![Alt text for a placeholder image](https://placehold.jp/320x120.png "Placeholder")
+
+## Reference-Style Images
+
+Full reference with title:
+
+![Placeholder image][placeholder]
+
+Collapsed reference:
+
+![placeholder][]
+
+Multiple images sharing the same definition (both open the same URL in the lightbox):
+
+![First use][placeholder]
+![Second use][placeholder]
+
+<!-- markdownlint-disable-next-line MD052 -->
+Undefined image reference (renders nothing): ![missing][no-such-img]
+
+[placeholder]: https://placehold.jp/320x120.png "Placeholder image"
 
 ---
 
@@ -96,6 +134,7 @@ print(p1.distance(p2))  # 5.0
 
 ## Go
 
+<!-- markdownlint-disable MD010 -->
 ```go
 package main
 
@@ -126,6 +165,7 @@ func main() {
 	}
 }
 ```
+<!-- markdownlint-enable MD010 -->
 
 ## Vue
 
@@ -480,6 +520,7 @@ another[^multi-2] to verify that each back-link navigates to the correct anchor.
 
 ## Code Block without Language
 
+<!-- markdownlint-disable-next-line MD040 -->
 ```
 No language specified — rendered as plaintext without syntax highlighting.
 SELECT id, name FROM users WHERE active = 1;
@@ -510,6 +551,8 @@ _**~~`bold italic strikethrough code`~~**_ — all four combined.
 \*not italic\* \`not code\` \[not a link\]
 
 ---
+
+<!-- markdownlint-disable -->
 
 # Formatter Test (Intentionally Malformed)
 

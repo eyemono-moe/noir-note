@@ -43,7 +43,7 @@ export function encodeNoteId(path: string): string {
 // ---------------------------------------------------------------------------
 
 /** Payload variants (without the `id` field, used as the public request API). */
-export type WorkerRequestPayload =
+type WorkerRequestPayload =
   | { type: "list" }
   | { type: "write"; doc: MemoDocument }
   | { type: "delete"; noteId: string }
