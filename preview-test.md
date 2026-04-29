@@ -6,6 +6,8 @@ tags:
   - preview
 ---
 
+<!-- markdownlint-disable-file MD025 MD028 MD034 -->
+
 # Inline Formatting
 
 ## Bold / Italic / Strikethrough
@@ -51,6 +53,7 @@ Inline elements inside a reference link:
 
 [**bold** and _italic_ inside a reference][example]
 
+<!-- markdownlint-disable-next-line MD052 -->
 Undefined reference (rendered as plain text): [broken][no-such-def]
 
 [example]: https://example.com "Example Domain"
@@ -71,6 +74,7 @@ Multiple images sharing the same definition (both open the same URL in the light
 ![First use][placeholder]
 ![Second use][placeholder]
 
+<!-- markdownlint-disable-next-line MD052 -->
 Undefined image reference (renders nothing): ![missing][no-such-img]
 
 [placeholder]: https://placehold.jp/320x120.png "Placeholder image"
@@ -130,6 +134,7 @@ print(p1.distance(p2))  # 5.0
 
 ## Go
 
+<!-- markdownlint-disable MD010 -->
 ```go
 package main
 
@@ -160,6 +165,7 @@ func main() {
 	}
 }
 ```
+<!-- markdownlint-enable MD010 -->
 
 ## Vue
 
@@ -514,6 +520,7 @@ another[^multi-2] to verify that each back-link navigates to the correct anchor.
 
 ## Code Block without Language
 
+<!-- markdownlint-disable-next-line MD040 -->
 ```
 No language specified — rendered as plaintext without syntax highlighting.
 SELECT id, name FROM users WHERE active = 1;
@@ -544,6 +551,8 @@ _**~~`bold italic strikethrough code`~~**_ — all four combined.
 \*not italic\* \`not code\` \[not a link\]
 
 ---
+
+<!-- markdownlint-disable -->
 
 # Formatter Test (Intentionally Malformed)
 
