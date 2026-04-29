@@ -188,15 +188,7 @@ const ImageNode: Component<{ node: RootContentMap["image"] }> = (props) => {
       class="focus-ring cursor-zoom-in appearance-none border-0 bg-transparent p-0"
       onClick={() => openLightbox(props.node.url)}
     >
-      <Show
-        when={src()}
-        fallback={
-          // Skeleton reserves space while the URL resolves, reducing CLS.
-          <div class="bg-surface-secondary flex min-h-24 min-w-32 animate-pulse items-center justify-center rounded">
-            <span class="i-material-symbols:image-outline text-text-secondary size-8 shrink-0 opacity-50" />
-          </div>
-        }
-      >
+      <Show when={src()}>
         {(s) => (
           <img
             src={s()}
