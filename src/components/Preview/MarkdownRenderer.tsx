@@ -1,4 +1,5 @@
 import { Carousel, Clipboard, Dialog } from "@ark-ui/solid";
+import { ReactiveSet } from "@solid-primitives/set";
 import type { Node, Root, RootContent, RootContentMap } from "mdast";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
@@ -59,10 +60,29 @@ type CheckboxToggleFn = (offset: number, checked: boolean) => void;
 const CheckboxToggleContext = createContext<() => CheckboxToggleFn | undefined>(() => undefined);
 
 /**
- * Context that allows any ImageNode in the tree to open the lightbox.
- * Receives the raw image URL (attachment://id or external URL).
+ * A single item that can be displayed in the lightbox carousel.
+ * `offset` is the AST node's `position.start.offset` and serves as the unique
+ * identity — even when the same URL or mermaid code appears multiple times.
  */
-const LightboxContext = createContext<(url: string) => void>(() => {});
+type LightboxItem =
+  | { type: "image"; url: string; offset: number }
+  | { type: "mermaid"; code: string; offset: number };
+
+/**
+ * Context that opens the lightbox at the item whose AST offset matches.
+ * Using the offset (not the URL/code) correctly handles duplicate content.
+ */
+const LightboxContext = createContext<(offset: number) => void>(() => {});
+
+/**
+ * Context used by MermaidDiagram to notify MarkdownRenderer of render
+ * success/failure, so the carousel only includes successfully rendered diagrams.
+ */
+type MermaidRegistry = { register: (offset: number) => void; unregister: (offset: number) => void };
+const MermaidRegistryContext = createContext<MermaidRegistry>({
+  register: () => {},
+  unregister: () => {},
+});
 
 /**
  * All possible mdast node types we handle in rendering
@@ -186,7 +206,7 @@ const ImageNode: Component<{ node: RootContentMap["image"] }> = (props) => {
     <button
       type="button"
       class="focus-ring cursor-zoom-in appearance-none border-0 bg-transparent p-0"
-      onClick={() => openLightbox(props.node.url)}
+      onClick={() => openLightbox(props.node.position?.start?.offset ?? -1)}
     >
       <Show when={src()}>
         {(s) => (
@@ -208,19 +228,23 @@ const ImageNode: Component<{ node: RootContentMap["image"] }> = (props) => {
 // ---------------------------------------------------------------------------
 
 /**
- * Collect all image URLs from an AST subtree in document order.
- * Used to build the prev/next navigation list for the lightbox.
+ * Collect all lightbox items (images and Mermaid diagrams) from an AST subtree
+ * in document order. Used to build the prev/next navigation list for the lightbox.
  */
-function collectImageUrls(nodes: readonly RootContent[]): string[] {
-  const urls: string[] = [];
+function collectLightboxItems(nodes: readonly RootContent[]): LightboxItem[] {
+  const items: LightboxItem[] = [];
   function walk(node: RootContent) {
-    if (node.type === "image") urls.push((node as RootContentMap["image"]).url);
+    if (node.type === "image") {
+      items.push({ type: "image", url: node.url, offset: node.position?.start?.offset ?? -1 });
+    } else if (node.type === "code" && node.lang === "mermaid") {
+      items.push({ type: "mermaid", code: node.value, offset: node.position?.start?.offset ?? -1 });
+    }
     if ("children" in node) {
       for (const child of (node as { children: RootContent[] }).children) walk(child);
     }
   }
   for (const node of nodes) walk(node);
-  return urls;
+  return items;
 }
 
 /**
@@ -258,12 +282,73 @@ const LightboxImage: Component<{ url: string }> = (props) => {
         <img
           src={s()}
           alt=""
-          class="max-h-full max-w-full rounded shadow-2xl"
+          class="max-h-full max-w-full rounded shadow-2xl [background:conic-gradient(#eee_90deg,transparent_90deg_180deg,#eee_180deg_270deg,transparent_270deg)_50%_50%/50px_50px,#fff]"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         />
       )}
     </Show>
+  );
+};
+
+/**
+ * Full-size Mermaid diagram rendered inside the lightbox dialog.
+ * Re-renders the SVG with the current theme at a larger size.
+ */
+const LightboxMermaid: Component<{ code: string }> = (props) => {
+  const isDark = useTheme();
+
+  const [result] = createResource(
+    () => ({ code: props.code, dark: isDark() }),
+    async (params) => {
+      try {
+        const { default: mermaid } = await import("mermaid");
+        const id = `mermaid-lb-${Math.random().toString(36).substring(2, 11)}`;
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: params.dark ? "dark" : "default",
+          suppressErrorRendering: true,
+        });
+        const { svg } = await mermaid.render(id, params.code);
+
+        // Extract max-width from the SVG's inline style (e.g. style="max-width: 629.78px;")
+        // so the container hugs the SVG — clicks beside the diagram reach Dialog.Content.
+        const maxWidthMatch = /max-width:\s*([\d.]+px)/.exec(svg);
+
+        return {
+          success: true as const,
+          svg,
+          maxWidth: maxWidthMatch ? maxWidthMatch[1] : undefined,
+        };
+      } catch (error) {
+        console.error("Mermaid rendering failed:", error);
+        return { success: false as const };
+      }
+    },
+  );
+
+  return (
+    <Suspense>
+      <Show
+        when={result.latest?.success}
+        fallback={
+          <div class="flex size-32 items-center justify-center">
+            <span class="i-material-symbols:hourglass-empty text-text-secondary size-8 shrink-0 animate-spin" />
+          </div>
+        }
+      >
+        <div
+          role="img"
+          aria-label="Mermaid diagram"
+          class="children-[svg]:mx-auto children-[svg]:block children-[svg]:max-h-full children-[svg]:h-auto bg-surface-secondary max-h-full w-full min-w-0 rounded-lg"
+          style={{ "max-width": result.latest?.maxWidth ?? "100%" }}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          // oxlint-disable-next-line solid/no-innerhtml
+          innerHTML={result.latest?.svg}
+        />
+      </Show>
+    </Suspense>
   );
 };
 
@@ -274,8 +359,10 @@ const InlineCodeNode: Component<{ node: RootContentMap["inlineCode"] }> = (props
 /**
  * Mermaid diagram renderer component
  */
-const MermaidDiagram: Component<{ code: string }> = (props) => {
+const MermaidDiagram: Component<{ code: string; offset: number }> = (props) => {
   const isDark = useTheme();
+  const openLightbox = useContext(LightboxContext);
+  const registry = useContext(MermaidRegistryContext);
 
   const [result] = createResource(
     () => ({ code: props.code, dark: isDark() }),
@@ -286,6 +373,7 @@ const MermaidDiagram: Component<{ code: string }> = (props) => {
         mermaid.initialize({
           startOnLoad: false,
           theme: params.dark ? "dark" : "default",
+          suppressErrorRendering: true,
         });
 
         const { svg } = await mermaid.render(id, params.code);
@@ -300,6 +388,15 @@ const MermaidDiagram: Component<{ code: string }> = (props) => {
   const currentError = createMemo(() => {
     const current = result();
     return current && !current.success ? current : null;
+  });
+
+  // Register this diagram in the carousel when rendering succeeds;
+  // unregister on failure or unmount so failed diagrams are excluded.
+  createEffect(() => {
+    if (result.latest?.success) {
+      registry.register(props.offset);
+      onCleanup(() => registry.unregister(props.offset));
+    }
   });
 
   return (
@@ -321,11 +418,17 @@ const MermaidDiagram: Component<{ code: string }> = (props) => {
         </>
       }
     >
-      <div
-        class="mermaid-diagram bg-surface-secondary mb-4 flex justify-center rounded-lg p-2"
-        // oxlint-disable-next-line solid/no-innerhtml
-        innerHTML={result.latest?.svg}
-      />
+      <button
+        type="button"
+        class="focus-ring w-full cursor-zoom-in appearance-none border-0 bg-transparent p-0"
+        onClick={() => openLightbox(props.offset)}
+      >
+        <div
+          class="mermaid-diagram bg-surface-secondary flex justify-center rounded-lg p-2"
+          // oxlint-disable-next-line solid/no-innerhtml
+          innerHTML={result.latest?.svg}
+        />
+      </button>
     </Show>
   );
 };
@@ -404,7 +507,10 @@ const CodeNode: Component<{ node: RootContentMap["code"] }> = (props) => {
           <Suspense
             fallback={<div class="bg-surface-secondary mb-4 min-h-32 animate-pulse rounded-lg" />}
           >
-            <MermaidDiagram code={props.node.value} />
+            <MermaidDiagram
+              code={props.node.value}
+              offset={props.node.position?.start?.offset ?? -1}
+            />
           </Suspense>
         </Match>
         <Match when={!isMermaid()}>
@@ -664,49 +770,49 @@ const FootNotesSection: Component<{ footnotes: RootContentMap["footnoteDefinitio
 const renderSingleNode = (node: RenderableNode): JSX.Element => {
   switch (node.type) {
     case "text":
-      return <TextNode node={node as RootContentMap["text"]} />;
+      return <TextNode node={node} />;
     case "paragraph":
-      return <ParagraphNode node={node as RootContentMap["paragraph"]} />;
+      return <ParagraphNode node={node} />;
     case "heading":
-      return <HeadingNode node={node as RootContentMap["heading"]} />;
+      return <HeadingNode node={node} />;
     case "emphasis":
-      return <EmphasisNode node={node as RootContentMap["emphasis"]} />;
+      return <EmphasisNode node={node} />;
     case "strong":
-      return <StrongNode node={node as RootContentMap["strong"]} />;
+      return <StrongNode node={node} />;
     case "delete":
-      return <DeleteNode node={node as RootContentMap["delete"]} />;
+      return <DeleteNode node={node} />;
     case "link":
-      return <LinkNode node={node as RootContentMap["link"]} />;
+      return <LinkNode node={node} />;
     case "image":
-      return <ImageNode node={node as RootContentMap["image"]} />;
+      return <ImageNode node={node} />;
     case "inlineCode":
-      return <InlineCodeNode node={node as RootContentMap["inlineCode"]} />;
+      return <InlineCodeNode node={node} />;
     case "code":
-      return <CodeNode node={node as RootContentMap["code"]} />;
+      return <CodeNode node={node} />;
     case "list":
-      return <ListNode node={node as RootContentMap["list"]} />;
+      return <ListNode node={node} />;
     case "listItem":
-      return <ListItemNode node={node as RootContentMap["listItem"]} />;
+      return <ListItemNode node={node} />;
     case "blockquote":
-      return <BlockquoteNode node={node as RootContentMap["blockquote"]} />;
+      return <BlockquoteNode node={node} />;
     case "thematicBreak":
-      return <ThematicBreakNode node={node as RootContentMap["thematicBreak"]} />;
+      return <ThematicBreakNode node={node} />;
     case "break":
       return <BreakNode />;
     case "table":
-      return <TableNode node={node as RootContentMap["table"]} />;
+      return <TableNode node={node} />;
     case "tableRow":
-      return <TableRowNode node={node as RootContentMap["tableRow"]} />;
+      return <TableRowNode node={node} />;
     case "tableCell":
-      return <TableCellNode node={node as RootContentMap["tableCell"]} />;
+      return <TableCellNode node={node} />;
     case "html":
-      return <HtmlNode node={node as RootContentMap["html"]} />;
+      return <HtmlNode node={node} />;
     case "yaml":
-      return <YamlNode node={node as RootContentMap["yaml"]} />;
+      return <YamlNode node={node} />;
     case "footnoteReference":
-      return <FootnoteReferenceNode node={node as RootContentMap["footnoteReference"]} />;
+      return <FootnoteReferenceNode node={node} />;
     case "footnote-back-link":
-      return <FootnoteBackLinkNode node={node as RootContentMap["footnote-back-link"]} />;
+      return <FootnoteBackLinkNode node={node} />;
     case "imageReference":
     case "linkReference":
     case "footnoteDefinition":
@@ -812,108 +918,130 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
 
   // ── Lightbox ──────────────────────────────────────────────────────────────
 
-  // All image URLs in document order — rebuilt when the AST changes.
-  const imageUrls = createMemo(() => collectImageUrls(ast.children));
+  // Track which mermaid offsets have successfully rendered.
+  // Only those are included in the carousel.
+  const mermaidSuccessOffsets = new ReactiveSet<number>();
+  const mermaidRegistry: MermaidRegistry = {
+    register: (offset) => mermaidSuccessOffsets.add(offset),
+    unregister: (offset) => mermaidSuccessOffsets.delete(offset),
+  };
 
-  // null = dialog closed; number = index of the currently displayed image.
+  // All lightbox items in document order. Mermaid items are included only after
+  // successful render; images are always included.
+  const lightboxItems = createMemo(() =>
+    collectLightboxItems(ast.children).filter(
+      (item) => item.type === "image" || mermaidSuccessOffsets.has(item.offset),
+    ),
+  );
+
+  // null = dialog closed; number = index of the currently displayed item.
   const [lightboxIndex, setLightboxIndex] = createSignal<number | null>(null);
 
-  const openLightbox = (url: string) => {
-    const idx = imageUrls().indexOf(url);
-    setLightboxIndex(idx !== -1 ? idx : 0);
+  const openLightbox = (offset: number) => {
+    const index = lightboxItems().findIndex((i) => i.offset === offset);
+    if (index !== -1) setLightboxIndex(index);
   };
 
   return (
     <>
-      <LightboxContext.Provider value={openLightbox}>
-        <CheckboxToggleContext.Provider value={checkboxToggle}>
-          <div ref={props.containerRef} class="markdown-body h-full w-full overflow-auto p-4">
-            <Show when={parseResult.latest} fallback={<p>Error parsing markdown</p>}>
-              <>
-                <NodesRenderer nodes={ast.children} />
-                <Show when={footnotes().length > 0}>
-                  <FootNotesSection footnotes={footnotes()} />
-                </Show>
-              </>
-            </Show>
-          </div>
-        </CheckboxToggleContext.Provider>
-      </LightboxContext.Provider>
+      <MermaidRegistryContext.Provider value={mermaidRegistry}>
+        <LightboxContext.Provider value={openLightbox}>
+          <CheckboxToggleContext.Provider value={checkboxToggle}>
+            <div ref={props.containerRef} class="markdown-body h-full w-full overflow-auto p-4">
+              <Show when={parseResult.latest} fallback={<p>Error parsing markdown</p>}>
+                <>
+                  <NodesRenderer nodes={ast.children} />
+                  <Show when={footnotes().length > 0}>
+                    <FootNotesSection footnotes={footnotes()} />
+                  </Show>
+                </>
+              </Show>
+            </div>
+          </CheckboxToggleContext.Provider>
+        </LightboxContext.Provider>
 
-      {/* ── Lightbox Dialog ─────────────────────────────────────────────── */}
-      <Dialog.Root
-        open={lightboxIndex() !== null}
-        onOpenChange={(details) => {
-          if (!details.open) setLightboxIndex(null);
-        }}
-        lazyMount
-        unmountOnExit
-        initialFocusEl={carouselContainerRef}
-      >
-        <Dialog.Backdrop class="bg-overlay fixed inset-0 z-50" />
-        {/*
+        {/* ── Lightbox Dialog ─────────────────────────────────────────────── */}
+        <Dialog.Root
+          open={lightboxIndex() !== null}
+          onOpenChange={(details) => {
+            if (!details.open) setLightboxIndex(null);
+          }}
+          lazyMount
+          unmountOnExit
+          initialFocusEl={carouselContainerRef}
+        >
+          <Dialog.Backdrop class="bg-overlay fixed inset-0 z-50" />
+          {/*
           Positioner covers the entire viewport. Content fills it so that the
           close button can be absolutely anchored to the top-right corner
           independent of image size.
         */}
-        <Dialog.Positioner class="fixed inset-0 z-50">
-          <Dialog.Content
-            class="size-screen relative flex flex-col items-center justify-center gap-3 p-8 outline-none"
-            onClick={() => setLightboxIndex(null)}
-          >
-            {/* Close — always top-right regardless of image size */}
-            <Dialog.CloseTrigger class="focus-ring hover:bg-surface-transparent-hover text-text-secondary absolute top-4 right-4 inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors">
-              <span class="i-material-symbols:close-rounded size-5" />
-            </Dialog.CloseTrigger>
-
-            {/* Carousel — one slide per image */}
-            <Carousel.Root
-              slideCount={imageUrls().length}
-              loop
-              page={lightboxIndex() ?? 0}
-              onPageChange={(d) => setLightboxIndex(d.page)}
-              class="flex w-full flex-col items-center gap-3 overflow-hidden"
+          <Dialog.Positioner class="fixed inset-0 z-50">
+            <Dialog.Content
+              class="size-screen relative flex flex-col items-center justify-center gap-3 p-8 outline-none"
+              onClick={() => setLightboxIndex(null)}
             >
-              <Carousel.ItemGroup
-                class="flex-1 overflow-hidden rounded outline-none"
-                ref={setCarouselContainerRef}
-              >
-                <For each={imageUrls()}>
-                  {(url, i) => (
-                    <Carousel.Item
-                      index={i()}
-                      class="flex items-center justify-center overflow-hidden"
-                    >
-                      <LightboxImage url={url} />
-                    </Carousel.Item>
-                  )}
-                </For>
-              </Carousel.ItemGroup>
+              {/* Close — always top-right regardless of image size */}
+              <Dialog.CloseTrigger class="focus-ring hover:bg-surface-transparent-hover text-text-secondary absolute top-4 right-4 inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors">
+                <span class="i-material-symbols:close-rounded size-5" />
+              </Dialog.CloseTrigger>
 
-              <Show when={imageUrls().length > 1}>
-                <Carousel.Control
-                  class="flex shrink-0 items-center justify-center gap-3"
-                  onClick={(e) => e.stopPropagation()}
+              {/* Carousel — one slide per image */}
+              <Carousel.Root
+                slideCount={lightboxItems().length}
+                loop
+                page={lightboxIndex() ?? 0}
+                onPageChange={(d) => setLightboxIndex(d.page)}
+                class="flex w-full flex-col items-center gap-3 overflow-hidden"
+              >
+                <Carousel.ItemGroup
+                  class="flex-1 overflow-hidden rounded outline-none"
+                  ref={setCarouselContainerRef}
                 >
-                  <Carousel.PrevTrigger
-                    title="Previous image (←)"
-                    class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors"
+                  <For each={lightboxItems()}>
+                    {(item, i) => (
+                      <Carousel.Item
+                        index={i()}
+                        class="flex items-center justify-center overflow-hidden"
+                      >
+                        <Switch>
+                          <Match when={item.type === "image"}>
+                            <LightboxImage url={(item as { url: string }).url} />
+                          </Match>
+                          <Match when={item.type === "mermaid"}>
+                            <LightboxMermaid code={(item as { code: string }).code} />
+                          </Match>
+                        </Switch>
+                      </Carousel.Item>
+                    )}
+                  </For>
+                </Carousel.ItemGroup>
+
+                <Show when={lightboxItems().length > 1}>
+                  <Carousel.Control
+                    class="flex shrink-0 items-center justify-center gap-3"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <span class="i-material-symbols:chevron-left-rounded size-5" />
-                  </Carousel.PrevTrigger>
-                  <Carousel.ProgressText class="text-text-secondary min-w-12 text-center text-sm tabular-nums select-none" />
-                  <Carousel.NextTrigger
-                    title="Next image (→)"
-                    class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors"
-                  >
-                    <span class="i-material-symbols:chevron-right-rounded size-5" />
-                  </Carousel.NextTrigger>
-                </Carousel.Control>
-              </Show>
-            </Carousel.Root>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Dialog.Root>
+                    <Carousel.PrevTrigger
+                      title="Previous image (←)"
+                      class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors"
+                    >
+                      <span class="i-material-symbols:chevron-left-rounded size-5" />
+                    </Carousel.PrevTrigger>
+                    <Carousel.ProgressText class="text-text-secondary min-w-12 text-center text-sm tabular-nums select-none" />
+                    <Carousel.NextTrigger
+                      title="Next image (→)"
+                      class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors"
+                    >
+                      <span class="i-material-symbols:chevron-right-rounded size-5" />
+                    </Carousel.NextTrigger>
+                  </Carousel.Control>
+                </Show>
+              </Carousel.Root>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Dialog.Root>
+      </MermaidRegistryContext.Provider>
     </>
   );
 };
