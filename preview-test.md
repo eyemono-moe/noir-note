@@ -59,6 +59,12 @@ Undefined reference (rendered as plain text): [broken][no-such-def]
 [example]: https://example.com "Example Domain"
 [example.com]: https://example.com
 
+## Images
+
+Inline image syntax with alt text and title:
+
+![Alt text for a placeholder image](https://placehold.jp/320x120.png "Placeholder")
+
 ## Reference-Style Images
 
 Full reference with title:
@@ -78,12 +84,6 @@ Multiple images sharing the same definition (both open the same URL in the light
 Undefined image reference (renders nothing): ![missing][no-such-img]
 
 [placeholder]: https://placehold.jp/320x120.png "Placeholder image"
-
-## Images
-
-Inline image syntax (for comparison):
-
-![Alt text for a placeholder image](https://placehold.jp/320x120.png "Placeholder")
 
 ---
 
