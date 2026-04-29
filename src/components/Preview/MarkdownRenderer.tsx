@@ -1,4 +1,5 @@
 import { Carousel, Clipboard, Dialog } from "@ark-ui/solid";
+import { ReactiveSet } from "@solid-primitives/set";
 import type { Node, Root, RootContent, RootContentMap } from "mdast";
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
@@ -914,22 +915,17 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
 
   // Track which mermaid offsets have successfully rendered.
   // Only those are included in the carousel.
-  const [mermaidSuccessOffsets, setMermaidSuccessOffsets] = createSignal(new Set<number>());
+  const mermaidSuccessOffsets = new ReactiveSet<number>();
   const mermaidRegistry: MermaidRegistry = {
-    register: (offset) => setMermaidSuccessOffsets((s) => new Set(s).add(offset)),
-    unregister: (offset) =>
-      setMermaidSuccessOffsets((s) => {
-        const next = new Set(s);
-        next.delete(offset);
-        return next;
-      }),
+    register: (offset) => mermaidSuccessOffsets.add(offset),
+    unregister: (offset) => mermaidSuccessOffsets.delete(offset),
   };
 
   // All lightbox items in document order. Mermaid items are included only after
   // successful render; images are always included.
   const lightboxItems = createMemo(() =>
     collectLightboxItems(ast.children).filter(
-      (item) => item.type === "image" || mermaidSuccessOffsets().has(item.offset),
+      (item) => item.type === "image" || mermaidSuccessOffsets.has(item.offset),
     ),
   );
 
