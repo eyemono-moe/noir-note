@@ -225,8 +225,174 @@ describe("withStableRootKeys", () => {
     };
     const { root: keyed } = withStableRootKeys(root, []);
     const para = keyed.children[0] as any;
-    // Children of paragraph keep index:type pattern
+    // paragraph is not a BLOCK_CONTAINER_TYPE → children keep index:type keys
     expect(para.children[0]._$$rckey).toBe("0:text");
     expect(para.children[1]._$$rckey).toBe("1:text");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Nested block-level LCS (list items, blockquote children)
+// ---------------------------------------------------------------------------
+
+describe("withStableRootKeys — nested block containers", () => {
+  afterEach(() => _resetKeyCounter());
+
+  /** Build a minimal list node with the given number of listItem children. */
+  function listWith(itemCount: number): RootContent {
+    return {
+      type: "list",
+      ordered: false,
+      spread: false,
+      children: Array.from({ length: itemCount }, () => ({
+        type: "listItem" as const,
+        spread: false,
+        children: [{ type: "paragraph" as const, children: [] }],
+      })),
+    };
+  }
+
+  it("list children (listItems) get LCS-stable keys", () => {
+    // Render 1: list with 2 items
+    const root1 = { type: "root" as const, children: [listWith(2)] };
+    const { newKeyed: prev } = withStableRootKeys(root1, []);
+
+    const listEntry = prev[0];
+    expect(listEntry.nodeType).toBe("list");
+    expect(listEntry.children).toHaveLength(2);
+    const [itemKey0, itemKey1] = listEntry.children!.map((e) => e.key);
+
+    // Render 2: new item prepended → [newItem, item0, item1]
+    const root2 = { type: "root" as const, children: [listWith(3)] };
+    const { root: keyed2, newKeyed: next } = withStableRootKeys(root2, prev);
+
+    const nextListEntry = next[0];
+    expect(nextListEntry.children).toHaveLength(3);
+
+    // LCS: old item0 → new position 1, old item1 → new position 2
+    expect(nextListEntry.children![1].key).toBe(itemKey0);
+    expect(nextListEntry.children![2].key).toBe(itemKey1);
+    // New item at position 0 gets a fresh key
+    expect(nextListEntry.children![0].key).not.toBe(itemKey0);
+    expect(nextListEntry.children![0].key).not.toBe(itemKey1);
+
+    // Verify _$$rckey on the actual keyed nodes
+    const keyedList = keyed2.children[0] as any;
+    expect(keyedList.children[1]._$$rckey).toBe(itemKey0);
+    expect(keyedList.children[2]._$$rckey).toBe(itemKey1);
+  });
+
+  it("existing listItem key preserved across re-renders without structural change", () => {
+    const root1 = { type: "root" as const, children: [listWith(2)] };
+    const { newKeyed: prev } = withStableRootKeys(root1, []);
+    const keys1 = prev[0].children!.map((e) => e.key);
+
+    const root2 = { type: "root" as const, children: [listWith(2)] };
+    const { newKeyed: next } = withStableRootKeys(root2, prev);
+    const keys2 = next[0].children!.map((e) => e.key);
+
+    expect(keys2).toEqual(keys1); // all keys reused
+  });
+
+  it("listItem children (paragraphs) get LCS-stable keys inside the item", () => {
+    // A listItem with 2 paragraphs
+    const twoParaItem: RootContent = {
+      type: "list",
+      ordered: false,
+      spread: true,
+      children: [
+        {
+          type: "listItem",
+          spread: true,
+          children: [
+            { type: "paragraph", children: [] },
+            { type: "paragraph", children: [] },
+          ],
+        },
+      ],
+    };
+    const root1 = { type: "root" as const, children: [twoParaItem] };
+    const { newKeyed: prev } = withStableRootKeys(root1, []);
+
+    const paraKeys = prev[0].children![0].children!.map((e) => e.key);
+    expect(paraKeys).toHaveLength(2);
+
+    // Render 2: insert a new paragraph at the top of the listItem
+    const threeParaItem: RootContent = {
+      type: "list",
+      ordered: false,
+      spread: true,
+      children: [
+        {
+          type: "listItem",
+          spread: true,
+          children: [
+            { type: "paragraph", children: [] },
+            { type: "paragraph", children: [] },
+            { type: "paragraph", children: [] },
+          ],
+        },
+      ],
+    };
+    const root2 = { type: "root" as const, children: [threeParaItem] };
+    const { newKeyed: next } = withStableRootKeys(root2, prev);
+
+    const nextParaKeys = next[0].children![0].children!.map((e) => e.key);
+    expect(nextParaKeys).toHaveLength(3);
+    // Old keys at positions 1 and 2 (LCS: old[0]→new[1], old[1]→new[2])
+    expect(nextParaKeys[1]).toBe(paraKeys[0]);
+    expect(nextParaKeys[2]).toBe(paraKeys[1]);
+    // Position 0 is new
+    expect(nextParaKeys[0]).not.toBe(paraKeys[0]);
+    expect(nextParaKeys[0]).not.toBe(paraKeys[1]);
+  });
+
+  it("blockquote children get LCS-stable keys", () => {
+    const bq: RootContent = {
+      type: "blockquote",
+      children: [
+        { type: "paragraph", children: [] },
+        { type: "code", value: "x" },
+      ],
+    };
+    const root1 = { type: "root" as const, children: [bq] };
+    const { newKeyed: prev } = withStableRootKeys(root1, []);
+    const bqChildren = prev[0].children!;
+    const [pKey, codeKey] = bqChildren.map((e) => e.key);
+
+    // Insert a new paragraph before the existing ones
+    const bq2: RootContent = {
+      type: "blockquote",
+      children: [
+        { type: "paragraph", children: [] },
+        { type: "paragraph", children: [] },
+        { type: "code", value: "x" },
+      ],
+    };
+    const root2 = { type: "root" as const, children: [bq2] };
+    const { newKeyed: next } = withStableRootKeys(root2, prev);
+    const nextBqChildren = next[0].children!;
+
+    expect(nextBqChildren).toHaveLength(3);
+    // LCS: old paragraph (prev[0]) → new position 1, old code (prev[1]) → new position 2
+    // New paragraph at position 0 gets a fresh key (same tiebreak as root-level).
+    expect(nextBqChildren[0].key).not.toBe(pKey);
+    expect(nextBqChildren[0].key).not.toBe(codeKey);
+    expect(nextBqChildren[1].key).toBe(pKey); // old paragraph reused at shifted position
+    // code block key is preserved — critical: no SyntaxHighlightedCode remount
+    expect(nextBqChildren[2].key).toBe(codeKey);
+  });
+
+  it("KeyedEntry carries children field only for BLOCK_CONTAINER_TYPES", () => {
+    const root = {
+      type: "root" as const,
+      children: [
+        node("paragraph"), // NOT a block container
+        listWith(1), //        IS a block container
+      ],
+    };
+    const { newKeyed } = withStableRootKeys(root, []);
+    expect(newKeyed[0].children).toBeUndefined(); // paragraph → no children field
+    expect(newKeyed[1].children).toBeDefined(); //  list → children tracked
   });
 });
