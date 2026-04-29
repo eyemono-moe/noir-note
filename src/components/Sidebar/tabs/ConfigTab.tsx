@@ -130,7 +130,7 @@ export const ConfigTab: Component = () => {
                     class={`focus-ring flex flex-1 flex-col items-center gap-1 rounded border px-2 py-2 text-xs transition-colors ${
                       config().theme === opt.value
                         ? "border-text-accent bg-surface-secondary text-text-accent"
-                        : "border-border-primary text-text-secondary hover:bg-surface-transparent-hover hover:text-text-primary"
+                        : "border-border-primary text-text-secondary hover:bg-surface-transparent-hover hover:text-text-primary bg-transparent"
                     }`}
                     onClick={() => updateTheme(opt.value)}
                   >
