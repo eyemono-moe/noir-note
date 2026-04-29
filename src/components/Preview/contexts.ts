@@ -4,7 +4,7 @@ import { createContext } from "solid-js";
 // CheckboxToggle context
 // ============================================================================
 
-export type CheckboxToggleFn = (offset: number, checked: boolean) => void;
+type CheckboxToggleFn = (offset: number, checked: boolean) => void;
 
 /**
  * Context that carries the checkbox toggle callback down to ListItemNode without

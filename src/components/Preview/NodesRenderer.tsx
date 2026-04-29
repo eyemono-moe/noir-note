@@ -29,7 +29,7 @@ import {
 // Types
 // ============================================================================
 
-export type RenderableNode = RootContent;
+type RenderableNode = RootContent;
 
 // ============================================================================
 // createResolvedImageSrc — shared image URL resolver
