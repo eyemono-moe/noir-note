@@ -1,4 +1,6 @@
-/* Light theme (default) */
+/* ============================================================
+   Light theme — semantic tokens (default)
+   ============================================================ */
 :root {
   --color-text-primary: #1f2328;
   --color-text-secondary: #59636e;
@@ -21,10 +23,39 @@
   --color-border-accent: #0969da;
 
   --color-overlay: #c8d1da66;
+
+  /* ============================================================
+     Dark palette — always defined at :root so that JS-disabled
+     screens (e.g. <noscript>) can use @media (prefers-color-scheme: dark)
+     { ... var(--color-dark-*) ... } without needing data-theme="dark".
+     ============================================================ */
+  --color-dark-text-primary: #f0f6fc;
+  --color-dark-text-secondary: #9198a1;
+  --color-dark-text-disabled: #656c76;
+  --color-dark-text-accent: #4493f8;
+  --color-dark-text-danger: #f85149;
+
+  --color-dark-surface-primary: #0d1117;
+  --color-dark-surface-secondary: #151b23;
+  --color-dark-surface-accent: #1e3a8a;
+  --color-dark-surface-control-rest: #212830;
+  --color-dark-surface-control-hover: #262c36;
+  --color-dark-surface-control-active: #2a313c;
+
+  --color-dark-surface-transparent-hover: #656c7633;
+  --color-dark-surface-transparent-active: #656c7640;
+  --color-dark-surface-transparent-accent: #388bfd1a;
+
+  --color-dark-border-primary: #3d444d;
+  --color-dark-border-accent: #1f6feb;
+
+  --color-dark-overlay: #21283066;
 }
 
-/* Scrollbar styles */
-/* @fsegurai/codemirror-theme-github でのスクロールバースタイル指定の詳細度 0,2,1を無理やり上書き */
+/* ============================================================
+   Scrollbar styles
+   @fsegurai/codemirror-theme-github でのスクロールバースタイル指定の詳細度 0,2,1を無理やり上書き
+   ============================================================ */
 :root:root:root {
   ::-webkit-scrollbar {
     width: 12px;
@@ -42,27 +73,30 @@
   }
 }
 
-/* Dark theme */
+/* ============================================================
+   Dark theme — activated by JS setting data-theme="dark" on <html>.
+   Maps semantic tokens to the dark palette defined above.
+   ============================================================ */
 [data-theme="dark"] {
-  --color-text-primary: #f0f6fc;
-  --color-text-secondary: #9198a1;
-  --color-text-disabled: #656c76;
-  --color-text-accent: #4493f8;
-  --color-text-danger: #f85149;
+  --color-text-primary: var(--color-dark-text-primary);
+  --color-text-secondary: var(--color-dark-text-secondary);
+  --color-text-disabled: var(--color-dark-text-disabled);
+  --color-text-accent: var(--color-dark-text-accent);
+  --color-text-danger: var(--color-dark-text-danger);
 
-  --color-surface-primary: #0d1117;
-  --color-surface-secondary: #151b23;
-  --color-surface-accent: #1e3a8a;
-  --color-surface-control-rest: #212830;
-  --color-surface-control-hover: #262c36;
-  --color-surface-control-active: #2a313c;
+  --color-surface-primary: var(--color-dark-surface-primary);
+  --color-surface-secondary: var(--color-dark-surface-secondary);
+  --color-surface-accent: var(--color-dark-surface-accent);
+  --color-surface-control-rest: var(--color-dark-surface-control-rest);
+  --color-surface-control-hover: var(--color-dark-surface-control-hover);
+  --color-surface-control-active: var(--color-dark-surface-control-active);
 
-  --color-surface-transparent-hover: #656c7633;
-  --color-surface-transparent-active: #656c7640;
-  --color-surface-transparent-accent: #388bfd1a;
+  --color-surface-transparent-hover: var(--color-dark-surface-transparent-hover);
+  --color-surface-transparent-active: var(--color-dark-surface-transparent-active);
+  --color-surface-transparent-accent: var(--color-dark-surface-transparent-accent);
 
-  --color-border-primary: #3d444d;
-  --color-border-accent: #1f6feb;
+  --color-border-primary: var(--color-dark-border-primary);
+  --color-border-accent: var(--color-dark-border-accent);
 
-  --color-overlay: #21283066;
+  --color-overlay: var(--color-dark-overlay);
 }

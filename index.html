@@ -57,7 +57,7 @@
           document.documentElement.setAttribute("data-theme", theme);
           document.documentElement.style.colorScheme = theme;
         } catch (e) {
-          // localStorageが空、許可されていない、またはJSONパース失敗時のフォールバック
+          dい; // localStorageが空、許可されていない、またはJSONパース失敗時のフォールバック
           document.documentElement.setAttribute(
             "data-theme",
             window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
@@ -92,8 +92,8 @@
 
         @media (prefers-color-scheme: dark) {
           #noscript-gate {
-            background: var(--color-surface-primary, #0d1117);
-            color: var(--color-text-primary, #f0f6fc);
+            background: var(--color-dark-surface-primary, #0d1117);
+            color: var(--color-dark-text-primary, #f0f6fc);
           }
         }
 
@@ -118,7 +118,7 @@
 
         @media (prefers-color-scheme: dark) {
           #noscript-gate p {
-            color: var(--color-text-secondary, #9198a1);
+            color: var(--color-dark-text-secondary, #9198a1);
           }
         }
 
@@ -132,7 +132,7 @@
 
         @media (prefers-color-scheme: dark) {
           #noscript-gate hr {
-            border-color: var(--color-border-primary, #3d444d);
+            border-color: var(--color-dark-border-primary, #3d444d);
           }
         }
 
@@ -146,7 +146,7 @@
 
         @media (prefers-color-scheme: dark) {
           #noscript-gate label {
-            color: var(--color-text-secondary, #9198a1);
+            color: var(--color-dark-text-secondary, #9198a1);
           }
         }
 
@@ -171,23 +171,23 @@
 
         @media (prefers-color-scheme: dark) {
           #noscript-gate textarea {
-            border-color: var(--color-border-primary, #3d444d);
-            background: var(--color-surface-secondary, #151b23);
-            color: var(--color-text-primary, #f0f6fc);
+            border-color: var(--color-dark-border-primary, #3d444d);
+            background: var(--color-dark-surface-secondary, #151b23);
+            color: var(--color-dark-text-primary, #f0f6fc);
           }
         }
 
         #noscript-gate textarea:focus {
-          border-color: var(--color-border-accent, #0969da);
+          border-color: var(--color-dark-border-accent, #1f6feb);
           box-shadow: 0 0 0 3px
-            color-mix(in srgb, var(--color-border-accent, #0969da) 20%, transparent);
+            color-mix(in srgb, var(--color-dark-border-accent, #1f6feb) 20%, transparent);
         }
 
         @media (prefers-color-scheme: dark) {
           #noscript-gate textarea:focus {
-            border-color: var(--color-border-accent, #1f6feb);
+            border-color: var(--color-dark-border-accent, #1f6feb);
             box-shadow: 0 0 0 3px
-              color-mix(in srgb, var(--color-border-accent, #1f6feb) 20%, transparent);
+              color-mix(in srgb, var(--color-dark-border-accent, #1f6feb) 20%, transparent);
           }
         }
 
@@ -197,7 +197,7 @@
 
         @media (prefers-color-scheme: dark) {
           #noscript-gate textarea::placeholder {
-            color: var(--color-text-disabled, #656c76);
+            color: var(--color-dark-text-disabled, #656c76);
           }
         }
       </style>
