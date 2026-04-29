@@ -90,7 +90,6 @@ const CommandPalette: Component = () => {
     untrack(() => {
       // Get all existing page items from collection
       const existingPageItems = collection().items.filter((item) => item.type === "page");
-      console.log("Sync ", allMemos.length, existingPageItems.length);
 
       // Remove page items that no longer exist in memos
       for (const item of existingPageItems) {
@@ -103,7 +102,6 @@ const CommandPalette: Component = () => {
       for (const memo of allMemos) {
         const pathParts = getPathSegments(memo.path);
         const defaultLabel = pathParts.at(-1) || "Untitled";
-        console.log("upsert memos", memo.path);
 
         upsert(memo.path, {
           type: "page",

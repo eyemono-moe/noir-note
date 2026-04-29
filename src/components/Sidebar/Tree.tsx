@@ -163,7 +163,6 @@ const TreeItem: Component<TreeNodeProps> = (props) => {
             <TreeView.BranchContent class={styles.BranchContent}>
               <TreeView.BranchIndentGuide class={styles.BranchIndentGuide} />
 
-              {/* 作成中のinput表示 */}
               <Show when={props.creatingState?.()?.parentPath === props.node.path}>
                 <CreateMemoInput
                   parentPath={props.node.path}

@@ -32,6 +32,15 @@ import { parseFrontmatterYamlString } from "../../utils/frontmatter";
 import { remarkEmoji } from "../../utils/remark/remark-emoji";
 import { remarkFootnoteBackLink } from "../../utils/remark/remark-footnote-back-link";
 
+// Processor is created once at module load and reused across all renders.
+// All remark plugins are stateless transformers so this is safe.
+const processor = unified()
+  .use(remarkParse)
+  .use(remarkFrontmatter, ["yaml"])
+  .use(remarkFootnoteBackLink)
+  .use(remarkGfm)
+  .use(remarkEmoji);
+
 interface MarkdownRendererProps {
   content: string;
   /** Called when a task list checkbox is clicked. offset is the document character
@@ -166,7 +175,12 @@ const ImageNode: Component<{ node: RootContentMap["image"] }> = (props) => {
     });
   });
 
-  const src = () => (isAttachment() ? (objectUrl.latest ?? "") : props.node.url);
+  // Returns null while the attachment object-URL is being resolved so we never
+  // pass an empty string to <img src>, which would render a broken-image icon.
+  const src = (): string | null => {
+    if (!isAttachment()) return props.node.url;
+    return objectUrl.latest ?? null;
+  };
 
   return (
     <button
@@ -174,7 +188,17 @@ const ImageNode: Component<{ node: RootContentMap["image"] }> = (props) => {
       class="focus-ring cursor-zoom-in appearance-none border-0 bg-transparent p-0"
       onClick={() => openLightbox(props.node.url)}
     >
-      <img src={src()} alt={props.node.alt ?? ""} title={props.node.title ?? undefined} />
+      <Show when={src()}>
+        {(s) => (
+          <img
+            src={s()}
+            alt={props.node.alt ?? ""}
+            title={props.node.title ?? undefined}
+            loading="lazy"
+            decoding="async"
+          />
+        )}
+      </Show>
     </button>
   );
 };
@@ -216,16 +240,30 @@ const LightboxImage: Component<{ url: string }> = (props) => {
     });
   });
 
-  const src = () => (attachmentId() ? (objectUrl.latest ?? "") : props.url);
+  const src = (): string | null => {
+    if (!attachmentId()) return props.url;
+    return objectUrl.latest ?? null;
+  };
 
   return (
-    <img
-      src={src()}
-      alt=""
-      class="max-h-full max-w-full rounded shadow-2xl"
-      onClick={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.stopPropagation()}
-    />
+    <Show
+      when={src()}
+      fallback={
+        <div class="flex size-32 items-center justify-center">
+          <span class="i-material-symbols:hourglass-empty text-text-secondary size-8 shrink-0 animate-spin" />
+        </div>
+      }
+    >
+      {(s) => (
+        <img
+          src={s()}
+          alt=""
+          class="max-h-full max-w-full rounded shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        />
+      )}
+    </Show>
   );
 };
 
@@ -361,12 +399,10 @@ const CodeNode: Component<{ node: RootContentMap["code"] }> = (props) => {
       {/* Render based on language */}
       <Switch>
         <Match when={isMermaid()}>
+          {/* Skeleton while Mermaid downloads and renders. On error, MermaidDiagram
+              falls back to showing the source code with an error message. */}
           <Suspense
-            fallback={
-              <pre>
-                <code>{props.node.value}</code>
-              </pre>
-            }
+            fallback={<div class="bg-surface-secondary mb-4 min-h-32 animate-pulse rounded-lg" />}
           >
             <MermaidDiagram code={props.node.value} />
           </Suspense>
@@ -529,7 +565,6 @@ const TableCellNode: Component<{ node: RootContentMap["tableCell"] }> = (props) 
 };
 
 const HtmlNode: Component<{ node: RootContentMap["html"] }> = (props) => {
-  // HTML nodes are rendered as-is (potentially unsafe, consider sanitization)
   // oxlint-disable-next-line solid/no-innerhtml: HTML content from markdown
   return <div data-source-line={props.node.position?.start?.line} innerHTML={props.node.value} />;
 };
@@ -748,12 +783,6 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
     () => props.content,
     async (content) => {
       try {
-        const processor = unified()
-          .use(remarkParse)
-          .use(remarkFrontmatter, ["yaml"])
-          .use(remarkFootnoteBackLink) // Custom plugin to add back-links to footnotes
-          .use(remarkGfm)
-          .use(remarkEmoji);
         const tree = processor.parse(content);
         return await processor.run(tree);
       } catch (error) {
