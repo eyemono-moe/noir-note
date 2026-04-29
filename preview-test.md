@@ -35,15 +35,49 @@ Internal-style relative link: [About](/about)
 
 ## Reference-Style Links
 
-> **Note:** `linkReference` / `imageReference` nodes are currently rendered as
-> `null` in this app's custom renderer — reference-style syntax is intentionally
-> unsupported. The entries below demonstrate this known behavior.
+Full reference — label differs from identifier:
 
-[This link will not render][ref-id]
+[Visit example.com][example]
 
-[ref-id]: https://example.com "This definition is silently dropped"
+Collapsed reference — label equals identifier:
+
+[example.com][]
+
+Shortcut reference — brackets omitted:
+
+[example.com]
+
+Inline elements inside a reference link:
+
+[**bold** and _italic_ inside a reference][example]
+
+Undefined reference (rendered as plain text): [broken][no-such-def]
+
+[example]: https://example.com "Example Domain"
+[example.com]: https://example.com
+
+## Reference-Style Images
+
+Full reference with title:
+
+![Placeholder image][placeholder]
+
+Collapsed reference:
+
+![placeholder][]
+
+Multiple images sharing the same definition (both open the same URL in the lightbox):
+
+![First use][placeholder]
+![Second use][placeholder]
+
+Undefined image reference (renders nothing): ![missing][no-such-img]
+
+[placeholder]: https://placehold.jp/320x120.png "Placeholder image"
 
 ## Images
+
+Inline image syntax (for comparison):
 
 ![Alt text for a placeholder image](https://placehold.jp/320x120.png "Placeholder")
 

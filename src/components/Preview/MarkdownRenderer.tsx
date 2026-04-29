@@ -85,6 +85,17 @@ const MermaidRegistryContext = createContext<MermaidRegistry>({
 });
 
 /**
+ * Resolved definition data (url + optional title) keyed by identifier.
+ */
+type Definitions = Map<string, { url: string; title?: string | null }>;
+
+/**
+ * Context that provides a definitions lookup function to LinkReferenceNode and
+ * ImageReferenceNode without prop-drilling. Stored as an accessor for reactivity.
+ */
+const DefinitionsContext = createContext<() => Definitions>(() => new Map());
+
+/**
  * All possible mdast node types we handle in rendering
  */
 type RenderableNode = RootContent;
@@ -223,19 +234,119 @@ const ImageNode: Component<{ node: RootContentMap["image"] }> = (props) => {
   );
 };
 
+const LinkReferenceNode: Component<{ node: RootContentMap["linkReference"] }> = (props) => {
+  const getDefs = useContext(DefinitionsContext);
+  const def = () => getDefs().get(props.node.identifier);
+  const isAbsoluteURL = () => {
+    const url = def()?.url;
+    return url ? /^[a-z][a-z0-9+.-]*:/.test(url) : false;
+  };
+
+  return (
+    <Show when={def()} fallback={<NodesRenderer nodes={props.node.children} />}>
+      {(d) => (
+        <a
+          href={d().url}
+          title={d().title ?? undefined}
+          target={isAbsoluteURL() ? "_blank" : undefined}
+          rel={isAbsoluteURL() ? "noopener noreferrer" : undefined}
+        >
+          <NodesRenderer nodes={props.node.children} />
+        </a>
+      )}
+    </Show>
+  );
+};
+
+const ImageReferenceNode: Component<{ node: RootContentMap["imageReference"] }> = (props) => {
+  const getDefs = useContext(DefinitionsContext);
+  const openLightbox = useContext(LightboxContext);
+  const def = () => getDefs().get(props.node.identifier);
+
+  const isAttachment = () => (def()?.url ?? "").startsWith("attachment://");
+  const attachmentId = () =>
+    isAttachment() ? (def()?.url.slice("attachment://".length) ?? null) : null;
+
+  const [objectUrl] = createResource(attachmentId, (id) => getImageUrl(id), {
+    initialValue: null,
+  });
+
+  createEffect(() => {
+    const url = objectUrl.latest;
+    onCleanup(() => {
+      if (url) URL.revokeObjectURL(url);
+    });
+  });
+
+  const src = (): string | null => {
+    const d = def();
+    if (!d) return null;
+    if (!isAttachment()) return d.url;
+    return objectUrl.latest ?? null;
+  };
+
+  return (
+    <Show when={def()}>
+      {(d) => (
+        <button
+          type="button"
+          class="focus-ring cursor-zoom-in appearance-none border-0 bg-transparent p-0"
+          onClick={() => openLightbox(props.node.position?.start?.offset ?? -1)}
+        >
+          <Show when={src()}>
+            {(s) => (
+              <img
+                src={s()}
+                alt={props.node.alt ?? ""}
+                title={d().title ?? undefined}
+                loading="lazy"
+                decoding="async"
+              />
+            )}
+          </Show>
+        </button>
+      )}
+    </Show>
+  );
+};
+
 // ---------------------------------------------------------------------------
 // Lightbox helpers (used by MarkdownRenderer)
 // ---------------------------------------------------------------------------
 
 /**
+ * Walk the AST and collect all `definition` nodes into a lookup map.
+ * Definitions can appear at any block level, so the walk is recursive.
+ */
+function collectDefinitions(nodes: readonly RootContent[]): Definitions {
+  const defs = new Map<string, { url: string; title?: string | null }>();
+  function walk(node: RootContent) {
+    if (node.type === "definition") {
+      defs.set(node.identifier, { url: node.url, title: node.title });
+    }
+    if ("children" in node) {
+      for (const child of (node as { children: RootContent[] }).children) walk(child);
+    }
+  }
+  for (const node of nodes) walk(node);
+  return defs;
+}
+
+/**
  * Collect all lightbox items (images and Mermaid diagrams) from an AST subtree
  * in document order. Used to build the prev/next navigation list for the lightbox.
+ * `defs` is required to resolve `imageReference` nodes to their URLs.
  */
-function collectLightboxItems(nodes: readonly RootContent[]): LightboxItem[] {
+function collectLightboxItems(nodes: readonly RootContent[], defs: Definitions): LightboxItem[] {
   const items: LightboxItem[] = [];
   function walk(node: RootContent) {
     if (node.type === "image") {
       items.push({ type: "image", url: node.url, offset: node.position?.start?.offset ?? -1 });
+    } else if (node.type === "imageReference") {
+      const def = defs.get(node.identifier);
+      if (def) {
+        items.push({ type: "image", url: def.url, offset: node.position?.start?.offset ?? -1 });
+      }
     } else if (node.type === "code" && node.lang === "mermaid") {
       items.push({ type: "mermaid", code: node.value, offset: node.position?.start?.offset ?? -1 });
     }
@@ -814,7 +925,9 @@ const renderSingleNode = (node: RenderableNode): JSX.Element => {
     case "footnote-back-link":
       return <FootnoteBackLinkNode node={node} />;
     case "imageReference":
+      return <ImageReferenceNode node={node} />;
     case "linkReference":
+      return <LinkReferenceNode node={node} />;
     case "footnoteDefinition":
     case "definition":
       return null;
@@ -915,6 +1028,7 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
 
   const footnotes = createMemo(() => extractFootnotes(ast.children));
   const checkboxToggle = createMemo(() => props.onCheckboxToggle);
+  const definitions = createMemo(() => collectDefinitions(ast.children));
 
   // ── Lightbox ──────────────────────────────────────────────────────────────
 
@@ -929,7 +1043,7 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
   // All lightbox items in document order. Mermaid items are included only after
   // successful render; images are always included.
   const lightboxItems = createMemo(() =>
-    collectLightboxItems(ast.children).filter(
+    collectLightboxItems(ast.children, definitions()).filter(
       (item) => item.type === "image" || mermaidSuccessOffsets.has(item.offset),
     ),
   );
@@ -947,16 +1061,18 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
       <MermaidRegistryContext.Provider value={mermaidRegistry}>
         <LightboxContext.Provider value={openLightbox}>
           <CheckboxToggleContext.Provider value={checkboxToggle}>
-            <div ref={props.containerRef} class="markdown-body h-full w-full overflow-auto p-4">
-              <Show when={parseResult.latest} fallback={<p>Error parsing markdown</p>}>
-                <>
-                  <NodesRenderer nodes={ast.children} />
-                  <Show when={footnotes().length > 0}>
-                    <FootNotesSection footnotes={footnotes()} />
-                  </Show>
-                </>
-              </Show>
-            </div>
+            <DefinitionsContext.Provider value={definitions}>
+              <div ref={props.containerRef} class="markdown-body h-full w-full overflow-auto p-4">
+                <Show when={parseResult.latest} fallback={<p>Error parsing markdown</p>}>
+                  <>
+                    <NodesRenderer nodes={ast.children} />
+                    <Show when={footnotes().length > 0}>
+                      <FootNotesSection footnotes={footnotes()} />
+                    </Show>
+                  </>
+                </Show>
+              </div>
+            </DefinitionsContext.Provider>
           </CheckboxToggleContext.Provider>
         </LightboxContext.Provider>
 
