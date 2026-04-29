@@ -1,10 +1,12 @@
 import { debounce } from "@solid-primitives/scheduled";
+import { useLocation } from "@solidjs/router";
 import { eq, useLiveQuery } from "@tanstack/solid-db";
-import { type Accessor, createEffect, createSignal } from "solid-js";
+import { type Accessor, createEffect, createMemo, createSignal } from "solid-js";
 
 import { useMemosCollection } from "../context/db";
 import { AUTO_SAVE_DELAY } from "../utils/constants";
 import { parseFrontmatter } from "../utils/frontmatter";
+import { normalizePath } from "../utils/path";
 
 /**
  * Hook for saving and updating memos
@@ -12,9 +14,13 @@ import { parseFrontmatter } from "../utils/frontmatter";
  */
 export function useMemoSaver() {
   const collection = useMemosCollection();
+  const location = useLocation();
 
-  // Track existing memo to determine insert vs update
-  const [currentPath, setCurrentPath] = createSignal("");
+  // Derive current path from URL so existingMemoQuery is already tracking
+  // the right path before saveImmediate is ever called.  Using a separate
+  // signal that is set inside saveImmediate causes a same-tick race: the
+  // reactive query hasn't re-run yet when we read it right after setSignal().
+  const currentPath = createMemo(() => normalizePath(location.pathname));
 
   const existingMemoQuery = useLiveQuery((q) => {
     const path = currentPath();
@@ -30,9 +36,6 @@ export function useMemoSaver() {
     try {
       const now = Date.now();
       const { metadata } = parseFrontmatter(content);
-
-      // Update current path for query
-      setCurrentPath(path);
 
       // Check if memo exists in query result
       const memos = existingMemoQuery();
