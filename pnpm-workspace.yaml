@@ -1,8 +1,9 @@
 catalog:
-  vite: npm:@voidzero-dev/vite-plus-core@latest
+  vite: npm:@voidzero-dev/vite-plus-core@^0.1.19
+  vite-plus: ^0.1.19
   # @knipignore
   vitest: npm:@voidzero-dev/vite-plus-test@latest
-  vite-plus: latest
+minimumReleaseAge: 1440
 overrides:
   vite: "catalog:"
   vitest: "catalog:"
@@ -13,4 +14,3 @@ peerDependencyRules:
   allowedVersions:
     vite: "*"
     vitest: "*"
-minimumReleaseAge: 1440
