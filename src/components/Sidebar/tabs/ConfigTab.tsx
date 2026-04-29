@@ -62,15 +62,18 @@ const PrivacyDialog: Component<{ open: boolean; onClose: () => void }> = (props)
             title="View change history on GitHub"
           >
             <span class="i-material-symbols:history-rounded size-3.5 shrink-0" />
-            変更履歴をGitHubで確認
+            View change history on GitHub
           </a>
           <Dialog.CloseTrigger class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex appearance-none rounded bg-transparent p-1 transition-colors">
             <span class="i-material-symbols:close-rounded size-4" />
           </Dialog.CloseTrigger>
         </div>
 
-        {/* Markdown content */}
-        <div class="min-h-0 flex-1">
+        {/* Markdown content
+            The outer div is the flex child that claims the remaining height and scrolls.
+            containerRef overrides MarkdownRenderer's built-in `h-full overflow-auto` so
+            content flows to its natural height and the wrapper handles scrolling instead. */}
+        <div class="min-h-0 flex-1 overflow-y-auto">
           <Suspense
             fallback={
               <div class="text-text-secondary flex h-40 items-center justify-center text-sm">
@@ -78,7 +81,13 @@ const PrivacyDialog: Component<{ open: boolean; onClose: () => void }> = (props)
               </div>
             }
           >
-            <MarkdownRenderer content={privacyContent} />
+            <MarkdownRenderer
+              content={privacyContent}
+              containerRef={(el) => {
+                el.style.height = "auto";
+                el.style.overflow = "visible";
+              }}
+            />
           </Suspense>
         </div>
       </Dialog.Content>
