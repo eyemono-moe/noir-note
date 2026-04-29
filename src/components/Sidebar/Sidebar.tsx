@@ -5,6 +5,7 @@ import type { MemosCollection } from "../../db/memoCollection";
 import { updateSidebarTab, useSidebarTab } from "../../store/configStore";
 import type { Memo, MemoWithoutContent } from "../../types/memo";
 import { AttachmentsTab } from "./tabs/AttachmentsTab";
+import { ConfigTab } from "./tabs/ConfigTab";
 import { ExplorerTab } from "./tabs/ExplorerTab";
 
 interface SidebarProps {
@@ -41,6 +42,15 @@ const TAB_DEFS: TabDef[] = [
   },
 ];
 
+/** Tabs pinned to the bottom of the activity bar (e.g. Settings). */
+const BOTTOM_TAB_DEFS: TabDef[] = [
+  {
+    id: "config",
+    icon: "i-material-symbols:settings-outline-rounded",
+    label: "Settings",
+  },
+];
+
 // ---------------------------------------------------------------------------
 // Sidebar
 // ---------------------------------------------------------------------------
@@ -58,15 +68,31 @@ const Sidebar: Component<SidebarProps> = (props) => {
     >
       {/* ── Narrow icon activity bar ─────────────────────────────────────── */}
       <Tabs.List class="border-border-primary bg-surface-primary flex w-10 shrink-0 flex-col items-center gap-0.5 border-r py-1">
+        {/* Top tabs */}
         <For each={TAB_DEFS}>
           {(tab) => (
             <Tabs.Trigger
               value={tab.id}
               title={tab.label}
-              // `group` enables group-data-[selected] on the indicator child
-              class="group focus-ring text-text-secondary text-text-primary data-[selected]:text-text-accent hover:bg-surface-transparent-hover relative flex size-8 items-center justify-center rounded bg-transparent transition-colors"
+              class="group focus-ring text-text-secondary data-[selected]:text-text-accent hover:bg-surface-transparent-hover relative flex size-8 items-center justify-center rounded bg-transparent transition-colors"
             >
-              {/* Left-edge active indicator (VS Code-style) */}
+              <span class="bg-text-accent pointer-events-none absolute inset-y-1.5 left-0 w-0.5 rounded-r opacity-0 transition-opacity group-data-[selected]:opacity-100" />
+              <span class={`${tab.icon} size-[1.125rem] shrink-0`} />
+            </Tabs.Trigger>
+          )}
+        </For>
+
+        {/* Spacer pushes bottom tabs to the bottom */}
+        <div class="flex-1" />
+
+        {/* Bottom tabs */}
+        <For each={BOTTOM_TAB_DEFS}>
+          {(tab) => (
+            <Tabs.Trigger
+              value={tab.id}
+              title={tab.label}
+              class="group focus-ring text-text-secondary data-[selected]:text-text-accent hover:bg-surface-transparent-hover relative flex size-8 items-center justify-center rounded bg-transparent transition-colors"
+            >
               <span class="bg-text-accent pointer-events-none absolute inset-y-1.5 left-0 w-0.5 rounded-r opacity-0 transition-opacity group-data-[selected]:opacity-100" />
               <span class={`${tab.icon} size-[1.125rem] shrink-0`} />
             </Tabs.Trigger>
@@ -93,6 +119,10 @@ const Sidebar: Component<SidebarProps> = (props) => {
 
         <Tabs.Content value="attachments" class="h-full data-[state=inactive]:hidden">
           <AttachmentsTab />
+        </Tabs.Content>
+
+        <Tabs.Content value="config" class="h-full data-[state=inactive]:hidden">
+          <ConfigTab />
         </Tabs.Content>
       </div>
     </Tabs.Root>
