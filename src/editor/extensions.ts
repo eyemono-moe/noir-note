@@ -1,4 +1,4 @@
-import { history, historyKeymap, indentWithTab } from "@codemirror/commands";
+import { history, historyKeymap, indentWithTab, redo, redoSelection } from "@codemirror/commands";
 import { defaultKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { bracketMatching, indentUnit } from "@codemirror/language";
@@ -37,6 +37,10 @@ export function createEditorExtensions(isDark: boolean): Extension[] {
     bracketMatching(),
 
     keymap.of(defaultKeymap),
+    keymap.of([
+      { key: "Mod-Shift-z", run: redo, preventDefault: true },
+      { key: "Mod-Shift-u", run: redoSelection, preventDefault: true },
+    ]), // 公式のhistoryKeymapではWindowsでのredoがMeta+Yになっていて使いづらいため追加 see: https://code.haverbeke.berlin/codemirror/commands/src/commit/30a280ea8aa5822a8e0eb9fd560e0cd28d3c836b/src/history.ts#L395
     keymap.of(historyKeymap),
     keymap.of([indentWithTab]),
     indentUnit.of("  "), // インデントの単位をスペース4個にする。@codemirror/lang-markdownでネストしたリストに正しい挙動をさせるには2-5の範囲にする必要がある
