@@ -25,9 +25,18 @@ This app does not collect, transmit, or share any data. There are no:
 
 The app may load resources (fonts, icons) from a CDN on first use if they are not already cached. After the initial load, the app works fully offline. No note content or personal data is included in these requests.
 
-## Your Rights
+## Deleting Your Data
 
-Because all data is stored locally on your device, you are in full control. You can delete all app data at any time by clearing the site data for this origin in your browser settings.
+Because all data is stored locally on your device, you are in full control. To delete all notes, attachments, and preferences:
+
+1. Open your browser's **Site Settings** for this origin (usually accessible via the lock icon in the address bar).
+2. Find **Storage** or **Site data** and click **Delete** / **Clear data**.
+
+This removes all OPFS files (notes and attachments) and localStorage entries associated with this app. The action is irreversible, so consider exporting your notes beforehand.
+
+## Contact
+
+If you have any questions about this policy, you can reach us at [eyemono.moe@gmail.com](mailto:eyemono.moe@gmail.com).
 
 ## Changes to This Policy
 
