@@ -182,36 +182,47 @@ const LinkNode: Component<{ node: RootContentMap["link"] }> = (props) => {
   );
 };
 
-const ImageNode: Component<{ node: RootContentMap["image"] }> = (props) => {
-  const openLightbox = useContext(LightboxContext);
+/**
+ * SolidJS primitive that resolves an image URL to a renderable `src` string.
+ * Handles `attachment://` URLs by fetching an object URL via `getImageUrl`.
+ *
+ * Returns `() => string | null`. `null` means the URL is not yet ready — do
+ * not pass it to `<img src>` directly as it would render a broken-image icon.
+ *
+ * `createResource` uses `initialValue: null` so it never suspends. Always
+ * read the result via `.latest`, not the call form, to avoid propagating the
+ * pending state to the nearest Suspense boundary.
+ */
+function createResolvedImageSrc(url: () => string | null | undefined): () => string | null {
+  const attachmentId = (): string | null => {
+    const u = url();
+    return u?.startsWith("attachment://") ? u.slice("attachment://".length) : null;
+  };
 
-  const isAttachment = () => props.node.url.startsWith("attachment://");
-  const attachmentId = () => (isAttachment() ? props.node.url.slice("attachment://".length) : null);
-
-  // `initialValue: null` ensures the resource has a defined value from the start
-  // and therefore never throws a Promise to Suspense — even when re-fetching
-  // after an unnecessary remount caused by a reconcile-key shift.
-  // Always access via `.latest` (not the call form) to avoid propagating the
-  // pending state to the nearest <Suspense> boundary (= the root preview).
-  // This mirrors the SyntaxHighlightedCode pattern.
   const [objectUrl] = createResource(attachmentId, (id) => getImageUrl(id), {
     initialValue: null,
   });
 
   // Revoke the object URL whenever it changes or the component is unmounted.
   createEffect(() => {
-    const url = objectUrl.latest;
+    const u = objectUrl.latest;
     onCleanup(() => {
-      if (url) URL.revokeObjectURL(url);
+      if (u) URL.revokeObjectURL(u);
     });
   });
 
-  // Returns null while the attachment object-URL is being resolved so we never
-  // pass an empty string to <img src>, which would render a broken-image icon.
-  const src = (): string | null => {
-    if (!isAttachment()) return props.node.url;
+  const src = createMemo(() => {
+    const u = url();
+    if (!u) return null;
+    if (!u.startsWith("attachment://")) return u;
     return objectUrl.latest ?? null;
-  };
+  });
+  return src;
+}
+
+const ImageNode: Component<{ node: RootContentMap["image"] }> = (props) => {
+  const openLightbox = useContext(LightboxContext);
+  const src = createResolvedImageSrc(() => props.node.url);
 
   return (
     <button
@@ -262,28 +273,7 @@ const ImageReferenceNode: Component<{ node: RootContentMap["imageReference"] }> 
   const getDefs = useContext(DefinitionsContext);
   const openLightbox = useContext(LightboxContext);
   const def = () => getDefs().get(props.node.identifier);
-
-  const isAttachment = () => (def()?.url ?? "").startsWith("attachment://");
-  const attachmentId = () =>
-    isAttachment() ? (def()?.url.slice("attachment://".length) ?? null) : null;
-
-  const [objectUrl] = createResource(attachmentId, (id) => getImageUrl(id), {
-    initialValue: null,
-  });
-
-  createEffect(() => {
-    const url = objectUrl.latest;
-    onCleanup(() => {
-      if (url) URL.revokeObjectURL(url);
-    });
-  });
-
-  const src = (): string | null => {
-    const d = def();
-    if (!d) return null;
-    if (!isAttachment()) return d.url;
-    return objectUrl.latest ?? null;
-  };
+  const src = createResolvedImageSrc(() => def()?.url);
 
   return (
     <Show when={def()}>
@@ -360,25 +350,9 @@ function collectLightboxItems(nodes: readonly RootContent[], defs: Definitions):
 
 /**
  * Full-size image rendered inside the lightbox dialog.
- * Resolves attachment:// URLs the same way ImageNode does.
  */
 const LightboxImage: Component<{ url: string }> = (props) => {
-  const attachmentId = () =>
-    props.url.startsWith("attachment://") ? props.url.slice("attachment://".length) : null;
-
-  const [objectUrl] = createResource(attachmentId, (id) => getImageUrl(id), { initialValue: null });
-
-  createEffect(() => {
-    const url = objectUrl.latest;
-    onCleanup(() => {
-      if (url) URL.revokeObjectURL(url);
-    });
-  });
-
-  const src = (): string | null => {
-    if (!attachmentId()) return props.url;
-    return objectUrl.latest ?? null;
-  };
+  const src = createResolvedImageSrc(() => props.url);
 
   return (
     <Show
