@@ -1,7 +1,7 @@
 import { Dialog } from "@ark-ui/solid/dialog";
 import { RadioGroup } from "@ark-ui/solid/radio-group";
 import { Switch } from "@ark-ui/solid/switch";
-import { type Component, createSignal, For, lazy, Suspense } from "solid-js";
+import { type Component, createSignal, For, lazy, Show, Suspense } from "solid-js";
 import { Portal } from "solid-js/web";
 
 // Import privacy policy markdown as a raw string at build time.
@@ -164,38 +164,45 @@ export const ConfigTab: Component = () => {
         </div>
 
         {/* ── Footer links ──────────────────────────────────────────────── */}
-        <div class="border-border-primary shrink-0 border-t px-3 py-2">
-          <div class="flex flex-col gap-0.5">
-            <a
-              href="/LICENSE.md"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="focus-ring text-text-secondary hover:text-text-primary flex items-center gap-1.5 rounded px-1 py-1 text-xs transition-colors"
-            >
-              <span class="i-material-symbols:description-outline-rounded size-3.5 shrink-0" />
-              License (MIT)
-            </a>
-            <a
-              href="https://github.com/eyemono-moe/noir-note"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="focus-ring text-text-secondary hover:text-text-primary flex items-center gap-1.5 rounded px-1 py-1 text-xs transition-colors"
-            >
-              <span class="i-material-symbols:code-rounded size-3.5 shrink-0" />
-              GitHub Repository
-            </a>
-            <button
-              type="button"
-              class="focus-ring text-text-secondary hover:text-text-primary flex items-center gap-1.5 rounded bg-transparent px-1 py-1 text-left text-xs transition-colors"
-              onClick={() => setPrivacyOpen(true)}
-            >
-              <span class="i-material-symbols:shield-outline-rounded size-3.5 shrink-0" />
-              Privacy Policy
-            </button>
-          </div>
-          <p class="text-text-tertiary mt-2 px-1 font-mono text-[0.625rem]">
-            {__GIT_COMMIT_HASH__}
-          </p>
+        <div class="border-border-primary flex shrink-0 flex-col gap-0.5 border-t px-3 py-2">
+          <a
+            href="/LICENSE.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="focus-ring text-text-secondary hover:text-text-primary flex items-center gap-1.5 rounded px-1 py-1 text-xs transition-colors"
+          >
+            <span class="i-material-symbols:description-outline-rounded size-3.5 shrink-0" />
+            License (MIT)
+          </a>
+          <button
+            type="button"
+            class="focus-ring text-text-secondary hover:text-text-primary flex items-center gap-1.5 rounded bg-transparent px-1 py-1 text-left text-xs transition-colors"
+            onClick={() => setPrivacyOpen(true)}
+          >
+            <span class="i-material-symbols:shield-outline-rounded size-3.5 shrink-0" />
+            Privacy Policy
+          </button>
+          <a
+            href="https://github.com/eyemono-moe/noir-note"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="focus-ring text-text-secondary hover:text-text-primary flex items-center gap-1.5 rounded px-1 py-1 text-xs transition-colors"
+          >
+            <span class="i-material-symbols:code-rounded size-3.5 shrink-0" />
+            GitHub Repository
+          </a>
+          <Show when={import.meta.env.NOIR_GIT_COMMIT_HASH !== "unknown"}>
+            <div class="text-text-secondary text-xs">
+              builded on commit{" "}
+              <a
+                href={`https://github.com/eyemono-moe/noir-note/commit/${import.meta.env.NOIR_GIT_COMMIT_HASH}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {import.meta.env.NOIR_GIT_COMMIT_HASH}
+              </a>
+            </div>
+          </Show>
         </div>
       </div>
 

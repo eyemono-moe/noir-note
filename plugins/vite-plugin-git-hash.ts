@@ -18,7 +18,7 @@ export function gitHashPlugin() {
     config() {
       return {
         define: {
-          __GIT_COMMIT_HASH__: JSON.stringify(hash),
+          "import.meta.env.NOIR_GIT_COMMIT_HASH": JSON.stringify(hash),
         },
       };
     },
