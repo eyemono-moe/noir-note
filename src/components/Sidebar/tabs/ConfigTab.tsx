@@ -1,4 +1,6 @@
 import { Dialog } from "@ark-ui/solid/dialog";
+import { RadioGroup } from "@ark-ui/solid/radio-group";
+import { Switch } from "@ark-ui/solid/switch";
 import { type Component, createSignal, For, lazy, Suspense } from "solid-js";
 import { Portal } from "solid-js/web";
 
@@ -121,25 +123,23 @@ export const ConfigTab: Component = () => {
             <p class="text-text-secondary mb-2 text-[0.6875rem] font-semibold tracking-[0.04em] uppercase">
               Theme
             </p>
-            <div class="flex gap-1.5">
+            <RadioGroup.Root
+              value={config().theme}
+              onValueChange={(d) => updateTheme(d.value as ThemeMode)}
+              class="flex gap-1.5"
+            >
               <For each={THEME_OPTIONS}>
                 {(opt) => (
-                  <button
-                    type="button"
-                    title={opt.label}
-                    class={`focus-ring flex flex-1 flex-col items-center gap-1 rounded border px-2 py-2 text-xs transition-colors ${
-                      config().theme === opt.value
-                        ? "border-text-accent bg-surface-secondary text-text-accent"
-                        : "border-border-primary text-text-secondary hover:bg-surface-transparent-hover hover:text-text-primary bg-transparent"
-                    }`}
-                    onClick={() => updateTheme(opt.value)}
-                  >
-                    <span class={`${opt.icon} size-4 shrink-0`} />
-                    <span>{opt.label}</span>
-                  </button>
+                  <RadioGroup.Item value={opt.value} class="flex flex-1">
+                    <RadioGroup.ItemHiddenInput />
+                    <RadioGroup.ItemControl class="data-[focus-visible]:outline-border-accent border-border-primary text-text-secondary hover:bg-surface-transparent-hover hover:text-text-primary data-[state=checked]:border-text-accent data-[state=checked]:bg-surface-secondary data-[state=checked]:text-text-accent flex flex-1 cursor-pointer flex-col items-center gap-1 rounded border bg-transparent px-2 py-2 text-xs transition-colors data-[focus-visible]:outline data-[focus-visible]:outline-2 data-[focus-visible]:outline-offset-2">
+                      <span class={`${opt.icon} size-4 shrink-0`} />
+                      <RadioGroup.ItemText>{opt.label}</RadioGroup.ItemText>
+                    </RadioGroup.ItemControl>
+                  </RadioGroup.Item>
                 )}
               </For>
-            </div>
+            </RadioGroup.Root>
           </section>
 
           {/* ── Editor ────────────────────────────────────────────────── */}
@@ -149,27 +149,17 @@ export const ConfigTab: Component = () => {
             </p>
 
             {/* Scroll sync toggle */}
-            <div class="flex items-center justify-between gap-3 rounded px-1 py-1.5">
-              <span class="text-text-primary text-xs" id="scroll-sync-label">
-                Scroll sync
-              </span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={scrollSyncEnabled()}
-                aria-labelledby="scroll-sync-label"
-                class={`focus-ring relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-                  scrollSyncEnabled() ? "bg-text-accent" : "bg-surface-secondary"
-                }`}
-                onClick={() => updateScrollSyncEnabled(!scrollSyncEnabled())}
-              >
-                <span
-                  class={`pointer-events-none inline-block size-4 rounded-full bg-white shadow-sm ring-0 transition-transform ${
-                    scrollSyncEnabled() ? "translate-x-4" : "translate-x-0"
-                  }`}
-                />
-              </button>
-            </div>
+            <Switch.Root
+              checked={scrollSyncEnabled()}
+              onCheckedChange={(d) => updateScrollSyncEnabled(d.checked)}
+              class="flex cursor-pointer items-center justify-between gap-3 rounded px-1 py-1.5"
+            >
+              <Switch.Label class="text-text-primary text-xs">Scroll sync</Switch.Label>
+              <Switch.Control class="b-1 b-border-primary data-[focus-visible]:outline-border-accent bg-surface-secondary data-[state=checked]:bg-text-accent relative inline-flex h-5 w-9 shrink-0 rounded-full p-[1px] transition-colors data-[focus-visible]:outline data-[focus-visible]:outline-2 data-[focus-visible]:outline-offset-2">
+                <Switch.Thumb class="b-border-primary b-1 pointer-events-none inline-block size-4 translate-x-0 rounded-full bg-white shadow-sm ring-0 transition-transform data-[state=checked]:translate-x-4" />
+              </Switch.Control>
+              <Switch.HiddenInput />
+            </Switch.Root>
           </section>
         </div>
 
