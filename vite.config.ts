@@ -4,10 +4,13 @@ import { VitePWA } from "vite-plugin-pwa";
 import solidPlugin from "vite-plugin-solid";
 import { defineConfig } from "vite-plus";
 
+import { gitHashPlugin } from "./plugins/vite-plugin-git-hash.ts";
+
 export default defineConfig({
   plugins: [
     UnoCSS(),
     solidPlugin(),
+    gitHashPlugin(),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg", "apple-touch-icon-180x180.png"],

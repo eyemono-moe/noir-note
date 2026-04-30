@@ -193,6 +193,9 @@ export const ConfigTab: Component = () => {
               Privacy Policy
             </button>
           </div>
+          <p class="text-text-tertiary mt-2 px-1 font-mono text-[0.625rem]">
+            {__GIT_COMMIT_HASH__}
+          </p>
         </div>
       </div>
 
