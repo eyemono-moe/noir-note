@@ -46,9 +46,9 @@ const PrivacyDialog: Component<{ open: boolean; onClose: () => void }> = (props)
     unmountOnExit
   >
     <Dialog.Backdrop class="bg-overlay fixed inset-0 z-50" />
-    <Dialog.Positioner class="pointer-events-auto fixed inset-x-0 top-1/2 z-50 flex max-h-[90dvh] -translate-y-1/2 items-start justify-center p-4">
+    <Dialog.Positioner class="pointer-events-auto fixed inset-x-0 top-1/2 z-50 flex max-h-screen -translate-y-1/2 items-start justify-center p-4">
       <Dialog.Content
-        class="border-border-primary bg-surface-primary flex w-[48rem] max-w-[95vw] flex-col overflow-hidden rounded-xl border shadow-xl"
+        class="border-border-primary bg-surface-primary grid max-h-screen w-[48rem] max-w-[95vw] grid-rows-[auto_1fr] overflow-hidden rounded-xl border shadow-xl"
         style={{ "max-height": "calc(90dvh - 2rem)" }}
       >
         {/* Header */}
@@ -70,28 +70,15 @@ const PrivacyDialog: Component<{ open: boolean; onClose: () => void }> = (props)
             <span class="i-material-symbols:close-rounded size-4" />
           </Dialog.CloseTrigger>
         </div>
-
-        {/* Markdown content
-            The outer div is the flex child that claims the remaining height and scrolls.
-            containerRef overrides MarkdownRenderer's built-in `h-full overflow-auto` so
-            content flows to its natural height and the wrapper handles scrolling instead. */}
-        <div class="min-h-0 flex-1 overflow-y-auto">
-          <Suspense
-            fallback={
-              <div class="text-text-secondary flex h-40 items-center justify-center text-sm">
-                Loading…
-              </div>
-            }
-          >
-            <MarkdownRenderer
-              content={privacyContent}
-              containerRef={(el) => {
-                el.style.height = "auto";
-                el.style.overflow = "visible";
-              }}
-            />
-          </Suspense>
-        </div>
+        <Suspense
+          fallback={
+            <div class="text-text-secondary flex h-40 items-center justify-center text-sm">
+              Loading…
+            </div>
+          }
+        >
+          <MarkdownRenderer content={privacyContent} />
+        </Suspense>
       </Dialog.Content>
     </Dialog.Positioner>
   </Dialog.Root>
