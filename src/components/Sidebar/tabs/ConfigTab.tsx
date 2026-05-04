@@ -153,7 +153,7 @@ export const ConfigTab: Component = () => {
         {/* ── Footer links ──────────────────────────────────────────────── */}
         <div class="border-border-primary flex shrink-0 flex-col gap-0.5 border-t px-3 py-2">
           <a
-            href="/LICENSE.md"
+            href="/licenses.md"
             target="_blank"
             rel="noopener noreferrer"
             class="focus-ring text-text-secondary hover:text-text-primary flex items-center gap-1.5 rounded px-1 py-1 text-xs transition-colors"
