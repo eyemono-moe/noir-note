@@ -3,12 +3,18 @@ import type { EditorState } from "@codemirror/state";
 type StateSerializer = (state: EditorState) => unknown;
 type StateDeserializer = (data: unknown) => EditorState | null;
 
+interface CacheEntry {
+  state: EditorState;
+  docHash: string;
+}
+
 /**
- * LRU cache for EditorState by memo path.
- * Configurable max size and optional serializer hooks for offloading.
+ * LRU cache for EditorState by memo path with document hash verification.
+ * Stores EditorState alongside a hash of its document content to detect
+ * stale cache when the memo was edited in another tab or client.
  */
 export class EditorStateLRUCache {
-  private cache = new Map<string, unknown>();
+  private cache = new Map<string, CacheEntry | { serialized: unknown; docHash: string }>();
   private maxSize: number;
   private serializer?: StateSerializer;
   private deserializer?: StateDeserializer;
@@ -23,13 +29,25 @@ export class EditorStateLRUCache {
     this.deserializer = options?.deserializer;
   }
 
+  private computeDocHash(content: string): string {
+    // Simple hash: just combine length and first/last chars for quick staleness check
+    return `${content.length}:${content.charCodeAt(0) ?? 0}:${content.charCodeAt(content.length - 1) ?? 0}`;
+  }
+
   save(path: string, state: EditorState): void {
-    // If serializer provided, store serialized form (lighter/portable)
-    const entry = this.serializer ? this.serializer(state) : state;
+    const docHash = this.computeDocHash(state.doc.toString());
+
+    // If serializer provided, store serialized form alongside hash (lighter/portable)
+    const entry: CacheEntry = {
+      state,
+      docHash,
+    };
+
+    const cacheValue = this.serializer ? { serialized: this.serializer(state), docHash } : entry;
 
     // Update LRU
     this.cache.delete(path);
-    this.cache.set(path, entry);
+    this.cache.set(path, cacheValue);
 
     if (this.cache.size > this.maxSize) {
       const firstKey = this.cache.keys().next().value;
@@ -37,7 +55,11 @@ export class EditorStateLRUCache {
     }
   }
 
-  load(path: string): EditorState | null {
+  /**
+   * Attempts to load cached EditorState and returns it only if the document hash matches.
+   * Returns null if not cached or if content hash doesn't match (stale cache).
+   */
+  load(path: string, currentContent: string): EditorState | null {
     const entry = this.cache.get(path);
     if (!entry) return null;
 
@@ -45,13 +67,29 @@ export class EditorStateLRUCache {
     this.cache.delete(path);
     this.cache.set(path, entry);
 
-    if (this.deserializer) {
-      const maybeState = this.deserializer(entry);
-      if (maybeState) return maybeState;
+    const currentHash = this.computeDocHash(currentContent);
+    let cachedEntry: CacheEntry | null = null;
+
+    if (entry && typeof entry === "object" && "docHash" in entry && "state" in entry) {
+      // Direct entry (not serialized)
+      cachedEntry = entry as CacheEntry;
+    } else if (entry && typeof entry === "object" && "docHash" in entry && "serialized" in entry) {
+      // Serialized entry
+      const obj = entry as unknown as { docHash: string; serialized: unknown };
+      if (this.deserializer) {
+        const deserialized = this.deserializer(obj.serialized);
+        if (deserialized) {
+          cachedEntry = { state: deserialized, docHash: obj.docHash };
+        }
+      }
     }
 
-    // If stored entry is already an EditorState, return it.
-    return (entry as EditorState) || null;
+    // Stale cache check: only return if hash matches
+    if (cachedEntry && cachedEntry.docHash === currentHash) {
+      return cachedEntry.state;
+    }
+
+    return null;
   }
 
   clear(path: string): void {

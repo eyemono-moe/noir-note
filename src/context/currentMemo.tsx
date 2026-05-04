@@ -5,7 +5,6 @@ import {
   useContext,
   type Accessor,
   type ParentComponent,
-  type Setter,
 } from "solid-js";
 
 import { useMemoContent } from "../hooks/useMemoOperations";
@@ -14,7 +13,7 @@ import { normalizePath } from "../utils/path";
 interface CurrentMemoContextValue {
   path: Accessor<string>;
   content: Accessor<string>;
-  setContent: Setter<string>;
+  setContent: (content: string) => void;
   isReady: Accessor<boolean>;
 }
 
