@@ -108,10 +108,10 @@ export default defineConfig({
     ],
   },
   build: {
-    license: { fileName: "LICENSE.md" },
+    license: { fileName: "licenses.md" },
     rolldownOptions: {
       output: {
-        postBanner: "/* See licenses of bundled dependencies at `/LICENSE.md` */",
+        postBanner: "/* See licenses of bundled dependencies at `/licenses.md` */",
       },
     },
   },
