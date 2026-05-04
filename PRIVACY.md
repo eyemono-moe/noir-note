@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Last updated: 2026-04-30_
+_Last updated: 2026-05-04_
 
 ## Summary
 
@@ -24,6 +24,23 @@ This app does not collect, transmit, or share any data. There are no:
 ## Network Requests
 
 The app may load resources (fonts, icons) from a CDN on first use if they are not already cached. After the initial load, the app works fully offline. No note content or personal data is included in these requests.
+
+### Embedded Content (Optional)
+
+When the **Embed links** setting is enabled (on by default), bare URLs to supported services are rendered as embedded players instead of plain links. Each service loads content from its own domain:
+
+| Service      | Domain                                           | Privacy Policy                                  |
+| ------------ | ------------------------------------------------ | ----------------------------------------------- |
+| YouTube      | `www.youtube-nocookie.com`                       | <https://policies.google.com/privacy>           |
+| Twitter / X  | `platform.x.com` (widget script) + `twitter.com` | <https://x.com/privacy>                         |
+| Spotify      | `open.spotify.com`                               | <https://www.spotify.com/legal/privacy-policy/> |
+| SoundCloud   | `w.soundcloud.com`                               | <https://soundcloud.com/pages/privacy>          |
+| ニコニコ動画 | `embed.nicovideo.jp`                             | <https://dwango.co.jp/terms/privacy/>           |
+
+These services may set cookies and collect data according to their own policies. If you prefer not to load embedded content, you can disable this feature in the settings.
+
+You can disable all embeds — or individual services — in **Settings → Preview → Embed links**.
+If you never paste bare service URLs into your notes, no embed requests are made.
 
 ## Deleting Your Data
 

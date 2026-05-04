@@ -17,6 +17,7 @@ import {
 import { useTheme } from "../../context/theme";
 import { getImageUrl } from "../../db/imageStore";
 import { bundledLanguages, codeToHtml } from "../../editor/shiki.bundle";
+import { useEmbedConfig } from "../../store/configStore";
 import { parseFrontmatterYamlString } from "../../utils/frontmatter";
 import {
   CheckboxToggleContext,
@@ -24,6 +25,7 @@ import {
   LightboxContext,
   MermaidRegistryContext,
 } from "./contexts";
+import { EmbedRenderer, detectEmbed } from "./embeds";
 
 // ============================================================================
 // Types
@@ -82,10 +84,24 @@ const TextNode: Component<{ node: RootContentMap["text"] }> = (props) => {
 };
 
 const ParagraphNode: Component<{ node: RootContentMap["paragraph"] }> = (props) => {
+  const embedConfig = useEmbedConfig();
+  const embedInfo = createMemo(() => {
+    const url = props.node.data?.embedLinkUrl;
+    if (!url) return null;
+    return detectEmbed(url, embedConfig());
+  });
+
   return (
-    <p data-source-line={props.node.position?.start?.line}>
-      <NodesRenderer nodes={props.node.children} />
-    </p>
+    <Show
+      when={embedInfo()}
+      fallback={
+        <p data-source-line={props.node.position?.start?.line}>
+          <NodesRenderer nodes={props.node.children} />
+        </p>
+      }
+    >
+      {(info) => <EmbedRenderer info={info()} sourceLine={props.node.position?.start?.line} />}
+    </Show>
   );
 };
 

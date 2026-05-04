@@ -3,12 +3,28 @@ import { createStore } from "solid-js/store";
 
 type ThemeMode = "light" | "dark" | "system";
 
+export interface EmbedConfig {
+  /** Master switch — when false all embeds are disabled */
+  global: boolean;
+  /**
+   * Per-service overrides keyed by EmbedMatcher.id.
+   * A missing entry means the service inherits the global setting (i.e. enabled).
+   */
+  services: Partial<Record<string, boolean>>;
+}
+
+const DEFAULT_EMBED_CONFIG: EmbedConfig = {
+  global: true,
+  services: {},
+};
+
 interface AppConfig {
   theme: ThemeMode;
   splitterSizes?: number[];
   scrollSyncEnabled?: boolean;
   sidebarAccordionState?: string[];
   sidebarTab?: string;
+  embed?: EmbedConfig;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -79,4 +95,20 @@ export function updateSidebarTab(tab: string) {
 
 export function useSidebarTab() {
   return () => config.sidebarTab ?? "explorer";
+}
+
+export function useEmbedConfig() {
+  return () => config.embed ?? DEFAULT_EMBED_CONFIG;
+}
+
+export function updateEmbedGlobal(enabled: boolean) {
+  setConfig("embed", { ...(config.embed ?? DEFAULT_EMBED_CONFIG), global: enabled });
+}
+
+export function updateEmbedService(serviceId: string, enabled: boolean) {
+  const current = config.embed ?? DEFAULT_EMBED_CONFIG;
+  setConfig("embed", {
+    ...current,
+    services: { ...current.services, [serviceId]: enabled },
+  });
 }
