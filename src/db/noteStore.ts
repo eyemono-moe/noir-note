@@ -25,7 +25,6 @@ export interface MemoDocument {
   metadata?: {
     tags?: string[];
     title?: string;
-    marp?: boolean;
     [key: string]: unknown;
   };
 }

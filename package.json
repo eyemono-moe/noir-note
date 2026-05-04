@@ -26,7 +26,6 @@
     "@dprint/markdown": "^0.21.1",
     "@fsegurai/codemirror-theme-github-dark": "^6.2.5",
     "@fsegurai/codemirror-theme-github-light": "^6.2.5",
-    "@marp-team/marp-core": "^4.3.0",
     "@solid-primitives/media": "^2.3.5",
     "@solid-primitives/set": "^0.7.3",
     "@solid-primitives/storage": "^4.3.4",

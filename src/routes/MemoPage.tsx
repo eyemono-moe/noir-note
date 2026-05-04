@@ -1,6 +1,6 @@
 import { useNavigate } from "@solidjs/router";
 import { useLiveQuery } from "@tanstack/solid-db";
-import { type Component, Show, createDeferred, createMemo, lazy, Suspense } from "solid-js";
+import { type Component, Show, createDeferred, lazy, Suspense } from "solid-js";
 
 import SplitView from "../components/Layout/SplitView";
 import { CurrentMemoProvider, useCurrentMemo } from "../context/currentMemo";
@@ -56,11 +56,6 @@ const MemoPageContent: Component = () => {
     })),
   );
 
-  // Derive metadata for the current memo (used by Preview to pick the renderer).
-  const currentMetadata = createMemo(
-    () => allMemosQuery()?.find((m) => m.path === currentPath())?.metadata,
-  );
-
   return (
     <div class="bg-surface-primary text-text-primary h-screen w-screen overflow-hidden">
       <SplitView
@@ -100,7 +95,6 @@ const MemoPageContent: Component = () => {
             <Suspense fallback={<div class="text-text-secondary p-4">Loading preview...</div>}>
               <Preview
                 content={deferredContent()}
-                metadata={currentMetadata()}
                 onCheckboxToggle={handleCheckboxToggle}
                 onAdapterReady={setPreviewAdapter}
               />

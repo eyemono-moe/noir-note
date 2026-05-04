@@ -13,7 +13,7 @@ const MemoPreview: Component<{ path: string }> = (props) => {
     return q
       .from({ memos: collection })
       .where(({ memos }) => eq(memos.path, path))
-      .select(({ memos }) => ({ content: memos.content, metadata: memos.metadata }));
+      .select(({ memos }) => ({ content: memos.content }));
   });
 
   return (
@@ -28,7 +28,7 @@ const MemoPreview: Component<{ path: string }> = (props) => {
         >
           {(content) => (
             <Suspense fallback={<div class="text-text-secondary p-4 text-sm">Rendering...</div>}>
-              <Preview content={content()} metadata={memoQuery()?.[0]?.metadata} />
+              <Preview content={content()} />
             </Suspense>
           )}
         </Show>

@@ -10,7 +10,6 @@ export interface PreviewScrollAdapter {
    * 1-based source line number at the top of the visible area.
    *
    * - MarkdownRenderer: scrolls to the nearest `data-source-line` anchor.
-   * - SlideRenderer: scrolls to the slide whose line range contains `line`.
    */
   syncFromEditorLine(line: number): void;
 
@@ -19,7 +18,6 @@ export interface PreviewScrollAdapter {
    * preview viewport.
    *
    * - MarkdownRenderer: reverse-maps the visible anchor back to a line number.
-   * - SlideRenderer: returns the first line of the currently visible slide.
    */
   getTopSourceLine(): number;
 
