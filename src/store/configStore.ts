@@ -1,5 +1,5 @@
 import { makePersisted } from "@solid-primitives/storage";
-import { createSignal } from "solid-js";
+import { createStore } from "solid-js/store";
 
 type ThemeMode = "light" | "dark" | "system";
 
@@ -38,11 +38,11 @@ const _storage = getLocalStorageIfAvailable();
 // app can still render — config just won't persist across page loads.
 // oxlint-disable solid/reactivity
 const [config, setConfig] = _storage
-  ? makePersisted(createSignal<AppConfig>(DEFAULT_CONFIG), {
+  ? makePersisted(createStore<AppConfig>(DEFAULT_CONFIG), {
       name: "app-config",
       storage: _storage,
     })
-  : createSignal<AppConfig>(DEFAULT_CONFIG);
+  : createStore<AppConfig>(DEFAULT_CONFIG);
 // oxlint-enable solid/reactivity
 
 export function useConfig() {
@@ -50,33 +50,33 @@ export function useConfig() {
 }
 
 export function updateTheme(theme: ThemeMode) {
-  setConfig((prev) => ({ ...prev, theme }));
+  setConfig("theme", theme);
 }
 
 export function updateSplitterSizes(sizes: number[]) {
-  setConfig((prev) => ({ ...prev, splitterSizes: sizes }));
+  setConfig("splitterSizes", sizes);
 }
 
 export function updateScrollSyncEnabled(enabled: boolean) {
-  setConfig((prev) => ({ ...prev, scrollSyncEnabled: enabled }));
+  setConfig("scrollSyncEnabled", enabled);
 }
 
 export function useScrollSyncEnabled() {
-  return () => config().scrollSyncEnabled ?? true;
+  return () => config.scrollSyncEnabled ?? true;
 }
 
 export function updateSidebarAccordionState(state: string[]) {
-  setConfig((prev) => ({ ...prev, sidebarAccordionState: state }));
+  setConfig("sidebarAccordionState", state);
 }
 
 export function useSidebarAccordionState() {
-  return () => config().sidebarAccordionState ?? ["explorer"];
+  return () => config.sidebarAccordionState ?? ["explorer"];
 }
 
 export function updateSidebarTab(tab: string) {
-  setConfig((prev) => ({ ...prev, sidebarTab: tab }));
+  setConfig("sidebarTab", tab);
 }
 
 export function useSidebarTab() {
-  return () => config().sidebarTab ?? "explorer";
+  return () => config.sidebarTab ?? "explorer";
 }

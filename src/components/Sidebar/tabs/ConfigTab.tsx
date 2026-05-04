@@ -111,7 +111,7 @@ export const ConfigTab: Component = () => {
               Theme
             </p>
             <RadioGroup.Root
-              value={config().theme}
+              value={config.theme}
               onValueChange={(d) => updateTheme(d.value as ThemeMode)}
               class="flex gap-1.5"
             >

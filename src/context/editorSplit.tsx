@@ -15,7 +15,7 @@ export const EditorSplitProvider: ParentComponent = (props) => {
       { id: "center" },
       { id: "right" },
     ],
-    defaultSize: config().splitterSizes ?? DEFAULT_SPLITTER_SIZES,
+    defaultSize: config.splitterSizes ?? DEFAULT_SPLITTER_SIZES,
     onResizeEnd: (details) => {
       updateSplitterSizes(details.size);
     },

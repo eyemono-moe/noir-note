@@ -20,7 +20,7 @@ export const ThemeProvider: ParentComponent = (props) => {
 
   // Resolve effective theme based on config and system preference
   const isDark = createMemo(() => {
-    const theme = config().theme;
+    const theme = config.theme;
     if (theme === "system") {
       return prefersDark();
     }

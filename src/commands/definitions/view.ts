@@ -52,7 +52,7 @@ const toggleScrollSyncCommand: Command = {
   category: "view",
   execute: () => {
     const [config] = useConfig();
-    updateScrollSyncEnabled(!(config().scrollSyncEnabled ?? true));
+    updateScrollSyncEnabled(!(config.scrollSyncEnabled ?? true));
   },
 };
 
