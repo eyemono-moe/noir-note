@@ -8,16 +8,24 @@ import {
   Show,
   Suspense,
   Switch,
+  createEffect,
   createMemo,
   createRenderEffect,
   createResource,
   createSignal,
+  onCleanup,
 } from "solid-js";
 import { createStore, reconcile } from "solid-js/store";
 
 import "../../styles/markdown.css";
 import "../../styles/shiki.css";
 import { useTheme } from "../../context/theme";
+import type { PreviewScrollAdapter } from "../../types/scrollSync";
+import {
+  collectAnchors,
+  getEditorLineForPreviewScrollTop,
+  getPreviewScrollTopForLine,
+} from "../../utils/scrollSync";
 import { collectDefinitions, collectLightboxItems, extractFootnotes } from "./astUtils";
 import {
   CheckboxToggleContext,
@@ -39,8 +47,8 @@ interface MarkdownRendererProps {
   /** Called when a task list checkbox is clicked. offset is the document character
    *  offset of the list item's start (node.position.start.offset). */
   onCheckboxToggle?: (offset: number, checked: boolean) => void;
-  /** Called with the scrollable container element once it is mounted. */
-  containerRef?: (el: HTMLElement) => void;
+  /** Called with the scroll adapter once the container is mounted (null on unmount). */
+  onAdapterReady?: (adapter: PreviewScrollAdapter | null) => void;
 }
 
 // ============================================================================
@@ -143,6 +151,73 @@ const LightboxMermaid: Component<{ code: string }> = (props) => {
 const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
   const [carouselContainerRef, setCarouselContainerRef] = createSignal<HTMLDivElement | null>(null);
 
+  // ── Scroll adapter ──────────────────────────────────────────────────────────
+
+  const [containerEl, setContainerEl] = createSignal<HTMLElement | undefined>();
+
+  // Anchor cache — rebuilt lazily after content/layout changes.
+  let anchorCache: ReturnType<typeof collectAnchors> | null = null;
+  const invalidateAnchors = () => {
+    anchorCache = null;
+  };
+  const getAnchors = () => {
+    const el = containerEl();
+    if (!el) return [];
+    return (anchorCache ??= collectAnchors(el));
+  };
+
+  // Stable adapter object — closures always read live signal/cache values.
+  const adapter: PreviewScrollAdapter = {
+    syncFromEditorLine(line) {
+      const el = containerEl();
+      if (!el) return;
+      const anchors = getAnchors();
+      if (anchors.length === 0) return;
+      const target = getPreviewScrollTopForLine(anchors, line);
+      if (Math.abs(el.scrollTop - target) < 1) return;
+      el.scrollTop = target;
+    },
+    getTopSourceLine() {
+      const el = containerEl();
+      if (!el) return 1;
+      const anchors = getAnchors();
+      if (anchors.length === 0) return 1;
+      return getEditorLineForPreviewScrollTop(anchors, el.scrollTop);
+    },
+    subscribeScroll(handler) {
+      const el = containerEl();
+      if (!el) return () => {};
+      el.addEventListener("scroll", handler, { passive: true });
+      return () => el.removeEventListener("scroll", handler);
+    },
+  };
+
+  // Set up MutationObserver + ResizeObserver for anchor cache invalidation.
+  createEffect(() => {
+    const el = containerEl();
+    if (!el) return;
+
+    const mo = new MutationObserver(invalidateAnchors);
+    mo.observe(el, { childList: true, subtree: true });
+
+    const ro = new ResizeObserver(invalidateAnchors);
+    ro.observe(el);
+
+    onCleanup(() => {
+      mo.disconnect();
+      ro.disconnect();
+      anchorCache = null;
+    });
+  });
+
+  // Notify parent when container (and therefore adapter) becomes ready.
+  createEffect(() => {
+    if (containerEl()) {
+      props.onAdapterReady?.(adapter);
+      onCleanup(() => props.onAdapterReady?.(null));
+    }
+  });
+
   // Parse markdown AST asynchronously
   const [parseResult] = createResource(
     () => props.content,
@@ -216,7 +291,10 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
         <LightboxContext.Provider value={openLightbox}>
           <CheckboxToggleContext.Provider value={checkboxToggle}>
             <DefinitionsContext.Provider value={definitions}>
-              <div ref={props.containerRef} class="markdown-body h-full w-full overflow-auto p-4">
+              <div
+                ref={(el) => setContainerEl(el)}
+                class="markdown-body h-full w-full overflow-auto p-4"
+              >
                 <Show when={parseResult.latest} fallback={<p>Error parsing markdown</p>}>
                   <>
                     <NodesRenderer nodes={ast.children} />

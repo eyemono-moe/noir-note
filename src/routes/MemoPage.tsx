@@ -1,6 +1,6 @@
 import { useNavigate } from "@solidjs/router";
 import { useLiveQuery } from "@tanstack/solid-db";
-import { type Component, createDeferred, createMemo, lazy, Show, Suspense } from "solid-js";
+import { type Component, Show, createDeferred, createMemo, lazy, Suspense } from "solid-js";
 
 import SplitView from "../components/Layout/SplitView";
 import { CurrentMemoProvider, useCurrentMemo } from "../context/currentMemo";
@@ -17,8 +17,7 @@ import { useScrollSyncEnabled } from "../store/configStore";
 // initialization so the editor can mount as soon as isReady() becomes true.
 const editorImport = import("../components/Editor/Editor");
 const Editor = lazy(() => editorImport);
-const MarkdownRenderer = lazy(() => import("../components/Preview/MarkdownRenderer"));
-const SlideRenderer = lazy(() => import("../components/Preview/SlideRenderer"));
+const Preview = lazy(() => import("../components/Preview/Preview"));
 const Sidebar = lazy(() => import("../components/Sidebar/Sidebar"));
 
 const MemoPageContent: Component = () => {
@@ -27,7 +26,7 @@ const MemoPageContent: Component = () => {
   const collection = useMemosCollection();
 
   const { path: currentPath, content, setContent, isReady } = useCurrentMemo();
-  const { editorView, setEditorView, previewContainer, setPreviewContainer } = useEditorContext();
+  const { editorView, setEditorView, previewAdapter, setPreviewAdapter } = useEditorContext();
 
   // Defer preview updates so editor keystrokes are never blocked by the
   // markdown parse + render pipeline. The preview catches up within 300 ms
@@ -43,7 +42,7 @@ const MemoPageContent: Component = () => {
 
   const scrollSyncEnabled = useScrollSyncEnabled();
   // oxlint-disable-next-line solid/reactivity
-  useScrollSync(editorView, previewContainer, scrollSyncEnabled);
+  useScrollSync(editorView, previewAdapter, scrollSyncEnabled);
 
   // oxlint-disable-next-line solid/reactivity
   const handleCheckboxToggle = useCheckboxSync(editorView);
@@ -51,17 +50,15 @@ const MemoPageContent: Component = () => {
   const allMemosQuery = useLiveQuery((q) =>
     q.from({ memos: collection }).select(({ memos }) => ({
       path: memos.path,
-      title: memos.metadata?.title,
       metadata: memos.metadata,
       createdAt: memos.createdAt,
       updatedAt: memos.updatedAt,
     })),
   );
 
-  // Derive slide mode from the current memo's stored metadata (already parsed
-  // on save, no extra frontmatter parsing needed here).
-  const isSlideMode = createMemo(
-    () => allMemosQuery()?.find((m) => m.path === currentPath())?.metadata?.marp === true,
+  // Derive metadata for the current memo (used by Preview to pick the renderer).
+  const currentMetadata = createMemo(
+    () => allMemosQuery()?.find((m) => m.path === currentPath())?.metadata,
   );
 
   return (
@@ -101,18 +98,12 @@ const MemoPageContent: Component = () => {
         right={
           <Show when={isReady()}>
             <Suspense fallback={<div class="text-text-secondary p-4">Loading preview...</div>}>
-              <Show
-                when={isSlideMode()}
-                fallback={
-                  <MarkdownRenderer
-                    content={deferredContent()}
-                    onCheckboxToggle={handleCheckboxToggle}
-                    containerRef={setPreviewContainer}
-                  />
-                }
-              >
-                <SlideRenderer content={deferredContent()} />
-              </Show>
+              <Preview
+                content={deferredContent()}
+                metadata={currentMetadata()}
+                onCheckboxToggle={handleCheckboxToggle}
+                onAdapterReady={setPreviewAdapter}
+              />
             </Suspense>
           </Show>
         }

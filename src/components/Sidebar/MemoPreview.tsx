@@ -3,7 +3,7 @@ import { Show, Suspense, lazy, type Component } from "solid-js";
 
 import { useMemosCollection } from "../../context/db";
 
-const MarkdownRenderer = lazy(() => import("../Preview/MarkdownRenderer"));
+const Preview = lazy(() => import("../Preview/Preview"));
 
 const MemoPreview: Component<{ path: string }> = (props) => {
   const collection = useMemosCollection();
@@ -13,7 +13,7 @@ const MemoPreview: Component<{ path: string }> = (props) => {
     return q
       .from({ memos: collection })
       .where(({ memos }) => eq(memos.path, path))
-      .select(({ memos }) => ({ content: memos.content }));
+      .select(({ memos }) => ({ content: memos.content, metadata: memos.metadata }));
   });
 
   return (
@@ -28,7 +28,7 @@ const MemoPreview: Component<{ path: string }> = (props) => {
         >
           {(content) => (
             <Suspense fallback={<div class="text-text-secondary p-4 text-sm">Rendering...</div>}>
-              <MarkdownRenderer content={content()} />
+              <Preview content={content()} metadata={memoQuery()?.[0]?.metadata} />
             </Suspense>
           )}
         </Show>
