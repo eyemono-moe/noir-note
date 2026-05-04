@@ -1,6 +1,6 @@
 import { useNavigate } from "@solidjs/router";
 import { useLiveQuery } from "@tanstack/solid-db";
-import { type Component, createDeferred, lazy, Show, Suspense } from "solid-js";
+import { type Component, createDeferred, createMemo, lazy, Show, Suspense } from "solid-js";
 
 import SplitView from "../components/Layout/SplitView";
 import { CurrentMemoProvider, useCurrentMemo } from "../context/currentMemo";
@@ -18,6 +18,7 @@ import { useScrollSyncEnabled } from "../store/configStore";
 const editorImport = import("../components/Editor/Editor");
 const Editor = lazy(() => editorImport);
 const MarkdownRenderer = lazy(() => import("../components/Preview/MarkdownRenderer"));
+const SlideRenderer = lazy(() => import("../components/Preview/SlideRenderer"));
 const Sidebar = lazy(() => import("../components/Sidebar/Sidebar"));
 
 const MemoPageContent: Component = () => {
@@ -57,6 +58,12 @@ const MemoPageContent: Component = () => {
     })),
   );
 
+  // Derive slide mode from the current memo's stored metadata (already parsed
+  // on save, no extra frontmatter parsing needed here).
+  const isSlideMode = createMemo(
+    () => allMemosQuery()?.find((m) => m.path === currentPath())?.metadata?.marp === true,
+  );
+
   return (
     <div class="bg-surface-primary text-text-primary h-screen w-screen overflow-hidden">
       <SplitView
@@ -94,11 +101,18 @@ const MemoPageContent: Component = () => {
         right={
           <Show when={isReady()}>
             <Suspense fallback={<div class="text-text-secondary p-4">Loading preview...</div>}>
-              <MarkdownRenderer
-                content={deferredContent()}
-                onCheckboxToggle={handleCheckboxToggle}
-                containerRef={setPreviewContainer}
-              />
+              <Show
+                when={isSlideMode()}
+                fallback={
+                  <MarkdownRenderer
+                    content={deferredContent()}
+                    onCheckboxToggle={handleCheckboxToggle}
+                    containerRef={setPreviewContainer}
+                  />
+                }
+              >
+                <SlideRenderer content={deferredContent()} />
+              </Show>
             </Suspense>
           </Show>
         }

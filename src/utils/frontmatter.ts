@@ -14,6 +14,7 @@ const FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---(\r?\n|$)/;
 const FrontmatterSchema = v.looseObject({
   title: v.optional(v.string()),
   tags: v.optional(v.array(v.string())),
+  marp: v.optional(v.boolean()),
 });
 
 /**

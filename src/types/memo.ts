@@ -11,5 +11,6 @@ export type MemoWithoutContent = Omit<Memo, "content">;
 export interface MemoFrontmatter {
   tags?: string[];
   title?: string;
+  marp?: boolean;
   [key: string]: unknown;
 }
