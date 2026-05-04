@@ -152,15 +152,6 @@ export const ConfigTab: Component = () => {
 
         {/* ── Footer links ──────────────────────────────────────────────── */}
         <div class="border-border-primary flex shrink-0 flex-col gap-0.5 border-t px-3 py-2">
-          <a
-            href="/licenses.md"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="focus-ring text-text-secondary hover:text-text-primary flex items-center gap-1.5 rounded px-1 py-1 text-xs transition-colors"
-          >
-            <span class="i-material-symbols:description-outline-rounded size-3.5 shrink-0" />
-            License (MIT)
-          </a>
           <button
             type="button"
             class="focus-ring text-text-secondary hover:text-text-primary flex items-center gap-1.5 rounded bg-transparent px-1 py-1 text-left text-xs transition-colors"
@@ -170,6 +161,16 @@ export const ConfigTab: Component = () => {
             Privacy Policy
           </button>
           <a
+            href="/licenses.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="focus-ring text-text-secondary hover:text-text-primary flex items-center gap-1.5 rounded px-1 py-1 text-xs transition-colors"
+          >
+            <span class="i-material-symbols:description-outline-rounded size-3.5 shrink-0" />
+            License (MIT)
+            <span class="i-material-symbols:open-in-new-rounded size-3.5 shrink-0" />
+          </a>
+          <a
             href="https://github.com/eyemono-moe/noir-note"
             target="_blank"
             rel="noopener noreferrer"
@@ -177,6 +178,7 @@ export const ConfigTab: Component = () => {
           >
             <span class="i-material-symbols:code-rounded size-3.5 shrink-0" />
             GitHub Repository
+            <span class="i-material-symbols:open-in-new-rounded size-3.5 shrink-0" />
           </a>
           <Show when={import.meta.env.NOIR_GIT_COMMIT_HASH !== "unknown"}>
             <div class="text-text-secondary text-xs">
