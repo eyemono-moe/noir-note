@@ -57,12 +57,39 @@ export function _resetKeyCounter(): void {
 }
 
 // ============================================================================
+// Node match signature
+// ============================================================================
+
+/**
+ * Returns a stable string used as the LCS match predicate for a node.
+ *
+ * For most nodes this is just `node.type`. Embed paragraphs — paragraphs
+ * annotated with `data.embedLinkUrl` by the remarkEmbedLink plugin — receive a
+ * URL-scoped signature so that:
+ *
+ *  - They are never LCS-matched against regular paragraphs (which would cause
+ *    the iframe to unmount when a new paragraph is inserted nearby).
+ *  - Two embed paragraphs with different URLs are never cross-matched with each
+ *    other.
+ *
+ * The null byte (`\0`) is used as a separator because it cannot appear in URLs
+ * or mdast node type strings.
+ */
+function nodeMatchSignature(node: RootContent): string {
+  if (node.type === "paragraph") {
+    const url = node.data?.embedLinkUrl;
+    if (url) return `paragraph\0${url}`;
+  }
+  return node.type;
+}
+
+// ============================================================================
 // LCS matching
 // ============================================================================
 
 /**
  * Compute the Longest Common Subsequence between `prev` and `next` using
- * `nodeType` equality as the match predicate.
+ * `nodeMatchSignature` equality as the match predicate.
  *
  * Returns matched index pairs `{ prevIdx, nextIdx }` in ascending order.
  * Unmatched entries in `next` will receive fresh keys.
@@ -85,7 +112,7 @@ export function lcsRootMatch(
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
       dp[i][j] =
-        prev[i - 1].nodeType === next[j - 1].type
+        prev[i - 1].nodeType === nodeMatchSignature(next[j - 1])
           ? dp[i - 1][j - 1] + 1
           : Math.max(dp[i - 1][j], dp[i][j - 1]);
     }
@@ -100,7 +127,7 @@ export function lcsRootMatch(
   let i = m;
   let j = n;
   while (i > 0 && j > 0) {
-    if (prev[i - 1].nodeType === next[j - 1].type) {
+    if (prev[i - 1].nodeType === nodeMatchSignature(next[j - 1])) {
       matches.unshift({ prevIdx: i - 1, nextIdx: j - 1 });
       i--;
       j--;
@@ -153,7 +180,7 @@ function keyNode(
       prevEntry?.children ?? [],
     );
     keyed.children = keyedChildren;
-    return { keyed, entry: { key, nodeType: node.type, children: newEntries } };
+    return { keyed, entry: { key, nodeType: nodeMatchSignature(node), children: newEntries } };
   }
 
   if ("children" in node && Array.isArray(node.children)) {
@@ -163,7 +190,7 @@ function keyNode(
     );
   }
 
-  return { keyed, entry: { key, nodeType: node.type } };
+  return { keyed, entry: { key, nodeType: nodeMatchSignature(node) } };
 }
 
 /**
