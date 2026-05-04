@@ -46,9 +46,9 @@ const PrivacyDialog: Component<{ open: boolean; onClose: () => void }> = (props)
     unmountOnExit
   >
     <Dialog.Backdrop class="bg-overlay fixed inset-0 z-50" />
-    <Dialog.Positioner class="pointer-events-auto fixed inset-x-0 top-1/2 z-50 flex max-h-[90dvh] -translate-y-1/2 items-start justify-center p-4">
+    <Dialog.Positioner class="pointer-events-auto fixed inset-x-0 top-1/2 z-50 flex max-h-screen -translate-y-1/2 items-start justify-center p-4">
       <Dialog.Content
-        class="border-border-primary bg-surface-primary flex w-[48rem] max-w-[95vw] flex-col overflow-hidden rounded-xl border shadow-xl"
+        class="border-border-primary bg-surface-primary grid max-h-screen w-[48rem] max-w-[95vw] grid-rows-[auto_1fr] overflow-hidden rounded-xl border shadow-xl"
         style={{ "max-height": "calc(90dvh - 2rem)" }}
       >
         {/* Header */}
@@ -70,28 +70,15 @@ const PrivacyDialog: Component<{ open: boolean; onClose: () => void }> = (props)
             <span class="i-material-symbols:close-rounded size-4" />
           </Dialog.CloseTrigger>
         </div>
-
-        {/* Markdown content
-            The outer div is the flex child that claims the remaining height and scrolls.
-            containerRef overrides MarkdownRenderer's built-in `h-full overflow-auto` so
-            content flows to its natural height and the wrapper handles scrolling instead. */}
-        <div class="min-h-0 flex-1 overflow-y-auto">
-          <Suspense
-            fallback={
-              <div class="text-text-secondary flex h-40 items-center justify-center text-sm">
-                Loading…
-              </div>
-            }
-          >
-            <MarkdownRenderer
-              content={privacyContent}
-              containerRef={(el) => {
-                el.style.height = "auto";
-                el.style.overflow = "visible";
-              }}
-            />
-          </Suspense>
-        </div>
+        <Suspense
+          fallback={
+            <div class="text-text-secondary flex h-40 items-center justify-center text-sm">
+              Loading…
+            </div>
+          }
+        >
+          <MarkdownRenderer content={privacyContent} />
+        </Suspense>
       </Dialog.Content>
     </Dialog.Positioner>
   </Dialog.Root>
@@ -165,15 +152,6 @@ export const ConfigTab: Component = () => {
 
         {/* ── Footer links ──────────────────────────────────────────────── */}
         <div class="border-border-primary flex shrink-0 flex-col gap-0.5 border-t px-3 py-2">
-          <a
-            href="/LICENSE.md"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="focus-ring text-text-secondary hover:text-text-primary flex items-center gap-1.5 rounded px-1 py-1 text-xs transition-colors"
-          >
-            <span class="i-material-symbols:description-outline-rounded size-3.5 shrink-0" />
-            License (MIT)
-          </a>
           <button
             type="button"
             class="focus-ring text-text-secondary hover:text-text-primary flex items-center gap-1.5 rounded bg-transparent px-1 py-1 text-left text-xs transition-colors"
@@ -183,6 +161,16 @@ export const ConfigTab: Component = () => {
             Privacy Policy
           </button>
           <a
+            href="/licenses.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="focus-ring text-text-secondary hover:text-text-primary flex items-center gap-1.5 rounded px-1 py-1 text-xs transition-colors"
+          >
+            <span class="i-material-symbols:description-outline-rounded size-3.5 shrink-0" />
+            License (MIT)
+            <span class="i-material-symbols:open-in-new-rounded size-3.5 shrink-0" />
+          </a>
+          <a
             href="https://github.com/eyemono-moe/noir-note"
             target="_blank"
             rel="noopener noreferrer"
@@ -190,6 +178,7 @@ export const ConfigTab: Component = () => {
           >
             <span class="i-material-symbols:code-rounded size-3.5 shrink-0" />
             GitHub Repository
+            <span class="i-material-symbols:open-in-new-rounded size-3.5 shrink-0" />
           </a>
           <Show when={import.meta.env.NOIR_GIT_COMMIT_HASH !== "unknown"}>
             <div class="text-text-secondary text-xs">

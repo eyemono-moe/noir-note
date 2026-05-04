@@ -49,6 +49,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,woff}"],
         navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/licenses\.md/],
         clientsClaim: true,
         cleanupOutdatedCaches: true,
       },
@@ -108,10 +109,10 @@ export default defineConfig({
     ],
   },
   build: {
-    license: { fileName: "LICENSE.md" },
+    license: { fileName: "licenses.md" },
     rolldownOptions: {
       output: {
-        postBanner: "/* See licenses of bundled dependencies at `/LICENSE.md` */",
+        postBanner: "/* See licenses of bundled dependencies at `/licenses.md` */",
       },
     },
   },
