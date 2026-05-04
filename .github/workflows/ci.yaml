@@ -36,7 +36,7 @@ jobs:
           node-version: "24"
           cache: true
       - run: vp install
-      - run: vp knip
+      - run: vp run knip
   build:
     runs-on: ubuntu-latest
     steps:
