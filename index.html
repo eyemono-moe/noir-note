@@ -44,17 +44,18 @@
     <link rel="canonical" href="https://md.eyemono.moe/" />
     <script type="application/ld+json">
       {
-        "@type": "http://schema.org/SoftwareApplication",
-        "http://schema.org/applicationCategory": "ProductivityApplication",
-        "http://schema.org/description": "A privacy-focused, browser-based Markdown note-taking app.",
-        "http://schema.org/name": "eyemono.md",
-        "http://schema.org/offers": {
-          "@type": "http://schema.org/Offer",
-          "http://schema.org/price": "0",
-          "http://schema.org/priceCurrency": "USD"
+        "@context": "http://schema.org",
+        "@type": "SoftwareApplication",
+        "applicationCategory": "ProductivityApplication",
+        "description": "A privacy-focused, browser-based Markdown note-taking app.",
+        "name": "eyemono.md",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
         },
-        "http://schema.org/operatingSystem": "Web",
-        "http://schema.org/url": {
+        "operatingSystem": "Web",
+        "url": {
           "@id": "https://md.eyemono.moe/"
         }
       }
