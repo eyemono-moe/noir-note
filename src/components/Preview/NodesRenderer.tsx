@@ -17,6 +17,7 @@ import {
 import { useTheme } from "../../context/theme";
 import { getImageUrl } from "../../db/imageStore";
 import { bundledLanguages, codeToHtml } from "../../editor/shiki.bundle";
+import { useEmbedConfig } from "../../store/configStore";
 import { parseFrontmatterYamlString } from "../../utils/frontmatter";
 import {
   CheckboxToggleContext,
@@ -24,6 +25,7 @@ import {
   LightboxContext,
   MermaidRegistryContext,
 } from "./contexts";
+import { EMBED_MATCHERS, EmbedRenderer } from "./embeds";
 
 // ============================================================================
 // Types
@@ -82,10 +84,46 @@ const TextNode: Component<{ node: RootContentMap["text"] }> = (props) => {
 };
 
 const ParagraphNode: Component<{ node: RootContentMap["paragraph"] }> = (props) => {
+  const embedConfig = useEmbedConfig();
+
+  // Step 1 — pure URL→service match. Does NOT read config, so this memo only
+  // re-evaluates when the paragraph URL changes (i.e. the user edits the note).
+  // Because config changes never touch this memo, the returned EmbedInfo object
+  // keeps a stable reference across config-only updates.
+  const matchedEmbed = createMemo(() => {
+    const url = props.node.data?.embedLinkUrl;
+    if (!url) return null;
+    for (const matcher of EMBED_MATCHERS) {
+      const info = matcher.match(url);
+      if (info) return info;
+    }
+    return null;
+  });
+
+  // Step 2 — config gate. Passes the *same* EmbedInfo reference from step 1
+  // through when the service is enabled, so downstream effects (e.g.
+  // TwitterEmbed's createEffect) see no change — and do not re-run — when an
+  // unrelated embed setting is toggled.
+  const embedInfo = createMemo(() => {
+    const info = matchedEmbed();
+    if (!info) return null;
+    const config = embedConfig();
+    if (!config.global) return null;
+    if (config.services[info.matcherId] === false) return null;
+    return info;
+  });
+
   return (
-    <p data-source-line={props.node.position?.start?.line}>
-      <NodesRenderer nodes={props.node.children} />
-    </p>
+    <Show
+      when={embedInfo()}
+      fallback={
+        <p data-source-line={props.node.position?.start?.line}>
+          <NodesRenderer nodes={props.node.children} />
+        </p>
+      }
+    >
+      {(info) => <EmbedRenderer info={info()} sourceLine={props.node.position?.start?.line} />}
+    </Show>
   );
 };
 

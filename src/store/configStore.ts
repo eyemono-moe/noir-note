@@ -1,7 +1,22 @@
 import { makePersisted } from "@solid-primitives/storage";
-import { createSignal } from "solid-js";
+import { createStore } from "solid-js/store";
 
 type ThemeMode = "light" | "dark" | "system";
+
+interface EmbedConfig {
+  /** Master switch — when false all embeds are disabled */
+  global: boolean;
+  /**
+   * Per-service overrides keyed by EmbedMatcher.id.
+   * A missing entry means the service inherits the global setting (i.e. enabled).
+   */
+  services: Partial<Record<string, boolean>>;
+}
+
+const DEFAULT_EMBED_CONFIG: EmbedConfig = {
+  global: true,
+  services: {},
+};
 
 interface AppConfig {
   theme: ThemeMode;
@@ -9,6 +24,7 @@ interface AppConfig {
   scrollSyncEnabled?: boolean;
   sidebarAccordionState?: string[];
   sidebarTab?: string;
+  embed?: EmbedConfig;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -38,11 +54,11 @@ const _storage = getLocalStorageIfAvailable();
 // app can still render — config just won't persist across page loads.
 // oxlint-disable solid/reactivity
 const [config, setConfig] = _storage
-  ? makePersisted(createSignal<AppConfig>(DEFAULT_CONFIG), {
+  ? makePersisted(createStore<AppConfig>(DEFAULT_CONFIG), {
       name: "app-config",
       storage: _storage,
     })
-  : createSignal<AppConfig>(DEFAULT_CONFIG);
+  : createStore<AppConfig>(DEFAULT_CONFIG);
 // oxlint-enable solid/reactivity
 
 export function useConfig() {
@@ -50,33 +66,49 @@ export function useConfig() {
 }
 
 export function updateTheme(theme: ThemeMode) {
-  setConfig((prev) => ({ ...prev, theme }));
+  setConfig("theme", theme);
 }
 
 export function updateSplitterSizes(sizes: number[]) {
-  setConfig((prev) => ({ ...prev, splitterSizes: sizes }));
+  setConfig("splitterSizes", sizes);
 }
 
 export function updateScrollSyncEnabled(enabled: boolean) {
-  setConfig((prev) => ({ ...prev, scrollSyncEnabled: enabled }));
+  setConfig("scrollSyncEnabled", enabled);
 }
 
 export function useScrollSyncEnabled() {
-  return () => config().scrollSyncEnabled ?? true;
+  return () => config.scrollSyncEnabled ?? true;
 }
 
 export function updateSidebarAccordionState(state: string[]) {
-  setConfig((prev) => ({ ...prev, sidebarAccordionState: state }));
+  setConfig("sidebarAccordionState", state);
 }
 
 export function useSidebarAccordionState() {
-  return () => config().sidebarAccordionState ?? ["explorer"];
+  return () => config.sidebarAccordionState ?? ["explorer"];
 }
 
 export function updateSidebarTab(tab: string) {
-  setConfig((prev) => ({ ...prev, sidebarTab: tab }));
+  setConfig("sidebarTab", tab);
 }
 
 export function useSidebarTab() {
-  return () => config().sidebarTab ?? "explorer";
+  return () => config.sidebarTab ?? "explorer";
+}
+
+export function useEmbedConfig() {
+  return () => config.embed ?? DEFAULT_EMBED_CONFIG;
+}
+
+export function updateEmbedGlobal(enabled: boolean) {
+  setConfig("embed", { ...(config.embed ?? DEFAULT_EMBED_CONFIG), global: enabled });
+}
+
+export function updateEmbedService(serviceId: string, enabled: boolean) {
+  const current = config.embed ?? DEFAULT_EMBED_CONFIG;
+  setConfig("embed", {
+    ...current,
+    services: { ...current.services, [serviceId]: enabled },
+  });
 }

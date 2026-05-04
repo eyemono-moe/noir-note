@@ -85,6 +85,34 @@ Undefined image reference (renders nothing): ![missing][no-such-img]
 
 [placeholder]: https://placehold.jp/320x120.png "Placeholder image"
 
+## embeds
+
+https://youtu.be/dQw4w9WgXcQ?si=McjhRpMH8py7KxvW
+
+https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+https://www.youtube.com/shorts/Y0UjGkbnouA
+
+https://youtube.com/shorts/Y0UjGkbnouA?si=iOTAJqDiz5HcsbDA
+
+https://x.com/jack/status/20?s=20
+
+https://open.spotify.com/intl-ja/track/4mAQIBAQKHiZcTCPRJZOcI?si=2005ded583124618
+
+https://open.spotify.com/intl-ja/artist/4UNEM59pyyoeOZiQKj3fXo?si=8DtDq0JMSEycFic5ED78-Q
+
+https://open.spotify.com/playlist/37i9dQZF1DX6f5fW2F9JIU?si=5b97acdf0f914119
+
+https://open.spotify.com/intl-ja/album/75ckWWxu858rtdJZNyfGJI?si=qhnC0RcKS3qNZT0yfwkkRQ
+
+https://open.spotify.com/show/31eYyJk4EPoivEIZqyPzT1?si=dd6e9105036644f9
+
+https://open.spotify.com/episode/5MEVNX2jBdMowWZ6q2BQXV?si=46b485e15ba94cf4
+
+https://soundcloud.com/baron1_3/wonderland?si=51abdcdaaf314493840c65880947b0b3&utm_source=clipboard&utm_medium=text&utm_campaign=social_sharing
+
+https://www.nicovideo.jp/watch/sm9
+
 ---
 
 # Code Blocks

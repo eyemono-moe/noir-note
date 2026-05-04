@@ -9,11 +9,15 @@ import { Portal } from "solid-js/web";
 // oxlint-disable-next-line import/no-unresolved
 import privacyContent from "../../../../PRIVACY.md?raw";
 import {
+  updateEmbedGlobal,
+  updateEmbedService,
   updateScrollSyncEnabled,
   updateTheme,
   useConfig,
+  useEmbedConfig,
   useScrollSyncEnabled,
 } from "../../../store/configStore";
+import { EMBED_MATCHERS } from "../../Preview/embeds";
 
 const MarkdownRenderer = lazy(() => import("../../Preview/MarkdownRenderer"));
 
@@ -91,6 +95,7 @@ const PrivacyDialog: Component<{ open: boolean; onClose: () => void }> = (props)
 export const ConfigTab: Component = () => {
   const [config] = useConfig();
   const scrollSyncEnabled = useScrollSyncEnabled();
+  const embedConfig = useEmbedConfig();
   const [privacyOpen, setPrivacyOpen] = createSignal(false);
 
   return (
@@ -111,7 +116,7 @@ export const ConfigTab: Component = () => {
               Theme
             </p>
             <RadioGroup.Root
-              value={config().theme}
+              value={config.theme}
               onValueChange={(d) => updateTheme(d.value as ThemeMode)}
               class="flex gap-1.5"
             >
@@ -147,6 +152,45 @@ export const ConfigTab: Component = () => {
               </Switch.Control>
               <Switch.HiddenInput />
             </Switch.Root>
+          </section>
+
+          {/* ── Preview ───────────────────────────────────────────────── */}
+          <section class="border-border-primary border-b px-3 py-3">
+            <p class="text-text-secondary mb-2 text-[0.6875rem] font-semibold tracking-[0.04em] uppercase">
+              Preview
+            </p>
+
+            {/* Global embed toggle */}
+            <Switch.Root
+              checked={embedConfig().global}
+              onCheckedChange={(d) => updateEmbedGlobal(d.checked)}
+              class="flex cursor-pointer items-center justify-between gap-3 rounded px-1 py-1.5"
+            >
+              <Switch.Label class="text-text-primary text-xs">Embed links</Switch.Label>
+              <Switch.Control class="b-1 b-border-primary data-[focus-visible]:outline-border-accent bg-surface-secondary data-[state=checked]:bg-text-accent relative inline-flex h-5 w-9 shrink-0 rounded-full p-[1px] transition-colors data-[focus-visible]:outline data-[focus-visible]:outline-2 data-[focus-visible]:outline-offset-2">
+                <Switch.Thumb class="b-border-primary b-1 pointer-events-none inline-block size-4 translate-x-0 rounded-full bg-white shadow-sm ring-0 transition-transform data-[state=checked]:translate-x-4" />
+              </Switch.Control>
+              <Switch.HiddenInput />
+            </Switch.Root>
+
+            {/* Per-service toggles — only shown when the global switch is on */}
+            <Show when={embedConfig().global}>
+              <For each={EMBED_MATCHERS}>
+                {(matcher) => (
+                  <Switch.Root
+                    checked={embedConfig().services[matcher.id] ?? true}
+                    onCheckedChange={(d) => updateEmbedService(matcher.id, d.checked)}
+                    class="flex cursor-pointer items-center justify-between gap-3 rounded px-1 py-1.5 pl-5"
+                  >
+                    <Switch.Label class="text-text-secondary text-xs">{matcher.name}</Switch.Label>
+                    <Switch.Control class="b-1 b-border-primary data-[focus-visible]:outline-border-accent bg-surface-secondary data-[state=checked]:bg-text-accent relative inline-flex h-5 w-9 shrink-0 rounded-full p-[1px] transition-colors data-[focus-visible]:outline data-[focus-visible]:outline-2 data-[focus-visible]:outline-offset-2">
+                      <Switch.Thumb class="b-border-primary b-1 pointer-events-none inline-block size-4 translate-x-0 rounded-full bg-white shadow-sm ring-0 transition-transform data-[state=checked]:translate-x-4" />
+                    </Switch.Control>
+                    <Switch.HiddenInput />
+                  </Switch.Root>
+                )}
+              </For>
+            </Show>
           </section>
         </div>
 
