@@ -3,10 +3,8 @@ import { soundcloudMatcher } from "./matchers/soundcloud";
 import { spotifyMatcher } from "./matchers/spotify";
 import { twitterMatcher } from "./matchers/twitter";
 import { youtubeMatcher } from "./matchers/youtube";
-import type { EmbedInfo, EmbedMatcher } from "./types";
+import type { EmbedMatcher } from "./types";
 export { EmbedRenderer } from "./EmbedRenderer";
-
-export type { EmbedInfo, EmbedMatcher };
 
 /**
  * Ordered list of all supported embed services.

@@ -3,7 +3,7 @@ import { createStore } from "solid-js/store";
 
 type ThemeMode = "light" | "dark" | "system";
 
-export interface EmbedConfig {
+interface EmbedConfig {
   /** Master switch — when false all embeds are disabled */
   global: boolean;
   /**
