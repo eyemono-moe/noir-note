@@ -1,7 +1,7 @@
 import { debounce } from "@solid-primitives/scheduled";
 import { useLocation } from "@solidjs/router";
 import { eq, useLiveQuery } from "@tanstack/solid-db";
-import { type Accessor, createEffect, createMemo, createSignal } from "solid-js";
+import { type Accessor, createMemo, createSignal } from "solid-js";
 
 import { useMemosCollection } from "../context/db";
 import { AUTO_SAVE_DELAY } from "../utils/constants";
@@ -76,7 +76,6 @@ export function useMemoSaver() {
  */
 export function useMemoContent(path: Accessor<string>) {
   const collection = useMemosCollection();
-  const [localContent, setLocalContent] = createSignal("");
 
   // Query for current memo
   const currentMemoQuery = useLiveQuery((q) => {
@@ -84,23 +83,34 @@ export function useMemoContent(path: Accessor<string>) {
     return q
       .from({ memos: collection })
       .where(({ memos }) => eq(memos.path, currentPath))
-      .select(({ memos }) => memos);
+      .select(({ memos }) => memos)
+      .findOne();
   });
 
-  // Sync memo to local content when it changes
-  createEffect(() => {
-    const memos = currentMemoQuery();
-    const memo = memos?.[0];
-    if (memo) {
-      setLocalContent(memo.content);
-    } else if (currentMemoQuery.isReady) {
-      setLocalContent("");
-    }
+  // Synchronously derived DB content — updates atomically with path changes because
+  // TanStack DB is an in-memory store and useLiveQuery re-evaluates synchronously.
+  // Using createMemo (not createSignal+createEffect) eliminates the two-tick problem
+  // where path and content would update in separate reactive batches.
+  const dbContent = createMemo(() => currentMemoQuery()?.content ?? "");
+
+  // Local override for immediate user-edit feedback.
+  // Stored as {path, content} so that edits from the previous path are automatically
+  // ignored when path changes — no explicit reset effect required.
+  const [localEdit, setLocalEdit] = createSignal<{ path: string; content: string } | null>(null);
+
+  // Final content: prefer local edit when it matches the current path, else DB content.
+  const content = createMemo(() => {
+    const edit = localEdit();
+    return edit?.path === path() ? edit.content : dbContent();
   });
+
+  const setContent = (newContent: string) => {
+    setLocalEdit({ path: path(), content: newContent });
+  };
 
   return {
-    content: localContent,
-    setContent: setLocalContent,
+    content,
+    setContent,
     isReady: () => currentMemoQuery.isReady,
   };
 }

@@ -5,15 +5,15 @@ import {
   useContext,
   type Accessor,
   type ParentComponent,
-  type Setter,
 } from "solid-js";
 
 import { useMemoContent } from "../hooks/useMemoOperations";
 import { normalizePath } from "../utils/path";
 
 interface CurrentMemoContextValue {
+  path: Accessor<string>;
   content: Accessor<string>;
-  setContent: Setter<string>;
+  setContent: (content: string) => void;
   isReady: Accessor<boolean>;
 }
 
@@ -22,11 +22,12 @@ const CurrentMemoContext = createContext<CurrentMemoContextValue>();
 export const CurrentMemoProvider: ParentComponent = (props) => {
   const location = useLocation();
   const currentPath = createMemo(() => normalizePath(location.pathname));
+
   // oxlint-disable-next-line solid/reactivity
   const { content, setContent, isReady } = useMemoContent(currentPath);
 
   return (
-    <CurrentMemoContext.Provider value={{ content, setContent, isReady }}>
+    <CurrentMemoContext.Provider value={{ path: currentPath, content, setContent, isReady }}>
       {props.children}
     </CurrentMemoContext.Provider>
   );

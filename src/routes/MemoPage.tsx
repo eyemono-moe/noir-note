@@ -1,6 +1,6 @@
-import { useLocation, useNavigate } from "@solidjs/router";
+import { useNavigate } from "@solidjs/router";
 import { useLiveQuery } from "@tanstack/solid-db";
-import { type Component, createDeferred, createMemo, lazy, Show, Suspense } from "solid-js";
+import { type Component, createDeferred, lazy, Show, Suspense } from "solid-js";
 
 import SplitView from "../components/Layout/SplitView";
 import { CurrentMemoProvider, useCurrentMemo } from "../context/currentMemo";
@@ -11,7 +11,6 @@ import { useCheckboxSync } from "../hooks/useCheckboxSync";
 import { useMemoSaver } from "../hooks/useMemoOperations";
 import { useScrollSync } from "../hooks/useScrollSync";
 import { useScrollSyncEnabled } from "../store/configStore";
-import { normalizePath } from "../utils/path";
 
 // Start downloading the Editor chunk immediately at module-evaluation time,
 // before the DB sync completes. This overlaps the network download with DB
@@ -22,13 +21,11 @@ const MarkdownRenderer = lazy(() => import("../components/Preview/MarkdownRender
 const Sidebar = lazy(() => import("../components/Sidebar/Sidebar"));
 
 const MemoPageContent: Component = () => {
-  const location = useLocation();
   const navigate = useNavigate();
   const editorSplitter = useEditorSplit();
   const collection = useMemosCollection();
-  const currentPath = createMemo(() => normalizePath(location.pathname));
 
-  const { content, setContent, isReady } = useCurrentMemo();
+  const { path: currentPath, content, setContent, isReady } = useCurrentMemo();
   const { editorView, setEditorView, previewContainer, setPreviewContainer } = useEditorContext();
 
   // Defer preview updates so editor keystrokes are never blocked by the
@@ -85,6 +82,7 @@ const MemoPageContent: Component = () => {
           <Show when={isReady()}>
             <Suspense fallback={<div class="text-text-secondary p-4">Loading editor...</div>}>
               <Editor
+                path={currentPath()}
                 content={content()}
                 onChange={handleContentChange}
                 placeholder="Start typing..."
