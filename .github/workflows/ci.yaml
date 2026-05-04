@@ -27,6 +27,16 @@ jobs:
           cache: true
       - run: vp install
       - run: vp test
+  knip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: "24"
+          cache: true
+      - run: vp install
+      - run: vp knip
   build:
     runs-on: ubuntu-latest
     steps:
