@@ -21,10 +21,11 @@ jobs:
       - run: vp install
       - run: vp build
       - run: vpx playwright install --with-deps
-      - run: vpx playwright test --reporter=line
+      - run: vpx playwright test --reporter=html
       - name: Upload Playwright Report
-        if: always()
         uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
         with:
           name: playwright-report
           path: playwright-report/
+          retention-days: 30

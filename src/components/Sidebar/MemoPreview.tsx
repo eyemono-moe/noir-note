@@ -3,7 +3,7 @@ import { Show, Suspense, lazy, type Component } from "solid-js";
 
 import { useMemosCollection } from "../../context/db";
 
-const MarkdownRenderer = lazy(() => import("../Preview/MarkdownRenderer"));
+const Preview = lazy(() => import("../Preview/Preview"));
 
 const MemoPreview: Component<{ path: string }> = (props) => {
   const collection = useMemosCollection();
@@ -28,7 +28,7 @@ const MemoPreview: Component<{ path: string }> = (props) => {
         >
           {(content) => (
             <Suspense fallback={<div class="text-text-secondary p-4 text-sm">Rendering...</div>}>
-              <MarkdownRenderer content={content()} />
+              <Preview content={content()} />
             </Suspense>
           )}
         </Show>

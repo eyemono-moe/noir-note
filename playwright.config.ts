@@ -12,10 +12,9 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   testMatch: "**/*.e2e.ts",
-  // Run tests serially to keep a single dev-server instance stable.
-  workers: 1,
   // Retry once on CI to reduce flakiness from startup timing.
   retries: process.env.CI ? 1 : 0,
+  workers: process.env.CI ? 1 : undefined, // Run tests serially on CI to avoid resource contention; locally, use the default.
   reporter: [["html", { open: "never" }], ["list"]],
   use: {
     baseURL: "http://localhost:5173",
