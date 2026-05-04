@@ -65,7 +65,7 @@ export default defineConfig({
     sortPackageJson: true,
   },
   lint: {
-    ignorePatterns: ["dist/**"],
+    ignorePatterns: ["dist/**", "e2e/**"],
     options: { typeAware: true, typeCheck: true },
     plugins: ["eslint", "typescript", "unicorn", "oxc", "import", "jsx-a11y", "promise", "vitest"],
     jsPlugins: ["eslint-plugin-solid"],
