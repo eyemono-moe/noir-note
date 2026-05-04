@@ -74,6 +74,8 @@ const SAVE_SETTLE_MS = 900;
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
+test.describe.configure({ mode: "parallel" });
+
 test.describe("Memo app", () => {
   // ── 1. Open root note ──────────────────────────────────────────────────────
 
