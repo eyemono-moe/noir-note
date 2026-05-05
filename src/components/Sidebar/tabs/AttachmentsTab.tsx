@@ -4,6 +4,7 @@ import { Dialog } from "@ark-ui/solid/dialog";
 import { HoverCard } from "@ark-ui/solid/hover-card";
 import { useNavigate } from "@solidjs/router";
 import { useLiveQuery } from "@tanstack/solid-db";
+import { createVirtualizer } from "@tanstack/solid-virtual";
 import {
   type Component,
   For,
@@ -14,8 +15,6 @@ import {
   createResource,
   createSignal,
   lazy,
-  onCleanup,
-  onMount,
 } from "solid-js";
 import { Portal } from "solid-js/web";
 
@@ -25,7 +24,7 @@ import {
   removeAttachment,
   type AttachmentMeta,
 } from "../../../db/attachmentCollection";
-import { getImageUrl, getStorageEstimate } from "../../../db/imageStore";
+import { getThumbnailUrl, getStorageEstimate } from "../../../db/imageStore";
 import { queryMemoPathsReferencingAttachment } from "../../../db/memoCollection";
 import { noteStore } from "../../../db/noteStore";
 
@@ -53,42 +52,17 @@ function formatBytes(bytes: number): string {
 // ---------------------------------------------------------------------------
 
 const ThumbnailImage: Component<{ id: string }> = (props) => {
-  // oxlint-disable-next-line no-unassigned-vars --- needed for ref
-  let containerRef: HTMLDivElement | undefined;
-  const [isVisible, setIsVisible] = createSignal(false);
-
-  onMount(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          // Stop observing once visible — the URL stays loaded for the row's lifetime.
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "200px" },
-    );
-    if (containerRef) observer.observe(containerRef);
-    onCleanup(() => observer.disconnect());
-  });
-
-  const [objectUrl] = createResource(
-    () => (isVisible() ? props.id : null),
-    (id) => getImageUrl(id),
-    { initialValue: null },
-  );
-
-  createEffect(() => {
-    const url = objectUrl.latest;
-    onCleanup(() => {
-      if (url) URL.revokeObjectURL(url);
-    });
+  // Virtual-scroll ensures this component only mounts when near the viewport,
+  // so no IntersectionObserver is needed.  getThumbnailUrl caches the object
+  // URL at the module level, so remounting during scroll is instant.
+  const [thumbnailUrl] = createResource(() => props.id, getThumbnailUrl, {
+    initialValue: null,
   });
 
   return (
-    <div ref={containerRef} class="size-9 shrink-0">
+    <div class="size-9 shrink-0">
       <Show
-        when={objectUrl.latest}
+        when={thumbnailUrl.latest}
         fallback={
           <div class="bg-surface-secondary flex size-9 shrink-0 items-center justify-center rounded">
             <span class="i-material-symbols:image-outline text-text-secondary size-5" />
@@ -371,6 +345,8 @@ export const AttachmentsTab: Component = () => {
   const navigate = useNavigate();
   // oxlint-disable-next-line no-unassigned-vars --- needed for ref
   let fileInputRef!: HTMLInputElement;
+  // oxlint-disable-next-line no-unassigned-vars --- needed for ref
+  let scrollRef: HTMLDivElement | undefined;
 
   const [activePath, setActivePath] = createSignal<string | null>(null);
 
@@ -387,6 +363,21 @@ export const AttachmentsTab: Component = () => {
   const sortedAttachments = createMemo((): AttachmentMeta[] =>
     [...(attachmentsQuery() ?? [])].sort((a, b) => b.lastModified - a.lastModified),
   );
+
+  /**
+   * Estimated collapsed row height in pixels:
+   * py-1.5 (6px × 2) + size-9 thumbnail (36px) = 48px;
+   */
+  const ATTACHMENT_ROW_HEIGHT = 48;
+
+  const virtualizer = createVirtualizer<HTMLDivElement, Element>({
+    get count() {
+      return sortedAttachments().length;
+    },
+    getScrollElement: () => scrollRef ?? null,
+    estimateSize: () => ATTACHMENT_ROW_HEIGHT,
+    overscan: 5,
+  });
 
   // Storage quota/usage — fetched once on mount
   const [estimate] = createResource(getStorageEstimate);
@@ -468,7 +459,7 @@ export const AttachmentsTab: Component = () => {
         </Show>
 
         {/* File list */}
-        <div class="min-h-0 flex-1 overflow-y-auto px-1 py-1">
+        <div ref={scrollRef} class="min-h-0 flex-1 overflow-y-auto px-1 py-1">
           <Show
             when={attachmentsQuery.isReady}
             fallback={
@@ -486,11 +477,35 @@ export const AttachmentsTab: Component = () => {
                 </div>
               }
             >
-              <For each={sortedAttachments()}>
-                {(att) => (
-                  <AttachmentRow att={att} onDelete={removeAttachment} onNavigate={navigate} />
-                )}
-              </For>
+              <div
+                style={{
+                  height: `${virtualizer.getTotalSize()}px`,
+                  width: "100%",
+                  position: "relative",
+                }}
+              >
+                <For each={virtualizer.getVirtualItems()}>
+                  {(virtualItem) => (
+                    <div
+                      data-index={virtualItem.index}
+                      ref={virtualizer.measureElement}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        transform: `translateY(${virtualItem.start}px)`,
+                      }}
+                    >
+                      <AttachmentRow
+                        att={sortedAttachments()[virtualItem.index]!}
+                        onDelete={removeAttachment}
+                        onNavigate={navigate}
+                      />
+                    </div>
+                  )}
+                </For>
+              </div>
             </Show>
           </Show>
         </div>
