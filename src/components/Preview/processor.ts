@@ -1,5 +1,6 @@
 import remarkFrontmatter from "remark-frontmatter";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 
@@ -16,6 +17,7 @@ export const processor = unified()
   .use(remarkFrontmatter, ["yaml"])
   .use(remarkFootnoteBackLink)
   .use(remarkGfm)
+  .use(remarkMath)
   .use(remarkEmoji)
   // Must run after remarkGfm so that auto-linked bare URLs are already link nodes
   .use(remarkEmbedLink);

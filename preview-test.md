@@ -523,6 +523,17 @@ Unknown shortcode stays as-is: :this_does_not_exist:
 
 ---
 
+# Mathematical Notation
+
+Inline math: Euler's identity is $e^{i\pi} + 1 = 0$.
+
+Block math:
+$$
+\int_{-\infty}^\infty e^{-x^2} dx = \sqrt{\pi}
+$$
+
+---
+
 # Footnotes
 
 Footnotes are parsed by `remark-gfm`[^gfm] and back-links are added by the
