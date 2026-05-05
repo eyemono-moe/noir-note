@@ -129,9 +129,12 @@ const AttachmentRow: Component<{
 
   // Lazy-load referenced note paths — fires whenever the Popover opens.
   // Closing and reopening changes the source null → id, triggering a fresh fetch.
-  const [refs] = createResource(
+  // initialValue: null prevents Suspense from triggering (same pattern as ThumbnailImage),
+  // which would otherwise remount the entire sidebar via the Suspense wrapping <Sidebar>.
+  const [refs] = createResource<string[] | null, string>(
     () => (popoverOpen() ? props.att.id : null),
     (id) => queryMemoPathsReferencingAttachment(id),
+    { initialValue: null },
   );
 
   const [deleteRefs, setDeleteRefs] = createSignal<string[] | null>(null);
