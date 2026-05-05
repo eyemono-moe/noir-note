@@ -27,6 +27,9 @@ import {
 } from "./contexts";
 import { EMBED_MATCHERS, EmbedRenderer } from "./embeds";
 
+import "katex/dist/katex.min.css";
+import "../../styles/shiki.css";
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -362,7 +365,6 @@ const SyntaxHighlightedCode: Component<{ code: string; lang?: string | null }> =
     () => ({ code: props.code, lang: props.lang }),
     async (params) => {
       try {
-        void import("../../styles/shiki.css");
         const lang = !params.lang
           ? "plaintext"
           : params.lang in bundledLanguages
@@ -601,34 +603,68 @@ const MathNode: Component<{ node: RootContentMap["math"] | RootContentMap["inlin
     () => [props.node.value, isBlock()] as const,
     async ([code, displayMode]) => {
       try {
-        void import("katex/dist/katex.min.css");
         const { default: katex } = await import("katex");
         const html = katex.renderToString(code, {
-          throwOnError: false,
+          throwOnError: true,
           strict: "ignore",
           displayMode,
         });
         return { success: true as const, html };
-      } catch (error) {
-        console.error("KaTeX rendering failed:", error);
-        return { success: false as const };
+      } catch (e) {
+        return { success: false as const, error: String(e) };
       }
     },
   );
 
   return (
-    <Suspense fallback={<code>{props.node.value}</code>}>
-      <Show
-        when={result()?.success}
-        fallback={
-          <pre>
-            <code>{props.node.value}</code>
-          </pre>
-        }
-      >
-        {/* oxlint-disable-next-line solid/no-innerhtml */}
-        <span innerHTML={result()?.html} />
-      </Show>
+    <Suspense
+      fallback={<code data-source-line={props.node.position?.start?.line}>{props.node.value}</code>}
+    >
+      <Switch>
+        <Match when={result()?.success}>
+          <Show
+            when={isBlock()}
+            fallback={
+              <span
+                data-source-line={props.node.position?.start?.line}
+                // oxlint-disable-next-line solid/no-innerhtml
+                innerHTML={result()?.html}
+              />
+            }
+          >
+            <div
+              class="w-full overflow-auto"
+              data-source-line={props.node.position?.start?.line}
+              // oxlint-disable-next-line solid/no-innerhtml
+              innerHTML={result()?.html}
+            />
+          </Show>
+        </Match>
+        <Match when={!result()?.success}>
+          <Show
+            when={isBlock()}
+            fallback={
+              <code
+                data-source-line={props.node.position?.start?.line}
+                class="text-text-danger"
+                title={result()?.error}
+              >
+                {props.node.value}
+              </code>
+            }
+          >
+            <div data-source-line={props.node.position?.start?.line} title={result()?.error}>
+              <pre>
+                <code>{props.node.value}</code>
+              </pre>
+              <div class="text-text-danger text-sm">
+                <p>KaTeX rendering error:</p>
+                <pre>{result()?.error}</pre>
+              </div>
+            </div>
+          </Show>
+        </Match>
+      </Switch>
     </Suspense>
   );
 };
