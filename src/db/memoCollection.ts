@@ -30,6 +30,11 @@ import { createOpfsBroadcastSync } from "./opfsSync";
 
 const BROADCAST_CHANNEL_ID = "eyemono-memos";
 
+// Persistent channel for broadcasting mutations to other tabs.
+// Reused across all mutations to avoid the overhead of creating and closing
+// a channel on every write.
+const mutationChannel = new BroadcastChannel(BROADCAST_CHANNEL_ID);
+
 // ---------------------------------------------------------------------------
 // Default welcome note
 // ---------------------------------------------------------------------------
@@ -95,34 +100,28 @@ function opfsMemosCollectionOptions() {
 
     /** Persist new note to OPFS and broadcast to other tabs. */
     onInsert: async (params: InsertMutationFnParams<MemoDocument, string>) => {
-      const channel = new BroadcastChannel(BROADCAST_CHANNEL_ID);
       for (const { modified } of params.transaction.mutations) {
         await noteStore.write(modified);
-        channel.postMessage({ type: "insert", value: modified });
+        mutationChannel.postMessage({ type: "insert", value: modified });
       }
-      channel.close();
     },
 
     /** Persist updated note to OPFS and broadcast to other tabs. */
     onUpdate: async (params: UpdateMutationFnParams<MemoDocument, string>) => {
-      const channel = new BroadcastChannel(BROADCAST_CHANNEL_ID);
       for (const { modified } of params.transaction.mutations) {
         await noteStore.write(modified);
         // "update" (not "insert") so receiving tabs know the row already exists.
-        channel.postMessage({ type: "update", value: modified });
+        mutationChannel.postMessage({ type: "update", value: modified });
       }
-      channel.close();
     },
 
     /** Remove note file from OPFS and broadcast to other tabs. */
     onDelete: async (params: DeleteMutationFnParams<MemoDocument, string>) => {
-      const channel = new BroadcastChannel(BROADCAST_CHANNEL_ID);
       for (const { key } of params.transaction.mutations) {
         const noteId = encodeNoteId(key as string);
         await noteStore.delete(noteId);
-        channel.postMessage({ type: "delete", key });
+        mutationChannel.postMessage({ type: "delete", key });
       }
-      channel.close();
     },
   };
 }
