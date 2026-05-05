@@ -27,6 +27,9 @@ import {
 } from "./contexts";
 import { EMBED_MATCHERS, EmbedRenderer } from "./embeds";
 
+import "katex/dist/katex.min.css";
+import "../../styles/shiki.css";
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -362,7 +365,6 @@ const SyntaxHighlightedCode: Component<{ code: string; lang?: string | null }> =
     () => ({ code: props.code, lang: props.lang }),
     async (params) => {
       try {
-        void import("../../styles/shiki.css");
         const lang = !params.lang
           ? "plaintext"
           : params.lang in bundledLanguages
@@ -601,7 +603,6 @@ const MathNode: Component<{ node: RootContentMap["math"] | RootContentMap["inlin
     () => [props.node.value, isBlock()] as const,
     async ([code, displayMode]) => {
       try {
-        void import("katex/dist/katex.min.css");
         const { default: katex } = await import("katex");
         const html = katex.renderToString(code, {
           throwOnError: true,
