@@ -8,11 +8,11 @@ import {
   createSignal,
   For,
   lazy,
+  Match,
   onMount,
   Show,
   Suspense,
   Switch,
-  Match,
   type Component,
 } from "solid-js";
 import { Portal } from "solid-js/web";
@@ -27,8 +27,8 @@ import styles from "./tree.module.css";
 const MemoPreview = lazy(() => import("./MemoPreview"));
 
 /**
- * Estimated row height in pixels.
- * Must match the CSS: font-size 0.875rem (14px) + line-height 1.25rem (20px) +
+ * Estimated row height in pixels — must match the CSS:
+ * font-size 0.875rem (14px) + line-height 1.25rem (20px) +
  * padding-block 0.125rem × 2 (4px) = 24px.
  */
 const ROW_HEIGHT = 24;
@@ -123,10 +123,18 @@ export const Tree: Component<TreeProps> = (props) => {
     return Array.from(expandedPaths);
   });
 
-  const tree = useTreeView(() => ({
-    collection: props.collection,
-    selectedValue: [props.currentPath],
-    expandedValue: effectiveExpandedPaths(),
+  // Use getter-based props so reactive dependencies (collection, selectedValue,
+  // expandedValue) are tracked by Ark UI's internal createMemo.
+  const tree = useTreeView({
+    get collection() {
+      return props.collection;
+    },
+    get selectedValue() {
+      return [props.currentPath];
+    },
+    get expandedValue() {
+      return effectiveExpandedPaths();
+    },
     onExpandedChange: (details) => {
       batch(() => {
         expandedPaths.clear();
@@ -142,7 +150,7 @@ export const Tree: Component<TreeProps> = (props) => {
     scrollToIndexFn: (details) => {
       virtualizerRef?.scrollToIndex(details.index, { align: "auto" });
     },
-  }));
+  });
 
   const visibleNodes = () => tree().getVisibleNodes();
 
@@ -161,18 +169,19 @@ export const Tree: Component<TreeProps> = (props) => {
 
     const parentIdx = nodes.findIndex((n) => n.node.path === creating.parentPath);
     if (parentIdx === -1) {
-      // Parent not visible — render without the input row.
+      // Parent not visible — show nodes without the input row.
       return nodes.map((n) => ({ kind: "node", node: n.node, indexPath: n.indexPath }));
     }
 
-    // Compute depth so CreateInputContainer can calculate its indentation.
-    // The CSS uses --depth inherited from the parent NodeProvider (1-indexed):
-    //   depth = parentNodeState.depth + 1  (parentNodeState.depth is 0-indexed)
+    // Compute the CSS --depth value for the input row.
+    // NodeProvider doesn't set --depth; we set it as an inline style.
+    // The CSS uses --depth (1-indexed), so depth = parentNodeState.depth + 1.
+    // The create-input is one level deeper than its parent, so depth = parent + 2.
     const parentNodeState = tree().getNodeState({
       node: nodes[parentIdx].node,
       indexPath: nodes[parentIdx].indexPath,
     });
-    const inputDepth = parentNodeState.depth + 1;
+    const inputDepth = parentNodeState.depth + 2;
 
     const result: VirtualRow[] = [];
     for (let i = 0; i < nodes.length; i++) {
@@ -193,7 +202,7 @@ export const Tree: Component<TreeProps> = (props) => {
     overscan: 5,
   });
 
-  // Expose the virtualizer so scrollToIndexFn can call it.
+  // Expose so scrollToIndexFn can call it.
   virtualizerRef = virtualizer;
 
   // ---------------------------------------------------------------------------
@@ -209,18 +218,14 @@ export const Tree: Component<TreeProps> = (props) => {
   const handleCreateConfirm = (parentPath: string, name: string) => {
     const newPath = parentPath === "/" ? `/${name}` : `${parentPath}/${name}`;
 
-    // Reject duplicate paths.
     if (props.allMemos.some((memo) => memo.path === newPath)) {
       console.error("Path already exists:", newPath);
       return;
     }
-
-    // Only alphanumerics, hyphens, underscores.
     if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
       console.error("Invalid name: use only letters, numbers, _ and -");
       return;
     }
-
     if (name.length > 100) {
       console.error("Name too long (max 100 characters)");
       return;
@@ -265,7 +270,7 @@ export const Tree: Component<TreeProps> = (props) => {
             >
               <For each={virtualizer.getVirtualItems()}>
                 {(virtualItem) => {
-                  const row = () => virtualRows()[virtualItem.index];
+                  const row = () => virtualRows().at(virtualItem.index);
 
                   return (
                     <div
@@ -280,110 +285,108 @@ export const Tree: Component<TreeProps> = (props) => {
                       }}
                     >
                       <Switch>
-                        <Match when={row().kind === "create-input" && (row() as CreateInputRow)}>
-                          {(r) => (
-                            <div style={{ "--depth": String(r().depth) }}>
-                              <CreateMemoInput
-                                onConfirm={(name) => handleCreateConfirm(r().parentPath, name)}
-                                onCancel={() => setCreatingState(null)}
-                              />
-                            </div>
-                          )}
+                        <Match when={row()?.kind === "create-input"}>
+                          <div style={{ "--depth": String((row() as CreateInputRow).depth) }}>
+                            <CreateMemoInput
+                              onConfirm={(name) =>
+                                handleCreateConfirm((row() as CreateInputRow).parentPath, name)
+                              }
+                              onCancel={() => setCreatingState(null)}
+                            />
+                          </div>
                         </Match>
 
-                        <Match when={row().kind === "node" && (row() as NodeRow)}>
-                          {(r) => {
+                        <Match when={row()?.kind === "node"}>
+                          {(_) => {
                             const nodeState = () =>
                               tree().getNodeState({
-                                node: r().node,
-                                indexPath: r().indexPath,
+                                node: (row() as NodeRow).node,
+                                indexPath: (row() as NodeRow).indexPath,
                               });
 
                             return (
-                              <TreeView.NodeProvider node={r().node} indexPath={r().indexPath}>
-                                <Show
-                                  when={nodeState().isBranch}
-                                  fallback={
-                                    // Leaf node (file / note)
-                                    <HoverCard.Trigger
-                                      value={r().node.path}
-                                      asChild={(hoverProps) => (
-                                        <TreeView.Item
-                                          class={styles.BranchControl}
-                                          {...hoverProps()}
-                                        >
-                                          {/* Placeholder so icon column aligns with branches */}
+                              <TreeView.NodeProvider
+                                node={(row() as NodeRow).node}
+                                indexPath={(row() as NodeRow).indexPath}
+                              >
+                                {/*
+                                 * Use TreeView.BranchControl for all nodes (branches and
+                                 * leaves alike), matching the original non-virtual tree.
+                                 * TreeView.NodeProvider does NOT set the --depth CSS var
+                                 * (only TreeView.Branch did); set it via inline style so
+                                 * the CSS indentation calculations work correctly.
+                                 * --depth is 1-indexed: root-level nodes → depth+1 = 1.
+                                 */}
+                                <HoverCard.Trigger
+                                  value={(row() as NodeRow).node.path}
+                                  asChild={(hoverProps) => (
+                                    <TreeView.BranchControl
+                                      class={styles.BranchControl}
+                                      {...hoverProps()}
+                                      style={{
+                                        "--depth": String(nodeState().depth + 1),
+                                      }}
+                                    >
+                                      <Show
+                                        when={nodeState().isBranch}
+                                        fallback={
+                                          // Leaf: empty spacer keeps icon column aligned.
                                           <span class="size-4 shrink-0" />
-                                          <TreeView.ItemText class={styles.BranchText}>
-                                            <span class="i-material-symbols:description-outline-rounded size-4 shrink-0" />
-                                            <span class="w-full truncate">{r().node.name}</span>
-                                          </TreeView.ItemText>
-                                          <div class={styles.ActionGroup}>
-                                            <button
-                                              class={styles.Action}
-                                              type="button"
-                                              aria-label="Delete note"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                setDeleteConfirmState({
-                                                  path: r().node.path,
-                                                  name: r().node.name,
-                                                });
-                                              }}
-                                            >
-                                              <span class="i-material-symbols:delete-rounded size-4 shrink-0" />
-                                            </button>
-                                            <button
-                                              class={styles.Action}
-                                              type="button"
-                                              aria-label="Add child note"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleAddChild(r().node);
-                                              }}
-                                            >
-                                              <span class="i-material-symbols:add-rounded size-4 shrink-0" />
-                                            </button>
-                                          </div>
-                                        </TreeView.Item>
-                                      )}
-                                    />
-                                  }
-                                >
-                                  {/* Branch node (folder) */}
-                                  <HoverCard.Trigger
-                                    value={r().node.path}
-                                    asChild={(hoverProps) => (
-                                      <TreeView.BranchControl
-                                        class={styles.BranchControl}
-                                        {...hoverProps()}
+                                        }
                                       >
                                         <TreeView.BranchIndicator class={styles.BranchIndicator}>
                                           <span class="i-material-symbols:chevron-right-rounded size-4 shrink-0" />
                                         </TreeView.BranchIndicator>
-                                        <TreeView.BranchText class={styles.BranchText}>
+                                      </Show>
+
+                                      <TreeView.BranchText class={styles.BranchText}>
+                                        <Show
+                                          when={nodeState().isBranch}
+                                          fallback={
+                                            <span class="i-material-symbols:description-outline-rounded size-4 shrink-0" />
+                                          }
+                                        >
                                           <span
                                             class={`size-4 shrink-0 ${nodeState().expanded ? "i-material-symbols:folder-open" : "i-material-symbols:folder"}`}
                                           />
-                                          <span class="w-full truncate">{r().node.name}</span>
-                                        </TreeView.BranchText>
-                                        <div class={styles.ActionGroup}>
+                                        </Show>
+                                        <span class="w-full truncate">
+                                          {(row() as NodeRow).node.name}
+                                        </span>
+                                      </TreeView.BranchText>
+
+                                      <div class={styles.ActionGroup}>
+                                        <Show when={!nodeState().isBranch}>
                                           <button
                                             class={styles.Action}
                                             type="button"
-                                            aria-label="Add child note"
+                                            aria-label="Delete note"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              handleAddChild(r().node);
+                                              setDeleteConfirmState({
+                                                path: (row() as NodeRow).node.path,
+                                                name: (row() as NodeRow).node.name,
+                                              });
                                             }}
                                           >
-                                            <span class="i-material-symbols:add-rounded size-4 shrink-0" />
+                                            <span class="i-material-symbols:delete-rounded size-4 shrink-0" />
                                           </button>
-                                        </div>
-                                      </TreeView.BranchControl>
-                                    )}
-                                  />
-                                </Show>
+                                        </Show>
+                                        <button
+                                          class={styles.Action}
+                                          type="button"
+                                          aria-label="Add child note"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleAddChild((row() as NodeRow).node);
+                                          }}
+                                        >
+                                          <span class="i-material-symbols:add-rounded size-4 shrink-0" />
+                                        </button>
+                                      </div>
+                                    </TreeView.BranchControl>
+                                  )}
+                                />
                               </TreeView.NodeProvider>
                             );
                           }}
