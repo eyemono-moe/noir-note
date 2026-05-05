@@ -604,31 +604,43 @@ const MathNode: Component<{ node: RootContentMap["math"] | RootContentMap["inlin
         void import("katex/dist/katex.min.css");
         const { default: katex } = await import("katex");
         const html = katex.renderToString(code, {
-          throwOnError: false,
+          throwOnError: true,
           strict: "ignore",
           displayMode,
         });
         return { success: true as const, html };
-      } catch (error) {
-        console.error("KaTeX rendering failed:", error);
-        return { success: false as const };
+      } catch (e) {
+        return { success: false as const, error: String(e) };
       }
     },
   );
 
   return (
     <Suspense fallback={<code>{props.node.value}</code>}>
-      <Show
-        when={result()?.success}
-        fallback={
-          <pre>
-            <code>{props.node.value}</code>
-          </pre>
-        }
-      >
-        {/* oxlint-disable-next-line solid/no-innerhtml */}
-        <span innerHTML={result()?.html} />
-      </Show>
+      <Switch>
+        <Match when={result()?.success}>
+          {/* oxlint-disable-next-line solid/no-innerhtml */}
+          <span innerHTML={result()?.html} />{" "}
+        </Match>
+        <Match when={!result()?.success}>
+          <Show
+            when={isBlock()}
+            fallback={
+              <code class="text-text-danger" title={result()?.error}>
+                {props.node.value}
+              </code>
+            }
+          >
+            <pre>
+              <code>{props.node.value}</code>
+            </pre>
+            <div class="text-text-danger text-sm">
+              <p>KaTeX rendering error:</p>
+              <pre>{result()?.error}</pre>
+            </div>
+          </Show>
+        </Match>
+      </Switch>
     </Suspense>
   );
 };
