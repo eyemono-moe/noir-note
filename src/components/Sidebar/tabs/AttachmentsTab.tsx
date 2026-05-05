@@ -15,6 +15,7 @@ import {
   createSignal,
   lazy,
   onCleanup,
+  onMount,
 } from "solid-js";
 import { Portal } from "solid-js/web";
 
@@ -45,12 +46,34 @@ function formatBytes(bytes: number): string {
 
 // ---------------------------------------------------------------------------
 // ThumbnailImage
-// Uses .latest to avoid throwing a Suspense-propagating Promise.
+//
+// Loads the object URL only when the element enters the viewport (via
+// IntersectionObserver). This prevents hundreds of concurrent createObjectURL
+// calls when the Attachments tab opens with a large collection.
 // ---------------------------------------------------------------------------
 
 const ThumbnailImage: Component<{ id: string }> = (props) => {
+  // oxlint-disable-next-line no-unassigned-vars --- needed for ref
+  let containerRef: HTMLDivElement | undefined;
+  const [isVisible, setIsVisible] = createSignal(false);
+
+  onMount(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          // Stop observing once visible — the URL stays loaded for the row's lifetime.
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    if (containerRef) observer.observe(containerRef);
+    onCleanup(() => observer.disconnect());
+  });
+
   const [objectUrl] = createResource(
-    () => props.id,
+    () => (isVisible() ? props.id : null),
     (id) => getImageUrl(id),
     { initialValue: null },
   );
@@ -63,16 +86,18 @@ const ThumbnailImage: Component<{ id: string }> = (props) => {
   });
 
   return (
-    <Show
-      when={objectUrl.latest}
-      fallback={
-        <div class="bg-surface-secondary flex size-9 shrink-0 items-center justify-center rounded">
-          <span class="i-material-symbols:image-outline text-text-secondary size-5" />
-        </div>
-      }
-    >
-      {(url) => <img src={url()} alt="" class="size-9 shrink-0 rounded object-cover" />}
-    </Show>
+    <div ref={containerRef} class="size-9 shrink-0">
+      <Show
+        when={objectUrl.latest}
+        fallback={
+          <div class="bg-surface-secondary flex size-9 shrink-0 items-center justify-center rounded">
+            <span class="i-material-symbols:image-outline text-text-secondary size-5" />
+          </div>
+        }
+      >
+        {(url) => <img src={url()} alt="" class="size-9 shrink-0 rounded object-cover" />}
+      </Show>
+    </div>
   );
 };
 

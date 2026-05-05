@@ -30,10 +30,15 @@ export type AttachmentMeta = ImageMeta;
 
 const BROADCAST_CHANNEL_ID = "eyemono-attachments";
 
+// Persistent channel for broadcasting mutations to other tabs.
+// Reused across all mutations to avoid the overhead of creating and closing
+// a channel on every write.
+const mutationChannel = new BroadcastChannel(BROADCAST_CHANNEL_ID);
+
 // ---------------------------------------------------------------------------
 // Collection options creator
-// OPFS の読み書きは onInsert / onDelete ハンドラが直接担当し、呼び出し側には
-// addAttachment / removeAttachment だけを公開する設計。
+// OPFS reads/writes are handled directly by onInsert/onDelete, exposing only
+// addAttachment/removeAttachment to callers.
 // ref: https://tanstack.com/db/latest/docs/guides/collection-options-creator
 // ---------------------------------------------------------------------------
 
@@ -54,11 +59,9 @@ function opfsAttachmentCollectionOptions() {
      * other tabs.
      */
     onInsert: async (params: InsertMutationFnParams<AttachmentMeta, string>) => {
-      const channel = new BroadcastChannel(BROADCAST_CHANNEL_ID);
       for (const { modified } of params.transaction.mutations) {
-        channel.postMessage({ type: "insert", value: modified });
+        mutationChannel.postMessage({ type: "insert", value: modified });
       }
-      channel.close();
     },
 
     /**
@@ -69,11 +72,9 @@ function opfsAttachmentCollectionOptions() {
     onDelete: async (params: DeleteMutationFnParams<AttachmentMeta, string>) => {
       const ids = params.transaction.mutations.map((m) => m.key as string);
       await Promise.all(ids.map(deleteImage));
-      const channel = new BroadcastChannel(BROADCAST_CHANNEL_ID);
       for (const id of ids) {
-        channel.postMessage({ type: "delete", key: id });
+        mutationChannel.postMessage({ type: "delete", key: id });
       }
-      channel.close();
     },
   };
 }

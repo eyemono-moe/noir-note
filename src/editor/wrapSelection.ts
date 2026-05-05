@@ -20,20 +20,21 @@ function wrapSelectionWith(open: string, close: string): KeyBinding {
     key: open,
     run(view) {
       const { state } = view;
-      // すべての選択範囲が空（カーソルのみ）の場合はデフォルト動作にフォールスルー
+      // Fall through to default behavior when all selections are cursor-only (empty ranges).
       if (state.selection.ranges.every((r) => r.empty)) return false;
 
       view.dispatch(
         state.changeByRange((range) => {
           if (range.empty) {
-            // この選択範囲が空なら変更なし（他の範囲がある場合に備えて range はそのまま）
+            // No change for this empty range; other ranges in a multi-cursor
+            // selection may still be wrapped.
             return { range };
           }
           const selectedText = state.sliceDoc(range.from, range.to);
           const insert = open + selectedText + close;
           return {
             changes: { from: range.from, to: range.to, insert },
-            // ラップ後も選択範囲を維持（囲まれた文字列全体を選択）
+            // Keep the selection on the wrapped text (excluding the added brackets).
             range: EditorSelection.range(
               range.from + open.length,
               range.from + insert.length - close.length,

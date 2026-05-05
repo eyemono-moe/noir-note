@@ -36,7 +36,7 @@ export const ExplorerTab: Component<ExplorerTabProps> = (props) => {
 
   return (
     <Accordion.Root
-      class="text-text-primary flex h-full w-full flex-col overflow-hidden"
+      class="text-text-primary divide-border-primary flex h-full w-full flex-col divide-y overflow-hidden"
       multiple
       collapsible
       lazyMount
@@ -57,7 +57,7 @@ export const ExplorerTab: Component<ExplorerTabProps> = (props) => {
           <Show when={tree().length === 0}>
             <div class="text-text-secondary px-4 py-8 text-center text-sm">No pages yet</div>
           </Show>
-          <div class="p-1">
+          <div class="flex min-h-0 flex-1 flex-col p-1">
             <Tree
               collection={collection()}
               onNavigate={props.onNavigate}
