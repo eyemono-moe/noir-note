@@ -68,7 +68,9 @@ const ThumbnailImage: Component<{ id: string }> = (props) => {
           </div>
         }
       >
-        {(url) => <img src={url()} alt="" class="size-9 shrink-0 rounded object-cover" />}
+        {(url) => (
+          <img src={url()} alt="" class="size-9 shrink-0 rounded object-cover" draggable="false" />
+        )}
       </Show>
     </div>
   );
@@ -156,99 +158,104 @@ const AttachmentRow: Component<{
 
   return (
     <>
-      <div class="group rounded-md px-2 py-1.5">
-        <div class="flex items-center gap-2">
-          <ThumbnailImage id={props.att.id} />
+      <div
+        class="group flex items-center gap-2 rounded-md px-2 py-1.5"
+        draggable="true"
+        onDragStart={(e) => {
+          e.dataTransfer?.setData("text/markdown", markdownRef());
+          e.dataTransfer?.setData("text/plain", markdownRef());
+        }}
+      >
+        <ThumbnailImage id={props.att.id} />
 
-          <div class="min-w-0 flex-1">
-            <p
-              class="text-text-primary truncate text-xs leading-tight font-medium"
-              title={props.att.id}
-            >
-              {filename()}
-            </p>
-            <div class="mt-0.5 flex items-center gap-1.5">
-              <span class="text-text-secondary text-xs tabular-nums">
-                {formatBytes(props.att.size)}
+        <div class="min-w-0 flex-1">
+          <p
+            class="text-text-primary truncate text-xs leading-tight font-medium"
+            title={props.att.id}
+          >
+            {filename()}
+          </p>
+          <div class="mt-0.5 flex items-center gap-1.5">
+            <span class="text-text-secondary text-xs tabular-nums">
+              {formatBytes(props.att.size)}
+            </span>
+
+            {/* Unused badge — shown after loading confirms 0 refs */}
+            <Show when={!refs.loading && refCount() === 0}>
+              <span class="bg-surface-secondary text-text-secondary rounded px-1 py-px text-[0.625rem]">
+                Unused
               </span>
+            </Show>
 
-              {/* Unused badge — shown after loading confirms 0 refs */}
-              <Show when={!refs.loading && refCount() === 0}>
-                <span class="bg-surface-secondary text-text-secondary rounded px-1 py-px text-[0.625rem]">
-                  Unused
-                </span>
-              </Show>
+            {/* Spinner — only while the Popover is open and fetching */}
+            <Show when={refs.loading}>
+              <span class="i-material-symbols:progress-activity text-text-secondary size-3 animate-spin" />
+            </Show>
 
-              {/* Spinner — only while the Popover is open and fetching */}
-              <Show when={refs.loading}>
-                <span class="i-material-symbols:progress-activity text-text-secondary size-3 animate-spin" />
-              </Show>
-
-              {/*
+            {/*
                 Popover trigger.
                 Visible when not loading AND refCount is null (unloaded) or > 0.
                 Hidden after loading confirms 0 refs (Unused badge shown instead).
               */}
-              <Show when={!refs.loading && refCount() !== 0}>
-                <Popover.Root
-                  open={popoverOpen()}
-                  onOpenChange={(d) => setPopoverOpen(d.open)}
-                  lazyMount
-                  unmountOnExit
-                  positioning={{
-                    placement: "bottom-start",
-                    offset: { mainAxis: 4, crossAxis: 0 },
-                  }}
-                >
-                  <Popover.Trigger
-                    type="button"
-                    class="focus-ring text-text-secondary hover:text-text-primary inline-flex items-center gap-0.5 rounded bg-transparent p-0 text-xs transition-colors"
-                  >
-                    <Show when={refCount() !== null} fallback={<span>Check refs</span>}>
-                      · {refCount()} note{refCount()! > 1 ? "s" : ""}
-                    </Show>
-                  </Popover.Trigger>
-                  <Portal>
-                    <Popover.Positioner>
-                      <Popover.Content class="bg-surface-secondary border-border-primary z-50 max-w-56 rounded-lg border p-1.5 shadow-lg outline-none">
-                        <div class="flex flex-col gap-0.5">
-                          <For each={refs() ?? []}>
-                            {(path) => <NoteItem path={path} onNavigate={props.onNavigate} />}
-                          </For>
-                        </div>
-                      </Popover.Content>
-                    </Popover.Positioner>
-                  </Portal>
-                </Popover.Root>
-              </Show>
-            </div>
-          </div>
-
-          {/* Action buttons — visible on hover */}
-          <div class="hidden shrink-0 items-center gap-0.5 group-focus-within:flex group-hover:flex">
-            <Clipboard.Root value={markdownRef()}>
-              <Clipboard.Trigger
-                title="Copy markdown reference"
-                class="focus-ring text-text-secondary hover:text-text-primary inline-flex appearance-none rounded bg-transparent p-0.5 transition-colors"
+            <Show when={!refs.loading && refCount() !== 0}>
+              <Popover.Root
+                open={popoverOpen()}
+                onOpenChange={(d) => setPopoverOpen(d.open)}
+                lazyMount
+                unmountOnExit
+                positioning={{
+                  placement: "bottom-start",
+                  offset: { mainAxis: 4, crossAxis: 0 },
+                }}
               >
-                <Clipboard.Indicator
-                  copied={
-                    <span class="i-material-symbols:check-rounded text-text-accent block size-3.5" />
-                  }
+                <Popover.Trigger
+                  type="button"
+                  class="focus-ring text-text-secondary hover:text-text-primary inline-flex items-center gap-0.5 rounded bg-transparent p-0 text-xs transition-colors"
                 >
-                  <span class="i-material-symbols:copy-all-outline-rounded block size-3.5" />
-                </Clipboard.Indicator>
-              </Clipboard.Trigger>
-            </Clipboard.Root>
-            <button
-              type="button"
-              class="focus-ring text-text-secondary hover:text-text-danger inline-flex appearance-none rounded bg-transparent p-0.5 transition-colors"
-              title="Delete attachment"
-              onClick={handleDeleteClick}
-            >
-              <span class="i-material-symbols:delete-outline-rounded size-3.5" />
-            </button>
+                  <Show when={refCount() !== null} fallback={<span>Check refs</span>}>
+                    · {refCount()} note{refCount()! > 1 ? "s" : ""}
+                  </Show>
+                </Popover.Trigger>
+                <Portal>
+                  <Popover.Positioner>
+                    <Popover.Content class="bg-surface-secondary border-border-primary z-50 max-w-56 rounded-lg border p-1.5 shadow-lg outline-none">
+                      <div class="flex flex-col gap-0.5">
+                        <For each={refs() ?? []}>
+                          {(path) => <NoteItem path={path} onNavigate={props.onNavigate} />}
+                        </For>
+                      </div>
+                    </Popover.Content>
+                  </Popover.Positioner>
+                </Portal>
+              </Popover.Root>
+            </Show>
           </div>
+        </div>
+
+        {/* Action buttons — visible on hover */}
+        <div class="hidden shrink-0 items-center gap-0.5 group-focus-within:flex group-hover:flex">
+          <Clipboard.Root value={markdownRef()}>
+            <Clipboard.Trigger
+              title="Copy markdown reference"
+              class="focus-ring text-text-secondary hover:text-text-primary inline-flex appearance-none rounded bg-transparent p-0.5 transition-colors"
+            >
+              <Clipboard.Indicator
+                copied={
+                  <span class="i-material-symbols:check-rounded text-text-accent block size-3.5" />
+                }
+              >
+                <span class="i-material-symbols:copy-all-outline-rounded block size-3.5" />
+              </Clipboard.Indicator>
+            </Clipboard.Trigger>
+          </Clipboard.Root>
+          <button
+            type="button"
+            class="focus-ring text-text-secondary hover:text-text-danger inline-flex appearance-none rounded bg-transparent p-0.5 transition-colors"
+            title="Delete attachment"
+            onClick={handleDeleteClick}
+          >
+            <span class="i-material-symbols:delete-outline-rounded size-3.5" />
+          </button>
         </div>
       </div>
 
