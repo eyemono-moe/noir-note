@@ -36,7 +36,7 @@ export const ExplorerTab: Component<ExplorerTabProps> = (props) => {
 
   return (
     <Accordion.Root
-      class="text-text-primary flex h-full w-full flex-col overflow-hidden"
+      class="text-text-primary divide-border-primary flex h-full w-full flex-col divide-y overflow-hidden"
       multiple
       collapsible
       lazyMount
