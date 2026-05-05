@@ -18,7 +18,6 @@ import {
 import { createStore, reconcile } from "solid-js/store";
 
 import "../../styles/markdown.css";
-import "../../styles/shiki.css";
 import { useTheme } from "../../context/theme";
 import type { PreviewScrollAdapter } from "../../types/scrollSync";
 import {

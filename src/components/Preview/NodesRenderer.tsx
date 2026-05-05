@@ -362,6 +362,7 @@ const SyntaxHighlightedCode: Component<{ code: string; lang?: string | null }> =
     () => ({ code: props.code, lang: props.lang }),
     async (params) => {
       try {
+        void import("../../styles/shiki.css");
         const lang = !params.lang
           ? "plaintext"
           : params.lang in bundledLanguages
@@ -591,6 +592,47 @@ const TableCellNode: Component<{ node: RootContentMap["tableCell"] }> = (props) 
   );
 };
 
+const MathNode: Component<{ node: RootContentMap["math"] | RootContentMap["inlineMath"] }> = (
+  props,
+) => {
+  const isBlock = () => props.node.type === "math";
+
+  const [result] = createResource(
+    () => [props.node.value, isBlock()] as const,
+    async ([code, displayMode]) => {
+      try {
+        void import("katex/dist/katex.min.css");
+        const { default: katex } = await import("katex");
+        const html = katex.renderToString(code, {
+          throwOnError: false,
+          strict: "ignore",
+          displayMode,
+        });
+        return { success: true as const, html };
+      } catch (error) {
+        console.error("KaTeX rendering failed:", error);
+        return { success: false as const };
+      }
+    },
+  );
+
+  return (
+    <Suspense fallback={<code>{props.node.value}</code>}>
+      <Show
+        when={result()?.success}
+        fallback={
+          <pre>
+            <code>{props.node.value}</code>
+          </pre>
+        }
+      >
+        {/* oxlint-disable-next-line solid/no-innerhtml */}
+        <span innerHTML={result()?.html} />
+      </Show>
+    </Suspense>
+  );
+};
+
 const HtmlNode: Component<{ node: RootContentMap["html"] }> = (props) => {
   // oxlint-disable-next-line solid/no-innerhtml: HTML content from markdown
   return <div data-source-line={props.node.position?.start?.line} innerHTML={props.node.value} />;
@@ -742,6 +784,9 @@ const renderSingleNode = (node: RenderableNode): JSX.Element => {
       return <ImageReferenceNode node={node} />;
     case "linkReference":
       return <LinkReferenceNode node={node} />;
+    case "math":
+    case "inlineMath":
+      return <MathNode node={node} />;
     case "footnoteDefinition":
     case "definition":
       return null;
