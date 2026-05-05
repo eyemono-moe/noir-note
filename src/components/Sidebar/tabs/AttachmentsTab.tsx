@@ -127,7 +127,8 @@ const AttachmentRow: Component<{
 }> = (props) => {
   const [popoverOpen, setPopoverOpen] = createSignal(false);
 
-  // Lazy-load referenced note paths — fires only when the Popover first opens.
+  // Lazy-load referenced note paths — fires whenever the Popover opens.
+  // Closing and reopening changes the source null → id, triggering a fresh fetch.
   const [refs] = createResource(
     () => (popoverOpen() ? props.att.id : null),
     (id) => queryMemoPathsReferencingAttachment(id),
@@ -180,55 +181,79 @@ const AttachmentRow: Component<{
               {formatBytes(props.att.size)}
             </span>
 
-            {/* Unused badge — shown after loading confirms 0 refs */}
-            <Show when={!refs.loading && refCount() === 0}>
-              <span class="bg-surface-secondary text-text-secondary rounded px-1 py-px text-[0.625rem]">
-                Unused
-              </span>
-            </Show>
-
-            {/* Spinner — only while the Popover is open and fetching */}
-            <Show when={refs.loading}>
-              <span class="i-material-symbols:progress-activity text-text-secondary size-3 animate-spin" />
-            </Show>
-
             {/*
-                Popover trigger.
-                Visible when not loading AND refCount is null (unloaded) or > 0.
-                Hidden after loading confirms 0 refs (Unused badge shown instead).
-              */}
-            <Show when={!refs.loading && refCount() !== 0}>
-              <Popover.Root
-                open={popoverOpen()}
-                onOpenChange={(d) => setPopoverOpen(d.open)}
-                lazyMount
-                unmountOnExit
-                positioning={{
-                  placement: "bottom-start",
-                  offset: { mainAxis: 4, crossAxis: 0 },
-                }}
+              Refs Popover — always rendered.
+              Trigger label reflects the current state:
+                null  → "Check refs"  (not yet fetched)
+                0     → "Unused ↺"   (re-check by reopening)
+                N > 0 → "· N notes"  (view list)
+              Closing the Popover resets the source to null, so reopening
+              always triggers a fresh fetch.
+            */}
+            <Popover.Root
+              open={popoverOpen()}
+              onOpenChange={(d) => setPopoverOpen(d.open)}
+              lazyMount
+              unmountOnExit
+              positioning={{
+                placement: "bottom-start",
+                offset: { mainAxis: 4, crossAxis: 0 },
+              }}
+            >
+              <Popover.Trigger
+                type="button"
+                class="focus-ring text-text-secondary hover:text-text-primary inline-flex items-center gap-0.5 rounded bg-transparent p-0 text-xs transition-colors"
               >
-                <Popover.Trigger
-                  type="button"
-                  class="focus-ring text-text-secondary hover:text-text-primary inline-flex items-center gap-0.5 rounded bg-transparent p-0 text-xs transition-colors"
+                <Show
+                  when={refCount() !== null}
+                  fallback={
+                    <Show when={refs.loading} fallback={<span>Check refs</span>}>
+                      <span class="i-material-symbols:progress-activity size-3 animate-spin" />
+                    </Show>
+                  }
                 >
-                  <Show when={refCount() !== null} fallback={<span>Check refs</span>}>
+                  <Show
+                    when={(refCount() ?? 0) > 0}
+                    fallback={
+                      <>
+                        <span class="bg-surface-secondary rounded px-1 py-px text-[0.625rem]">
+                          Unused
+                        </span>
+                        <span class="i-material-symbols:refresh-rounded size-2.5 opacity-60" />
+                      </>
+                    }
+                  >
                     · {refCount()} note{refCount()! > 1 ? "s" : ""}
                   </Show>
-                </Popover.Trigger>
-                <Portal>
-                  <Popover.Positioner>
-                    <Popover.Content class="bg-surface-secondary border-border-primary z-50 max-w-56 rounded-lg border p-1.5 shadow-lg outline-none">
+                </Show>
+              </Popover.Trigger>
+              <Portal>
+                <Popover.Positioner>
+                  <Popover.Content class="bg-surface-secondary border-border-primary z-50 max-w-56 rounded-lg border p-1.5 shadow-lg outline-none">
+                    <Show
+                      when={!refs.loading}
+                      fallback={
+                        <div class="text-text-secondary flex items-center gap-1 px-1 py-0.5 text-xs">
+                          <span class="i-material-symbols:progress-activity size-3 animate-spin" />
+                          Loading…
+                        </div>
+                      }
+                    >
                       <div class="flex flex-col gap-0.5">
-                        <For each={refs() ?? []}>
+                        <For
+                          each={refs() ?? []}
+                          fallback={
+                            <div class="text-text-secondary px-1 py-0.5 text-xs">No references</div>
+                          }
+                        >
                           {(path) => <NoteItem path={path} onNavigate={props.onNavigate} />}
                         </For>
                       </div>
-                    </Popover.Content>
-                  </Popover.Positioner>
-                </Portal>
-              </Popover.Root>
-            </Show>
+                    </Show>
+                  </Popover.Content>
+                </Popover.Positioner>
+              </Portal>
+            </Popover.Root>
           </div>
         </div>
 
@@ -471,8 +496,10 @@ export const AttachmentsTab: Component = () => {
                 <For each={virtualizer.getVirtualItems()}>
                   {(virtualItem) => (
                     <div
+                      ref={(el) => {
+                        queueMicrotask(() => virtualizer.measureElement(el));
+                      }}
                       data-index={virtualItem.index}
-                      ref={virtualizer.measureElement}
                       style={{
                         position: "absolute",
                         top: 0,
