@@ -617,27 +617,50 @@ const MathNode: Component<{ node: RootContentMap["math"] | RootContentMap["inlin
   );
 
   return (
-    <Suspense fallback={<code>{props.node.value}</code>}>
+    <Suspense
+      fallback={<code data-source-line={props.node.position?.start?.line}>{props.node.value}</code>}
+    >
       <Switch>
         <Match when={result()?.success}>
-          {/* oxlint-disable-next-line solid/no-innerhtml */}
-          <span innerHTML={result()?.html} />{" "}
+          <Show
+            when={isBlock()}
+            fallback={
+              <span
+                data-source-line={props.node.position?.start?.line}
+                // oxlint-disable-next-line solid/no-innerhtml
+                innerHTML={result()?.html}
+              />
+            }
+          >
+            <div
+              class="w-full overflow-auto"
+              data-source-line={props.node.position?.start?.line}
+              // oxlint-disable-next-line solid/no-innerhtml
+              innerHTML={result()?.html}
+            />
+          </Show>
         </Match>
         <Match when={!result()?.success}>
           <Show
             when={isBlock()}
             fallback={
-              <code class="text-text-danger" title={result()?.error}>
+              <code
+                data-source-line={props.node.position?.start?.line}
+                class="text-text-danger"
+                title={result()?.error}
+              >
                 {props.node.value}
               </code>
             }
           >
-            <pre>
-              <code>{props.node.value}</code>
-            </pre>
-            <div class="text-text-danger text-sm">
-              <p>KaTeX rendering error:</p>
-              <pre>{result()?.error}</pre>
+            <div data-source-line={props.node.position?.start?.line} title={result()?.error}>
+              <pre>
+                <code>{props.node.value}</code>
+              </pre>
+              <div class="text-text-danger text-sm">
+                <p>KaTeX rendering error:</p>
+                <pre>{result()?.error}</pre>
+              </div>
             </div>
           </Show>
         </Match>
