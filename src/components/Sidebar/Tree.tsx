@@ -175,13 +175,11 @@ export const Tree: Component<TreeProps> = (props) => {
 
     // Compute the CSS --depth value for the input row.
     // NodeProvider doesn't set --depth; we set it as an inline style.
-    // The CSS uses --depth (1-indexed), so depth = parentNodeState.depth + 1.
-    // The create-input is one level deeper than its parent, so depth = parent + 2.
     const parentNodeState = tree().getNodeState({
       node: nodes[parentIdx].node,
       indexPath: nodes[parentIdx].indexPath,
     });
-    const inputDepth = parentNodeState.depth + 2;
+    const inputDepth = parentNodeState.depth;
 
     const result: VirtualRow[] = [];
     for (let i = 0; i < nodes.length; i++) {
@@ -309,14 +307,6 @@ export const Tree: Component<TreeProps> = (props) => {
                                 node={(row() as NodeRow).node}
                                 indexPath={(row() as NodeRow).indexPath}
                               >
-                                {/*
-                                 * Use TreeView.BranchControl for all nodes (branches and
-                                 * leaves alike), matching the original non-virtual tree.
-                                 * TreeView.NodeProvider does NOT set the --depth CSS var
-                                 * (only TreeView.Branch did); set it via inline style so
-                                 * the CSS indentation calculations work correctly.
-                                 * --depth is 1-indexed: root-level nodes → depth+1 = 1.
-                                 */}
                                 <HoverCard.Trigger
                                   value={(row() as NodeRow).node.path}
                                   asChild={(hoverProps) => (
@@ -324,7 +314,7 @@ export const Tree: Component<TreeProps> = (props) => {
                                       class={styles.BranchControl}
                                       {...hoverProps()}
                                       style={{
-                                        "--depth": String(nodeState().depth + 1),
+                                        "--depth": String(nodeState().depth),
                                       }}
                                     >
                                       <Show
