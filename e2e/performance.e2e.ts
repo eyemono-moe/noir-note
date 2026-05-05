@@ -130,19 +130,24 @@ test.describe(`Performance: ${NOTE_COUNT} notes @perf`, () => {
     ).toBeLessThan(THRESHOLDS.initialLoadMs);
   });
 
-  // ── 2. Sidebar renders all notes ───────────────────────────────────────────
+  // ── 2. Sidebar renders last item ────────────────────────────────────────────
   //
-  // The Ark UI TreeView has no virtual scrolling; all leaf nodes are rendered
-  // to the DOM. This test checks whether that remains acceptable at scale.
-  // All perf notes are flat children of "/" (which is always expanded), so
-  // all 1000 items appear immediately in the tree.
+  // The TreeView has virtual scrolling; only items in the visible viewport
+  // are rendered to the DOM. This test checks whether the expected number of items
+  // are rendered at scale, and that the last item can be scrolled into view.
 
   test(`sidebar: all ${NOTE_COUNT} leaf nodes visible in the tree`, async ({ page }, info) => {
     await bootstrapWithNotes(page, info);
     await page.reload();
     await waitForEditor(page);
 
-    // Wait for the last seeded note to appear — that proves the full list rendered.
+    // Scroll to the last item and wait for it to render. This tests the virtual scrolling logic,
+    // which should render the last item within a reasonable time even with 1000 notes in the collection.
+    // If the virtual scrolling logic is broken and tries to render all items at once,
+    // this will fail or take a very long time.
+    await page.locator('[data-part="tree"]').focus();
+    await page.keyboard.press("End");
+
     const lastItemLocator = page.locator(
       `[data-value="/perf-note-${NOTE_COUNT - 1}"][data-part="trigger"][data-scope="hover-card"]`,
     );
@@ -150,19 +155,25 @@ test.describe(`Performance: ${NOTE_COUNT} notes @perf`, () => {
     await lastItemLocator.waitFor({ timeout: 15_000 });
     const sidebarMs = Date.now() - t0;
 
+    // Count the number of rendered items to verify virtual scrolling is working.
     const treeItemCount = await page
-      .locator('[data-part="trigger"][data-scope="hover-card"]')
+      .locator('[data-part="tree"] [data-value^="/perf-note-"]')
       .count();
 
-    recordMetric(info, "sidebar-all-visible", sidebarMs);
+    recordMetric(info, "sidebar-render-last-item", sidebarMs);
     info.annotations.push({
-      type: "metric:tree-item-count",
+      type: "metric:sidebar-rendered-item-count",
       description: String(treeItemCount),
     });
-    console.log(`  [perf] tree-item-count: ${treeItemCount}`);
+    console.log(`  [perf] sidebar-rendered-item-count: ${treeItemCount}`);
 
-    // All seeded notes + at least the welcome note at root.
-    expect(treeItemCount).toBeGreaterThanOrEqual(NOTE_COUNT);
+    expect(
+      sidebarMs,
+      `Sidebar took ${sidebarMs}ms to render the last item (budget: 15,000ms)`,
+    ).toBeLessThan(15_000);
+    expect(treeItemCount).toBeGreaterThan(0);
+    // With 1000 notes, the full list should never render — that would freeze the UI.
+    expect(treeItemCount).toBeLessThan(NOTE_COUNT);
   });
 
   // ── 3. Note switch ─────────────────────────────────────────────────────────
