@@ -1,20 +1,19 @@
 import { Clipboard } from "@ark-ui/solid";
-import { Collapsible } from "@ark-ui/solid/collapsible";
 import { Dialog } from "@ark-ui/solid/dialog";
 import { HoverCard } from "@ark-ui/solid/hover-card";
+import { Popover } from "@ark-ui/solid/popover";
 import { useNavigate } from "@solidjs/router";
 import { useLiveQuery } from "@tanstack/solid-db";
+import { createVirtualizer } from "@tanstack/solid-virtual";
 import {
   type Component,
   For,
   Show,
   Suspense,
-  createEffect,
   createMemo,
   createResource,
   createSignal,
   lazy,
-  onCleanup,
 } from "solid-js";
 import { Portal } from "solid-js/web";
 
@@ -24,7 +23,7 @@ import {
   removeAttachment,
   type AttachmentMeta,
 } from "../../../db/attachmentCollection";
-import { getImageUrl, getStorageEstimate } from "../../../db/imageStore";
+import { getThumbnailUrl, getStorageEstimate } from "../../../db/imageStore";
 import { queryMemoPathsReferencingAttachment } from "../../../db/memoCollection";
 import { noteStore } from "../../../db/noteStore";
 
@@ -45,34 +44,35 @@ function formatBytes(bytes: number): string {
 
 // ---------------------------------------------------------------------------
 // ThumbnailImage
-// Uses .latest to avoid throwing a Suspense-propagating Promise.
+//
+// Loads the object URL only when the element enters the viewport (via
+// IntersectionObserver). This prevents hundreds of concurrent createObjectURL
+// calls when the Attachments tab opens with a large collection.
 // ---------------------------------------------------------------------------
 
 const ThumbnailImage: Component<{ id: string }> = (props) => {
-  const [objectUrl] = createResource(
-    () => props.id,
-    (id) => getImageUrl(id),
-    { initialValue: null },
-  );
-
-  createEffect(() => {
-    const url = objectUrl.latest;
-    onCleanup(() => {
-      if (url) URL.revokeObjectURL(url);
-    });
+  // Virtual-scroll ensures this component only mounts when near the viewport,
+  // so no IntersectionObserver is needed.  getThumbnailUrl caches the object
+  // URL at the module level, so remounting during scroll is instant.
+  const [thumbnailUrl] = createResource(() => props.id, getThumbnailUrl, {
+    initialValue: null,
   });
 
   return (
-    <Show
-      when={objectUrl.latest}
-      fallback={
-        <div class="bg-surface-secondary flex size-9 shrink-0 items-center justify-center rounded">
-          <span class="i-material-symbols:image-outline text-text-secondary size-5" />
-        </div>
-      }
-    >
-      {(url) => <img src={url()} alt="" class="size-9 shrink-0 rounded object-cover" />}
-    </Show>
+    <div class="size-9 shrink-0">
+      <Show
+        when={thumbnailUrl.latest}
+        fallback={
+          <div class="bg-surface-secondary flex size-9 shrink-0 items-center justify-center rounded">
+            <span class="i-material-symbols:image-outline text-text-secondary size-5" />
+          </div>
+        }
+      >
+        {(url) => (
+          <img src={url()} alt="" class="size-9 shrink-0 rounded object-cover" draggable="false" />
+        )}
+      </Show>
+    </div>
   );
 };
 
@@ -108,13 +108,16 @@ const NoteItem: Component<{
 // ---------------------------------------------------------------------------
 // AttachmentRow
 //
-// `att`         — stable proxy ref from TanStack DB (ThumbnailImage never remounts)
-// `onNavigate`  — navigate to a note path
-// `onDelete`    — called after confirming deletion
+// `att`        — stable proxy ref from TanStack DB (ThumbnailImage never remounts)
+// `onNavigate` — navigate to a note path
+// `onDelete`   — called after confirming deletion
 //
 // Reference computation is lazy:
-//   - Loaded on first Collapsible open (cached for the row's lifetime)
+//   - Fetched the first time the Popover opens (cached for the row's lifetime)
 //   - Re-queried on every delete attempt (to show up-to-date warning)
+//
+// The Popover (not a Collapsible) keeps row height constant so the virtual
+// list never needs to recalculate item positions.
 // ---------------------------------------------------------------------------
 
 const AttachmentRow: Component<{
@@ -122,18 +125,18 @@ const AttachmentRow: Component<{
   onDelete: (id: string) => void;
   onNavigate: (path: string) => void;
 }> = (props) => {
-  // Collapsible open/close state (controlled so we can trigger the fetch)
-  const [expanded, setExpanded] = createSignal(false);
+  const [popoverOpen, setPopoverOpen] = createSignal(false);
 
-  // Lazy-load referenced note paths — fires only on first expand.
-  // att.id is included in the source so the fetcher is a plain async function
-  // with no reactive reads (avoids solid/reactivity lint warning).
-  const [refs] = createResource(
-    () => (expanded() ? props.att.id : null),
+  // Lazy-load referenced note paths — fires whenever the Popover opens.
+  // Closing and reopening changes the source null → id, triggering a fresh fetch.
+  // initialValue: null prevents Suspense from triggering (same pattern as ThumbnailImage),
+  // which would otherwise remount the entire sidebar via the Suspense wrapping <Sidebar>.
+  const [refs] = createResource<string[] | null, string>(
+    () => (popoverOpen() ? props.att.id : null),
     (id) => queryMemoPathsReferencingAttachment(id),
+    { initialValue: null },
   );
 
-  // Delete confirmation state: null = not shown, string[] = paths that reference this file
   const [deleteRefs, setDeleteRefs] = createSignal<string[] | null>(null);
 
   const handleDeleteClick = async () => {
@@ -157,123 +160,132 @@ const AttachmentRow: Component<{
   // oxlint-disable-next-line solid/reactivity --- called only inside JSX (tracked scope)
   const refCount = () => refs.latest?.length ?? null;
 
-  // Auto-close when refs load and turn out to be empty.
-  createEffect(() => {
-    if (!refs.loading && refCount() === 0 && expanded()) setExpanded(false);
-  });
-
   return (
     <>
-      <Collapsible.Root
-        open={expanded()}
-        onOpenChange={(d) => setExpanded(d.open)}
-        lazyMount
-        unmountOnExit
+      <div
+        class="group flex items-center gap-2 rounded-md px-2 py-1.5"
+        draggable="true"
+        onDragStart={(e) => {
+          e.dataTransfer?.setData("text/markdown", markdownRef());
+          e.dataTransfer?.setData("text/plain", markdownRef());
+        }}
       >
-        <div class="group rounded-md px-2 py-1.5">
-          {/* Main row */}
-          <div class="flex items-center gap-2">
-            <ThumbnailImage id={props.att.id} />
+        <ThumbnailImage id={props.att.id} />
 
-            <div class="min-w-0 flex-1">
-              <p
-                class="text-text-primary truncate text-xs leading-tight font-medium"
-                title={props.att.id}
+        <div class="min-w-0 flex-1">
+          <p
+            class="text-text-primary truncate text-xs leading-tight font-medium"
+            title={props.att.id}
+          >
+            {filename()}
+          </p>
+          <div class="mt-0.5 flex items-center gap-1.5">
+            <span class="text-text-secondary text-xs tabular-nums">
+              {formatBytes(props.att.size)}
+            </span>
+
+            {/*
+              Refs Popover — always rendered.
+              Trigger label reflects the current state:
+                null  → "Check refs"  (not yet fetched)
+                0     → "Unused ↺"   (re-check by reopening)
+                N > 0 → "· N notes"  (view list)
+              Closing the Popover resets the source to null, so reopening
+              always triggers a fresh fetch.
+            */}
+            <Popover.Root
+              open={popoverOpen()}
+              onOpenChange={(d) => setPopoverOpen(d.open)}
+              lazyMount
+              unmountOnExit
+              positioning={{
+                placement: "bottom-start",
+                offset: { mainAxis: 4, crossAxis: 0 },
+              }}
+            >
+              <Popover.Trigger
+                type="button"
+                class="focus-ring text-text-secondary hover:text-text-primary inline-flex items-center gap-0.5 rounded bg-transparent p-0 text-xs transition-colors"
               >
-                {filename()}
-              </p>
-              <p class="text-text-secondary mt-0.5 text-xs leading-tight">
-                {formatBytes(props.att.size)}
-
-                {/* Spinner while loading */}
-                <Show when={refs.loading}>
-                  <span class="i-material-symbols:progress-activity ml-1 inline-block size-3 animate-spin align-middle" />
-                </Show>
-
-                {/* Unused badge — loaded with 0 refs */}
-                <Show when={!refs.loading && refCount() === 0}>
-                  <span class="bg-surface-secondary text-text-secondary ml-1 rounded px-1 py-px text-[0.625rem]">
-                    Unused
-                  </span>
-                </Show>
-
-                {/*
-                  Expand trigger — visible when not loading AND refCount is not 0.
-                  `refCount() !== 0` is true for both null (unloaded) and N > 0,
-                  so the trigger is always present before the first load, giving the
-                  user a way to initiate the lazy fetch.
-                */}
-                <Show when={!refs.loading && refCount() !== 0}>
-                  <Collapsible.Trigger
-                    asChild={(triggerProps) => (
-                      <button
-                        type="button"
-                        class="text-text-secondary hover:text-text-primary ml-1 inline-flex items-center gap-0.5 bg-transparent p-0 text-xs transition-colors"
-                        {...triggerProps()}
-                      >
-                        <Show
-                          when={refCount() !== null}
-                          fallback={<span class="mr-0.5">Check refs</span>}
-                        >
-                          · {refCount()} note{refCount()! > 1 ? "s" : ""}
-                        </Show>
-                        <Collapsible.Indicator
-                          asChild={(indicatorProps) => (
-                            <span
-                              class="i-material-symbols:expand-more-rounded inline-block size-3 transition-transform data-[state=open]:rotate-180"
-                              {...indicatorProps()}
-                            />
-                          )}
-                        />
-                      </button>
-                    )}
-                  />
-                </Show>
-              </p>
-            </div>
-
-            {/* Action buttons — visible on hover */}
-            <div class="hidden shrink-0 items-center gap-0.5 group-hover:flex">
-              <Clipboard.Root value={markdownRef()}>
-                <Clipboard.Trigger
-                  title="Copy markdown reference"
-                  class="focus-ring text-text-secondary hover:text-text-primary inline-flex appearance-none rounded bg-transparent p-0.5 transition-colors"
+                <Show
+                  when={refCount() !== null}
+                  fallback={
+                    <Show when={refs.loading} fallback={<span>Check refs</span>}>
+                      <span class="i-material-symbols:progress-activity size-3 animate-spin" />
+                    </Show>
+                  }
                 >
-                  <Clipboard.Indicator
-                    copied={
-                      <span class="i-material-symbols:check-rounded text-text-accent block size-3.5" />
+                  <Show
+                    when={(refCount() ?? 0) > 0}
+                    fallback={
+                      <>
+                        <span class="bg-surface-secondary rounded px-1 py-px text-[0.625rem]">
+                          Unused
+                        </span>
+                        <span class="i-material-symbols:refresh-rounded size-2.5 opacity-60" />
+                      </>
                     }
                   >
-                    <span class="i-material-symbols:copy-all-outline-rounded block size-3.5" />
-                  </Clipboard.Indicator>
-                </Clipboard.Trigger>
-              </Clipboard.Root>
-              <button
-                type="button"
-                class="focus-ring text-text-secondary hover:text-text-danger inline-flex appearance-none rounded bg-transparent p-0.5 transition-colors"
-                title="Delete attachment"
-                onClick={handleDeleteClick}
-              >
-                <span class="i-material-symbols:delete-outline-rounded size-3.5" />
-              </button>
-            </div>
+                    · {refCount()} note{refCount()! > 1 ? "s" : ""}
+                  </Show>
+                </Show>
+              </Popover.Trigger>
+              <Portal>
+                <Popover.Positioner>
+                  <Popover.Content class="bg-surface-secondary border-border-primary z-50 max-w-56 rounded-lg border p-1.5 shadow-lg outline-none">
+                    <Show
+                      when={!refs.loading}
+                      fallback={
+                        <div class="text-text-secondary flex items-center gap-1 px-1 py-0.5 text-xs">
+                          <span class="i-material-symbols:progress-activity size-3 animate-spin" />
+                          Loading…
+                        </div>
+                      }
+                    >
+                      <div class="flex flex-col gap-0.5">
+                        <For
+                          each={refs() ?? []}
+                          fallback={
+                            <div class="text-text-secondary px-1 py-0.5 text-xs">No references</div>
+                          }
+                        >
+                          {(path) => <NoteItem path={path} onNavigate={props.onNavigate} />}
+                        </For>
+                      </div>
+                    </Show>
+                  </Popover.Content>
+                </Popover.Positioner>
+              </Portal>
+            </Popover.Root>
           </div>
-
-          {/* Expanded referencing notes */}
-          <Collapsible.Content>
-            <div class="mt-1 ml-11 flex flex-col gap-0.5">
-              <Show
-                when={!refs.loading}
-                fallback={<span class="text-text-secondary text-[0.625rem]">Loading…</span>}
-              >
-                <For each={refs() ?? []}>
-                  {(path) => <NoteItem path={path} onNavigate={props.onNavigate} />}
-                </For>
-              </Show>
-            </div>
-          </Collapsible.Content>
         </div>
-      </Collapsible.Root>
+
+        {/* Action buttons — visible on hover */}
+        <div class="hidden shrink-0 items-center gap-0.5 group-focus-within:flex group-hover:flex">
+          <Clipboard.Root value={markdownRef()}>
+            <Clipboard.Trigger
+              title="Copy markdown reference"
+              class="focus-ring text-text-secondary hover:text-text-primary inline-flex appearance-none rounded bg-transparent p-0.5 transition-colors"
+            >
+              <Clipboard.Indicator
+                copied={
+                  <span class="i-material-symbols:check-rounded text-text-accent block size-3.5" />
+                }
+              >
+                <span class="i-material-symbols:copy-all-outline-rounded block size-3.5" />
+              </Clipboard.Indicator>
+            </Clipboard.Trigger>
+          </Clipboard.Root>
+          <button
+            type="button"
+            class="focus-ring text-text-secondary hover:text-text-danger inline-flex appearance-none rounded bg-transparent p-0.5 transition-colors"
+            title="Delete attachment"
+            onClick={handleDeleteClick}
+          >
+            <span class="i-material-symbols:delete-outline-rounded size-3.5" />
+          </button>
+        </div>
+      </div>
 
       {/* Delete confirmation dialog — only shown when the attachment is referenced */}
       <Dialog.Root
@@ -295,7 +307,6 @@ const AttachmentRow: Component<{
               will break those references.
             </Dialog.Description>
 
-            {/* List of referencing notes */}
             <div class="mt-4 flex flex-col gap-0.5">
               <For each={deleteRefs() ?? []}>
                 {(path) => <NoteItem path={path} onNavigate={props.onNavigate} />}
@@ -346,6 +357,8 @@ export const AttachmentsTab: Component = () => {
   const navigate = useNavigate();
   // oxlint-disable-next-line no-unassigned-vars --- needed for ref
   let fileInputRef!: HTMLInputElement;
+  // oxlint-disable-next-line no-unassigned-vars --- needed for ref
+  let scrollRef: HTMLDivElement | undefined;
 
   const [activePath, setActivePath] = createSignal<string | null>(null);
 
@@ -362,6 +375,21 @@ export const AttachmentsTab: Component = () => {
   const sortedAttachments = createMemo((): AttachmentMeta[] =>
     [...(attachmentsQuery() ?? [])].sort((a, b) => b.lastModified - a.lastModified),
   );
+
+  /**
+   * Estimated collapsed row height in pixels:
+   * py-1.5 (6px × 2) + size-9 thumbnail (36px) = 48px;
+   */
+  const ATTACHMENT_ROW_HEIGHT = 48;
+
+  const virtualizer = createVirtualizer<HTMLDivElement, Element>({
+    get count() {
+      return sortedAttachments().length;
+    },
+    getScrollElement: () => scrollRef ?? null,
+    estimateSize: () => ATTACHMENT_ROW_HEIGHT,
+    overscan: 5,
+  });
 
   // Storage quota/usage — fetched once on mount
   const [estimate] = createResource(getStorageEstimate);
@@ -443,7 +471,7 @@ export const AttachmentsTab: Component = () => {
         </Show>
 
         {/* File list */}
-        <div class="min-h-0 flex-1 overflow-y-auto px-1 py-1">
+        <div ref={scrollRef} class="min-h-0 flex-1 overflow-y-auto px-1 py-1">
           <Show
             when={attachmentsQuery.isReady}
             fallback={
@@ -461,11 +489,37 @@ export const AttachmentsTab: Component = () => {
                 </div>
               }
             >
-              <For each={sortedAttachments()}>
-                {(att) => (
-                  <AttachmentRow att={att} onDelete={removeAttachment} onNavigate={navigate} />
-                )}
-              </For>
+              <div
+                style={{
+                  height: `${virtualizer.getTotalSize()}px`,
+                  width: "100%",
+                  position: "relative",
+                }}
+              >
+                <For each={virtualizer.getVirtualItems()}>
+                  {(virtualItem) => (
+                    <div
+                      ref={(el) => {
+                        queueMicrotask(() => virtualizer.measureElement(el));
+                      }}
+                      data-index={virtualItem.index}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        transform: `translateY(${virtualItem.start}px)`,
+                      }}
+                    >
+                      <AttachmentRow
+                        att={sortedAttachments()[virtualItem.index]!}
+                        onDelete={removeAttachment}
+                        onNavigate={navigate}
+                      />
+                    </div>
+                  )}
+                </For>
+              </div>
             </Show>
           </Show>
         </div>

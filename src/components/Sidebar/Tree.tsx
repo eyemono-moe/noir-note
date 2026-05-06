@@ -1,16 +1,18 @@
-import { TreeView, useTreeViewContext, type TreeCollection } from "@ark-ui/solid";
 import { HoverCard } from "@ark-ui/solid/hover-card";
+import { TreeView, useTreeView, type TreeCollection } from "@ark-ui/solid/tree-view";
 import { ReactiveSet } from "@solid-primitives/set";
+import { createVirtualizer, type Virtualizer } from "@tanstack/solid-virtual";
 import {
   batch,
   createMemo,
   createSignal,
   For,
   lazy,
+  Match,
   onMount,
   Show,
   Suspense,
-  type Accessor,
+  Switch,
   type Component,
 } from "solid-js";
 import { Portal } from "solid-js/web";
@@ -24,49 +26,26 @@ import styles from "./tree.module.css";
 
 const MemoPreview = lazy(() => import("./MemoPreview"));
 
-interface TreeNodeProps extends TreeView.NodeProviderProps<TreeNode> {
-  onRemove?: (props: TreeView.NodeProviderProps<TreeNode>) => void;
-  onAdd?: (props: TreeView.NodeProviderProps<TreeNode>) => void;
-  creatingState?: Accessor<{ parentPath: string; inputValue: string } | null>;
-  onCreateConfirm?: (parentPath: string, name: string) => void;
-  onCreateCancel?: () => void;
-}
+/**
+ * Estimated row height in pixels — must match the CSS:
+ * font-size 0.875rem (14px) + line-height 1.25rem (20px) +
+ * padding-block 0.125rem × 2 (4px) = 24px.
+ */
+const ROW_HEIGHT = 24;
 
-const TreeItemActions: Component<TreeNodeProps> = (props) => {
-  const tree = useTreeViewContext();
-  const isBranch = () => tree().collection.isBranchNode(props.node);
-  return (
-    <div class={styles.ActionGroup}>
-      <Show when={!isBranch()}>
-        <button
-          class={styles.Action}
-          onClick={(e) => {
-            e.stopPropagation();
-            props.onRemove?.(props);
-          }}
-          type="button"
-          aria-label="Delete note"
-        >
-          <span class="i-material-symbols:delete-rounded size-4 shrink-0" />
-        </button>
-      </Show>
-      <button
-        class={styles.Action}
-        onClick={(e) => {
-          e.stopPropagation();
-          props.onAdd?.(props);
-        }}
-        type="button"
-        aria-label="Add child note"
-      >
-        <span class="i-material-symbols:add-rounded size-4 shrink-0" />
-      </button>
-    </div>
-  );
-};
+// ---------------------------------------------------------------------------
+// Virtual row types
+// ---------------------------------------------------------------------------
+
+type NodeRow = { kind: "node"; node: TreeNode; indexPath: number[] };
+type CreateInputRow = { kind: "create-input"; parentPath: string; depth: number };
+type VirtualRow = NodeRow | CreateInputRow;
+
+// ---------------------------------------------------------------------------
+// CreateMemoInput
+// ---------------------------------------------------------------------------
 
 const CreateMemoInput: Component<{
-  parentPath: string;
   onConfirm: (name: string) => void;
   onCancel: () => void;
 }> = (props) => {
@@ -82,9 +61,7 @@ const CreateMemoInput: Component<{
     if (e.key === "Enter") {
       e.preventDefault();
       const trimmed = value().trim();
-      if (trimmed) {
-        props.onConfirm(trimmed);
-      }
+      if (trimmed) props.onConfirm(trimmed);
     } else if (e.key === "Escape") {
       e.preventDefault();
       props.onCancel();
@@ -107,74 +84,9 @@ const CreateMemoInput: Component<{
   );
 };
 
-const TreeItem: Component<TreeNodeProps> = (props) => {
-  return (
-    <TreeView.NodeProvider node={props.node} indexPath={props.indexPath}>
-      <TreeView.NodeContext>
-        {(nodeState) => (
-          <TreeView.Branch class={styles.Branch}>
-            <HoverCard.Trigger
-              value={props.node.path}
-              asChild={(hoverProps) => (
-                <TreeView.BranchControl class={styles.BranchControl} {...hoverProps()}>
-                  <Show when={nodeState().isBranch} fallback={<span class="size-4 shrink-0" />}>
-                    <TreeView.BranchIndicator class={styles.BranchIndicator}>
-                      <span class="i-material-symbols:chevron-right-rounded size-4 shrink-0" />
-                    </TreeView.BranchIndicator>
-                  </Show>
-                  <TreeView.BranchText class={styles.BranchText}>
-                    <Show
-                      when={nodeState().isBranch}
-                      fallback={
-                        <span class="i-material-symbols:description-outline-rounded size-4 shrink-0" />
-                      }
-                    >
-                      <span
-                        class={`size-4 shrink-0 ${nodeState().expanded ? "i-material-symbols:folder-open" : "i-material-symbols:folder"}`}
-                      />
-                    </Show>
-                    <span class="w-full truncate">{props.node.name}</span>
-                  </TreeView.BranchText>
-                  <TreeItemActions
-                    node={props.node}
-                    indexPath={props.indexPath}
-                    onAdd={props.onAdd}
-                    onRemove={props.onRemove}
-                  />
-                </TreeView.BranchControl>
-              )}
-            />
-            <TreeView.BranchContent class={styles.BranchContent}>
-              <TreeView.BranchIndentGuide class={styles.BranchIndentGuide} />
-
-              <Show when={props.creatingState?.()?.parentPath === props.node.path}>
-                <CreateMemoInput
-                  parentPath={props.node.path}
-                  onConfirm={(name) => props.onCreateConfirm?.(props.node.path, name)}
-                  onCancel={() => props.onCreateCancel?.()}
-                />
-              </Show>
-
-              <For each={props.node.children}>
-                {(child, index) => (
-                  <TreeItem
-                    node={child}
-                    indexPath={[...props.indexPath, index()]}
-                    onAdd={props.onAdd}
-                    onRemove={props.onRemove}
-                    creatingState={props.creatingState}
-                    onCreateConfirm={props.onCreateConfirm}
-                    onCreateCancel={props.onCreateCancel}
-                  />
-                )}
-              </For>
-            </TreeView.BranchContent>
-          </TreeView.Branch>
-        )}
-      </TreeView.NodeContext>
-    </TreeView.NodeProvider>
-  );
-};
+// ---------------------------------------------------------------------------
+// Tree
+// ---------------------------------------------------------------------------
 
 type TreeProps = {
   currentPath: string;
@@ -186,6 +98,10 @@ type TreeProps = {
 };
 
 export const Tree: Component<TreeProps> = (props) => {
+  // oxlint-disable-next-line no-unassigned-vars --- needed for ref
+  let treeRef: HTMLDivElement | undefined;
+  let virtualizerRef: Virtualizer<HTMLDivElement, Element> | undefined;
+
   const [deleteConfirmState, setDeleteConfirmState] = createSignal<{
     path: string;
     name: string;
@@ -198,68 +114,138 @@ export const Tree: Component<TreeProps> = (props) => {
 
   const [activePath, setActivePath] = createSignal<string | null>(null);
 
-  const expandedPaths = new ReactiveSet<string>([]); // [TODO] 開閉状態の永続化
+  // [TODO] Persist expanded state across sessions.
+  const expandedPaths = new ReactiveSet<string>([]);
 
-  // rootノード("/")は常に展開状態を維持
+  // "/" root is always kept expanded.
   const effectiveExpandedPaths = createMemo((): string[] => {
-    expandedPaths.add("/"); // 常に"/"を展開状態にする
+    expandedPaths.add("/");
     return Array.from(expandedPaths);
   });
 
+  // Use getter-based props so reactive dependencies (collection, selectedValue,
+  // expandedValue) are tracked by Ark UI's internal createMemo.
+  const tree = useTreeView({
+    get collection() {
+      return props.collection;
+    },
+    get selectedValue() {
+      return [props.currentPath];
+    },
+    get expandedValue() {
+      return effectiveExpandedPaths();
+    },
+    onExpandedChange: (details) => {
+      batch(() => {
+        expandedPaths.clear();
+        for (const path of details.expandedValue) {
+          expandedPaths.add(path);
+        }
+      });
+    },
+    onSelectionChange: (details) => {
+      const node = details.selectedNodes[0];
+      if (node) props.onNavigate(node.path);
+    },
+    scrollToIndexFn: (details) => {
+      virtualizerRef?.scrollToIndex(details.index, { align: "auto" });
+    },
+  });
+
+  const visibleNodes = () => tree().getVisibleNodes();
+
+  /**
+   * Flat virtual row list.
+   * When a new note is being named, a create-input row is injected right after
+   * the parent node (appearing as the first child in the expanded parent).
+   */
+  const virtualRows = createMemo((): VirtualRow[] => {
+    const nodes = visibleNodes();
+    const creating = creatingState();
+
+    if (!creating) {
+      return nodes.map((n) => ({ kind: "node", node: n.node, indexPath: n.indexPath }));
+    }
+
+    const parentIdx = nodes.findIndex((n) => n.node.path === creating.parentPath);
+    if (parentIdx === -1) {
+      // Parent not visible — show nodes without the input row.
+      return nodes.map((n) => ({ kind: "node", node: n.node, indexPath: n.indexPath }));
+    }
+
+    // Compute the CSS --depth value for the input row.
+    // NodeProvider doesn't set --depth; we set it as an inline style.
+    const parentNodeState = tree().getNodeState({
+      node: nodes[parentIdx].node,
+      indexPath: nodes[parentIdx].indexPath,
+    });
+    const inputDepth = parentNodeState.depth;
+
+    const result: VirtualRow[] = [];
+    for (let i = 0; i < nodes.length; i++) {
+      result.push({ kind: "node", node: nodes[i].node, indexPath: nodes[i].indexPath });
+      if (i === parentIdx) {
+        result.push({ kind: "create-input", parentPath: creating.parentPath, depth: inputDepth });
+      }
+    }
+    return result;
+  });
+
+  const virtualizer = createVirtualizer<HTMLDivElement, Element>({
+    get count() {
+      return virtualRows().length;
+    },
+    getScrollElement: () => treeRef ?? null,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 5,
+  });
+
+  // Expose so scrollToIndexFn can call it.
+  virtualizerRef = virtualizer;
+
+  // ---------------------------------------------------------------------------
+  // Event handlers
+  // ---------------------------------------------------------------------------
+
   const handleDeleteConfirm = (path: string) => {
-    // 既存の削除コールバック実行
     props.onDelete(path);
-
-    // 親パスに遷移
-    const parentPath = getParentPath(path) ?? "/";
-    props.onNavigate(parentPath);
-
-    // 状態クリア
+    props.onNavigate(getParentPath(path) ?? "/");
     setDeleteConfirmState(null);
   };
 
   const handleCreateConfirm = (parentPath: string, name: string) => {
     const newPath = parentPath === "/" ? `/${name}` : `${parentPath}/${name}`;
 
-    // バリデーション: 重複チェック
-    const existingMemo = props.allMemos.find((memo) => memo.path === newPath);
-    if (existingMemo) {
+    if (props.allMemos.some((memo) => memo.path === newPath)) {
       console.error("Path already exists:", newPath);
       return;
     }
-
-    // バリデーション: 無効文字チェック
     if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
       console.error("Invalid name: use only letters, numbers, _ and -");
       return;
     }
-
-    // バリデーション: 長さチェック
     if (name.length > 100) {
       console.error("Name too long (max 100 characters)");
       return;
     }
 
-    // メモ作成
     try {
-      props.onInsert({
-        path: newPath,
-        metadata: undefined,
-      });
-
-      // 新規メモに遷移
+      props.onInsert({ path: newPath, metadata: undefined });
       props.onNavigate(newPath);
-
-      // 状態クリア
       setCreatingState(null);
     } catch (error) {
       console.error("Failed to create memo:", error);
     }
   };
 
-  const handleCreateCancel = () => {
-    setCreatingState(null);
+  const handleAddChild = (node: TreeNode) => {
+    expandedPaths.add(node.path);
+    setCreatingState({ parentPath: node.path, inputValue: "" });
   };
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   return (
     <>
@@ -271,53 +257,139 @@ export const Tree: Component<TreeProps> = (props) => {
         positioning={{ placement: "right-start", offset: { mainAxis: 8, crossAxis: 0 } }}
         onTriggerValueChange={(e) => setActivePath(e.value)}
       >
-        <TreeView.Root
-          collection={props.collection}
-          class={styles.Root}
-          selectedValue={[props.currentPath]}
-          expandedValue={effectiveExpandedPaths()}
-          onExpandedChange={(details) => {
-            batch(() => {
-              expandedPaths.clear();
-              for (const path of details.expandedValue) {
-                expandedPaths.add(path);
-              }
-            });
-          }}
-          onSelectionChange={(details) => {
-            props.onNavigate(details.selectedNodes[0].path);
-          }}
-        >
-          <TreeView.Tree class={styles.Tree}>
-            <For each={props.collection.rootNode.children}>
-              {(node, index) => (
-                <TreeItem
-                  node={node}
-                  indexPath={[index()]}
-                  onAdd={(e) => {
-                    // 親ノードを展開
-                    const parentPath = e.node.path;
-                    expandedPaths.add(parentPath);
+        <TreeView.RootProvider value={tree} class={styles.Root}>
+          <TreeView.Tree ref={treeRef} class={styles.Tree}>
+            <div
+              style={{
+                "min-height": `${virtualizer.getTotalSize()}px`,
+                width: "100%",
+                position: "relative",
+              }}
+            >
+              <For each={virtualizer.getVirtualItems()}>
+                {(virtualItem) => {
+                  const row = () => virtualRows().at(virtualItem.index);
 
-                    setCreatingState({
-                      parentPath: e.node.path,
-                      inputValue: "",
-                    });
-                  }}
-                  onRemove={(e) => {
-                    setDeleteConfirmState({
-                      path: e.node.path,
-                      name: e.node.name,
-                    });
-                  }}
-                  creatingState={creatingState}
-                  onCreateConfirm={handleCreateConfirm}
-                  onCreateCancel={handleCreateCancel}
-                />
-              )}
-            </For>
+                  return (
+                    <div
+                      data-index={virtualItem.index}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: `${virtualItem.size}px`,
+                        transform: `translateY(${virtualItem.start}px)`,
+                      }}
+                    >
+                      <Switch>
+                        <Match when={row()?.kind === "create-input"}>
+                          <div style={{ "--depth": String((row() as CreateInputRow).depth) }}>
+                            <CreateMemoInput
+                              onConfirm={(name) =>
+                                handleCreateConfirm((row() as CreateInputRow).parentPath, name)
+                              }
+                              onCancel={() => setCreatingState(null)}
+                            />
+                          </div>
+                        </Match>
+
+                        <Match when={row()?.kind === "node"}>
+                          {(_) => {
+                            const nodeState = () =>
+                              tree().getNodeState({
+                                node: (row() as NodeRow).node,
+                                indexPath: (row() as NodeRow).indexPath,
+                              });
+
+                            return (
+                              <TreeView.NodeProvider
+                                node={(row() as NodeRow).node}
+                                indexPath={(row() as NodeRow).indexPath}
+                              >
+                                <HoverCard.Trigger
+                                  value={(row() as NodeRow).node.path}
+                                  asChild={(hoverProps) => (
+                                    <TreeView.BranchControl
+                                      class={styles.BranchControl}
+                                      {...hoverProps()}
+                                      style={{
+                                        "--depth": String(nodeState().depth),
+                                      }}
+                                    >
+                                      <Show
+                                        when={nodeState().isBranch}
+                                        fallback={
+                                          // Leaf: empty spacer keeps icon column aligned.
+                                          <span class="size-4 shrink-0" />
+                                        }
+                                      >
+                                        <TreeView.BranchIndicator class={styles.BranchIndicator}>
+                                          <span class="i-material-symbols:chevron-right-rounded size-4 shrink-0" />
+                                        </TreeView.BranchIndicator>
+                                      </Show>
+
+                                      <TreeView.BranchText class={styles.BranchText}>
+                                        <Show
+                                          when={nodeState().isBranch}
+                                          fallback={
+                                            <span class="i-material-symbols:description-outline-rounded size-4 shrink-0" />
+                                          }
+                                        >
+                                          <span
+                                            class={`size-4 shrink-0 ${nodeState().expanded ? "i-material-symbols:folder-open" : "i-material-symbols:folder"}`}
+                                          />
+                                        </Show>
+                                        <span class="w-full truncate">
+                                          {(row() as NodeRow).node.name}
+                                        </span>
+                                      </TreeView.BranchText>
+
+                                      <div class={styles.ActionGroup}>
+                                        <Show when={!nodeState().isBranch}>
+                                          <button
+                                            class={styles.Action}
+                                            type="button"
+                                            aria-label="Delete note"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setDeleteConfirmState({
+                                                path: (row() as NodeRow).node.path,
+                                                name: (row() as NodeRow).node.name,
+                                              });
+                                            }}
+                                          >
+                                            <span class="i-material-symbols:delete-rounded size-4 shrink-0" />
+                                          </button>
+                                        </Show>
+                                        <button
+                                          class={styles.Action}
+                                          type="button"
+                                          aria-label="Add child note"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleAddChild((row() as NodeRow).node);
+                                          }}
+                                        >
+                                          <span class="i-material-symbols:add-rounded size-4 shrink-0" />
+                                        </button>
+                                      </div>
+                                    </TreeView.BranchControl>
+                                  )}
+                                />
+                              </TreeView.NodeProvider>
+                            );
+                          }}
+                        </Match>
+                      </Switch>
+                    </div>
+                  );
+                }}
+              </For>
+            </div>
           </TreeView.Tree>
-        </TreeView.Root>
+        </TreeView.RootProvider>
+
         <Portal>
           <HoverCard.Positioner>
             <HoverCard.Content class={styles.HoverCardContent}>

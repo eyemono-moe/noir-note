@@ -3,14 +3,12 @@ import diff from "fast-diff";
 
 let formatter: Formatter | null = null;
 
-// メインスレッドから渡されるデータ型
 export interface FormatRequest {
   text: string;
   wasmUrl: string;
   requestId: number;
 }
 
-// メインスレッドに返すデータ型
 export interface FormatResponse {
   changes?: { from: number; to: number; insert: string }[];
   error?: string;
@@ -40,7 +38,7 @@ self.onmessage = async (e: MessageEvent<FormatRequest>) => {
 
     const diffs = diff(text, formatted);
 
-    // 差分をCodeMirrorのchangeSpec形式に変換
+    // Convert fast-diff output to CodeMirror changeSpec array
     const changes: { from: number; to: number; insert: string }[] = [];
     let currentPos = 0;
     for (const [type, value] of diffs) {

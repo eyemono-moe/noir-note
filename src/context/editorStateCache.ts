@@ -1,53 +1,39 @@
 import type { EditorState } from "@codemirror/state";
 
-type StateSerializer = (state: EditorState) => unknown;
-type StateDeserializer = (data: unknown) => EditorState | null;
-
 interface CacheEntry {
   state: EditorState;
+  /** Hash of the document content at save time, used to detect stale entries. */
   docHash: string;
 }
 
 /**
- * LRU cache for EditorState by memo path with document hash verification.
- * Stores EditorState alongside a hash of its document content to detect
- * stale cache when the memo was edited in another tab or client.
+ * LRU cache for CodeMirror EditorState keyed by memo path.
+ *
+ * Each entry stores the EditorState alongside a hash of its document content.
+ * On load, the hash is compared against the current content so that edits made
+ * in another tab (or by an external sync) invalidate the cached state rather
+ * than restoring stale history.
  */
 export class EditorStateLRUCache {
-  private cache = new Map<string, CacheEntry | { serialized: unknown; docHash: string }>();
-  private maxSize: number;
-  private serializer?: StateSerializer;
-  private deserializer?: StateDeserializer;
+  private readonly cache = new Map<string, CacheEntry>();
+  private readonly maxSize: number;
 
-  constructor(options?: {
-    maxSize?: number;
-    serializer?: StateSerializer;
-    deserializer?: StateDeserializer;
-  }) {
+  constructor(options?: { maxSize?: number }) {
     this.maxSize = options?.maxSize ?? 10;
-    this.serializer = options?.serializer;
-    this.deserializer = options?.deserializer;
   }
 
   private computeDocHash(content: string): string {
-    // Simple hash: just combine length and first/last chars for quick staleness check
+    // Cheap fingerprint combining length and boundary characters.
+    // Good enough for staleness detection; not a cryptographic hash.
     return `${content.length}:${content.charCodeAt(0) ?? 0}:${content.charCodeAt(content.length - 1) ?? 0}`;
   }
 
   save(path: string, state: EditorState): void {
     const docHash = this.computeDocHash(state.doc.toString());
 
-    // If serializer provided, store serialized form alongside hash (lighter/portable)
-    const entry: CacheEntry = {
-      state,
-      docHash,
-    };
-
-    const cacheValue = this.serializer ? { serialized: this.serializer(state), docHash } : entry;
-
-    // Update LRU
+    // Re-insert to promote to most-recently-used (Map preserves insertion order).
     this.cache.delete(path);
-    this.cache.set(path, cacheValue);
+    this.cache.set(path, { state, docHash });
 
     if (this.cache.size > this.maxSize) {
       const firstKey = this.cache.keys().next().value;
@@ -56,40 +42,19 @@ export class EditorStateLRUCache {
   }
 
   /**
-   * Attempts to load cached EditorState and returns it only if the document hash matches.
-   * Returns null if not cached or if content hash doesn't match (stale cache).
+   * Return the cached EditorState for `path` if it exists and its document
+   * matches `currentContent`. Returns `null` if not cached or stale.
    */
   load(path: string, currentContent: string): EditorState | null {
     const entry = this.cache.get(path);
     if (!entry) return null;
 
-    // Promote to recently used
+    // Promote to most-recently-used.
     this.cache.delete(path);
     this.cache.set(path, entry);
 
-    const currentHash = this.computeDocHash(currentContent);
-    let cachedEntry: CacheEntry | null = null;
-
-    if (entry && typeof entry === "object" && "docHash" in entry && "state" in entry) {
-      // Direct entry (not serialized)
-      cachedEntry = entry as CacheEntry;
-    } else if (entry && typeof entry === "object" && "docHash" in entry && "serialized" in entry) {
-      // Serialized entry
-      const obj = entry as unknown as { docHash: string; serialized: unknown };
-      if (this.deserializer) {
-        const deserialized = this.deserializer(obj.serialized);
-        if (deserialized) {
-          cachedEntry = { state: deserialized, docHash: obj.docHash };
-        }
-      }
-    }
-
-    // Stale cache check: only return if hash matches
-    if (cachedEntry && cachedEntry.docHash === currentHash) {
-      return cachedEntry.state;
-    }
-
-    return null;
+    if (entry.docHash !== this.computeDocHash(currentContent)) return null;
+    return entry.state;
   }
 
   clear(path: string): void {

@@ -2,7 +2,15 @@ import { Combobox, useListCollection } from "@ark-ui/solid/combobox";
 import { Dialog } from "@ark-ui/solid/dialog";
 import { useLiveQuery } from "@tanstack/solid-db";
 import { formatForDisplay } from "@tanstack/solid-hotkeys";
-import { createEffect, createSignal, For, Show, untrack, type Component } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  Show,
+  untrack,
+  type Component,
+} from "solid-js";
 import { Portal } from "solid-js/web";
 
 import {
@@ -16,6 +24,9 @@ import { getPathSegments } from "../utils/path";
 import type { PaletteItem } from "./types";
 
 import styles from "./palette.module.css";
+
+/** Maximum number of items rendered in the palette list at once. */
+const MAX_PALETTE_ITEMS = 50;
 
 const getItemIcon = (item: PaletteItem) => {
   if (item.type === "command") {
@@ -113,6 +124,20 @@ const CommandPalette: Component = () => {
     });
   });
 
+  // Slice groups so the list never renders more than MAX_PALETTE_ITEMS total.
+  // Commands are shown first; remaining budget goes to page results.
+  const displayGroups = createMemo((): [string, PaletteItem[]][] => {
+    let remaining = MAX_PALETTE_ITEMS;
+    return collection()
+      .group()
+      .flatMap(([type, items]) => {
+        if (remaining <= 0) return [];
+        const slice = items.slice(0, remaining);
+        remaining -= slice.length;
+        return slice.length > 0 ? [[type, slice] as [string, PaletteItem[]]] : [];
+      });
+  });
+
   // Handle item selection using onSelect (fires every time, even for same item)
   const handleSelect = async (details: { value: string[] }) => {
     const selectedValue = details.value[0];
@@ -181,7 +206,7 @@ const CommandPalette: Component = () => {
                 </Show>
 
                 <Combobox.List class="flex flex-col">
-                  <For each={collection().group()}>
+                  <For each={displayGroups()}>
                     {([type, group]) => (
                       <Combobox.ItemGroup class={styles.ItemGroup}>
                         <Combobox.ItemGroupLabel class="text-text-secondary px-3 py-1.5 text-xs leading-4 font-semibold tracking-[0.05em] uppercase select-none">

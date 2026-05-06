@@ -13,6 +13,22 @@
 
 const ATTACHMENTS_DIR = "attachments";
 
+// ---------------------------------------------------------------------------
+// Thumbnail URL cache
+//
+// Object URLs for 72×72 thumbnails are stored here for the lifetime of the
+// page.  Virtual-list rows mount and unmount as the user scrolls; without this
+// cache every remount would re-read OPFS and re-decode the image.
+//
+// Entries are evicted only when the attachment is deleted (deleteImage).
+// ---------------------------------------------------------------------------
+
+/** Thumbnail side length (pixels, 2× for HiDPI). */
+const THUMB_PX = 72;
+
+/** id → object URL of the downsampled thumbnail blob. */
+const thumbnailCache = new Map<string, string>();
+
 export interface ImageMeta {
   id: string;
   size: number;
@@ -107,10 +123,60 @@ export async function getImageUrl(id: string): Promise<string | null> {
 }
 
 /**
+ * Return a cached object URL for a downsampled thumbnail (THUMB_PX × THUMB_PX, WebP).
+ *
+ * On the first call for a given `id`:
+ *   1. Reads the file from OPFS.
+ *   2. Decodes + resizes it asynchronously via `createImageBitmap` (no main-thread decode).
+ *   3. Draws into an `OffscreenCanvas` and encodes as a compact WebP blob.
+ *   4. Creates an object URL and stores it in `thumbnailCache`.
+ *
+ * Subsequent calls return the cached URL immediately (zero OPFS I/O).
+ * The cache entry is evicted when the attachment is deleted (`deleteImage`).
+ *
+ * Returns `null` for missing or non-image files.
+ */
+export async function getThumbnailUrl(id: string): Promise<string | null> {
+  const cached = thumbnailCache.get(id);
+  if (cached !== undefined) return cached;
+
+  try {
+    const dir = await getAttachmentsDir();
+    const handle = await dir.getFileHandle(id);
+    const file = await handle.getFile();
+
+    // createImageBitmap with resize options decodes on a background thread.
+    const bitmap = await createImageBitmap(file, {
+      resizeWidth: THUMB_PX,
+      resizeHeight: THUMB_PX,
+      resizeQuality: "medium",
+    });
+
+    const canvas = new OffscreenCanvas(THUMB_PX, THUMB_PX);
+    canvas.getContext("2d")?.drawImage(bitmap, 0, 0);
+    bitmap.close();
+
+    const blob = await canvas.convertToBlob({ type: "image/webp", quality: 0.8 });
+    const url = URL.createObjectURL(blob);
+    thumbnailCache.set(id, url);
+    return url;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Delete a single attachment by ID.
+ * Also evicts its thumbnail from the module-level cache.
  * Silently ignores missing files.
  */
 export async function deleteImage(id: string): Promise<void> {
+  const cachedUrl = thumbnailCache.get(id);
+  if (cachedUrl !== undefined) {
+    URL.revokeObjectURL(cachedUrl);
+    thumbnailCache.delete(id);
+  }
+
   try {
     const dir = await getAttachmentsDir();
     await dir.removeEntry(id);

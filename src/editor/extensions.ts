@@ -40,13 +40,13 @@ export function createEditorExtensions(isDark: boolean): Extension[] {
     keymap.of([
       { key: "Mod-Shift-z", run: redo, preventDefault: true },
       { key: "Mod-Shift-u", run: redoSelection, preventDefault: true },
-    ]), // 公式のhistoryKeymapではWindowsでのredoがMeta+Yになっていて使いづらいため追加 see: https://code.haverbeke.berlin/codemirror/commands/src/commit/30a280ea8aa5822a8e0eb9fd560e0cd28d3c836b/src/history.ts#L395
+    ]), // The official historyKeymap uses Meta+Y for redo on Windows; override to Mod-Shift-Z. see: https://code.haverbeke.berlin/codemirror/commands/src/commit/30a280ea8aa5822a8e0eb9fd560e0cd28d3c836b/src/history.ts#L395
     keymap.of(historyKeymap),
     keymap.of([indentWithTab]),
-    indentUnit.of("  "), // インデントの単位をスペース4個にする。@codemirror/lang-markdownでネストしたリストに正しい挙動をさせるには2-5の範囲にする必要がある
+    indentUnit.of("  "), // 2 spaces; @codemirror/lang-markdown requires 2–5 for correct nested list behavior
     EditorView.lineWrapping,
     EditorState.tabSize.of(2),
-    keymap.of(formatKeyBindings), // フォーマット用のキーバインドを有効化
+    keymap.of(formatKeyBindings),
     wrapSelectionExtension,
     imagePasteExtension,
 
