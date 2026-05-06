@@ -1,8 +1,6 @@
-# eyemono.md Codex Instructions
+# eyemono.md Agent Instructions
 
-These are the project instructions for OpenAI Codex. Codex discovers `AGENTS.md`
-files from the repository root down to the current working directory; keep this
-file at the repo root as the shared project rule file.
+Follow these project instructions when working in this repository.
 
 ## Project overview
 
@@ -237,5 +235,5 @@ Notes:
 
 `CLAUDE.md` contains the original Claude-oriented project context. Keep this
 `AGENTS.md` in sync with durable project rules from `CLAUDE.md`, but prefer
-Codex-specific operational guidance here rather than asking Codex to read another
+agent-neutral operational guidance here rather than asking tools to read another
 agent's instruction file.

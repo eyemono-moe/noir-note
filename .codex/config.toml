@@ -5,7 +5,6 @@
 # defaults that make Codex behave consistently for contributors who trust this
 # repository.
 
-# The root AGENTS.md is intentionally detailed because it replaces the existing
-# Claude-specific project context for Codex users. Raise the default 32 KiB cap so
+# The root AGENTS.md is intentionally detailed. Raise the default 32 KiB cap so
 # nested AGENTS.md files can be added later without silently truncating guidance.
 project_doc_max_bytes = 65536
