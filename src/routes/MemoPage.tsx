@@ -11,6 +11,7 @@ import { useCheckboxSync } from "../hooks/useCheckboxSync";
 import { useMemoSaver } from "../hooks/useMemoOperations";
 import { useScrollSync } from "../hooks/useScrollSync";
 import { useScrollSyncEnabled } from "../store/configStore";
+import { useMemoDocumentTitle } from "../utils/documentTitle";
 
 // Start downloading the Editor chunk immediately at module-evaluation time,
 // before the DB sync completes. This overlaps the network download with DB
@@ -26,6 +27,7 @@ const MemoPageContent: Component = () => {
   const collection = useMemosCollection();
 
   const { path: currentPath, content, setContent, isReady } = useCurrentMemo();
+  useMemoDocumentTitle(currentPath, content);
   const { editorView, setEditorView, previewAdapter, setPreviewAdapter } = useEditorContext();
 
   // Defer preview updates so editor keystrokes are never blocked by the
