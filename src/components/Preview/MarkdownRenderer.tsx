@@ -33,6 +33,11 @@ import {
   type MermaidRegistry,
   MermaidRegistryContext,
 } from "./contexts";
+import {
+  getNextLightboxZoom,
+  LIGHTBOX_IMAGE_ZOOM_MAX,
+  LIGHTBOX_IMAGE_ZOOM_MIN,
+} from "./lightboxZoom";
 import { FootNotesSection, NodesRenderer, createResolvedImageSrc } from "./NodesRenderer";
 import { processor } from "./processor";
 import { type KeyedEntry, withStableRootKeys } from "./reconcile";
@@ -57,7 +62,7 @@ interface MarkdownRendererProps {
 /**
  * Full-size image rendered inside the lightbox dialog.
  */
-const LightboxImage: Component<{ url: string }> = (props) => {
+const LightboxImage: Component<{ url: string; zoom: number }> = (props) => {
   const src = createResolvedImageSrc(() => props.url);
 
   return (
@@ -70,13 +75,19 @@ const LightboxImage: Component<{ url: string }> = (props) => {
       }
     >
       {(s) => (
-        <img
-          src={s()}
-          alt=""
-          class="max-h-full max-w-full rounded shadow-2xl [background:conic-gradient(#eee_90deg,transparent_90deg_180deg,#eee_180deg_270deg,transparent_270deg)_50%_50%/50px_50px,#fff]"
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-        />
+        <div class="flex size-full items-center justify-center overflow-auto">
+          <img
+            src={s()}
+            alt=""
+            class="h-auto max-h-full rounded shadow-2xl [background:conic-gradient(#eee_90deg,transparent_90deg_180deg,#eee_180deg_270deg,transparent_270deg)_50%_50%/50px_50px,#fff]"
+            style={{
+              "max-width": props.zoom === 1 ? "100%" : "none",
+              width: `${props.zoom * 100}%`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          />
+        </div>
       )}
     </Show>
   );
@@ -278,6 +289,12 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
 
   // null = dialog closed; number = index of the currently displayed item.
   const [lightboxIndex, setLightboxIndex] = createSignal<number | null>(null);
+  const [lightboxImageZoom, setLightboxImageZoom] = createSignal(1);
+
+  createEffect(() => {
+    lightboxIndex();
+    setLightboxImageZoom(1);
+  });
 
   const openLightbox = (offset: number) => {
     const index = lightboxItems().findIndex((i) => i.offset === offset);
@@ -353,7 +370,10 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
                       >
                         <Switch>
                           <Match when={item.type === "image"}>
-                            <LightboxImage url={(item as { url: string }).url} />
+                            <LightboxImage
+                              url={(item as { url: string }).url}
+                              zoom={lightboxImageZoom()}
+                            />
                           </Match>
                           <Match when={item.type === "mermaid"}>
                             <LightboxMermaid code={(item as { code: string }).code} />
@@ -363,6 +383,51 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
                     )}
                   </For>
                 </Carousel.ItemGroup>
+
+                <Show when={lightboxItems()[lightboxIndex() ?? 0]?.type === "image"}>
+                  <div
+                    role="presentation"
+                    class="bg-surface-primary/90 border-border-primary flex shrink-0 items-center gap-2 rounded-full border px-2 py-1 shadow-lg backdrop-blur"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                      title="Zoom out"
+                      aria-label="Zoom out"
+                      disabled={lightboxImageZoom() <= LIGHTBOX_IMAGE_ZOOM_MIN}
+                      onClick={() =>
+                        setLightboxImageZoom((zoom) => getNextLightboxZoom(zoom, "out"))
+                      }
+                    >
+                      <span class="i-material-symbols:zoom-out-rounded size-5" />
+                    </button>
+                    <button
+                      type="button"
+                      class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex min-w-14 appearance-none justify-center rounded-full bg-transparent px-2 py-1 text-sm tabular-nums transition-colors"
+                      title="Reset zoom"
+                      aria-label="Reset zoom"
+                      onClick={() =>
+                        setLightboxImageZoom((zoom) => getNextLightboxZoom(zoom, "reset"))
+                      }
+                    >
+                      {Math.round(lightboxImageZoom() * 100)}%
+                    </button>
+                    <button
+                      type="button"
+                      class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                      title="Zoom in"
+                      aria-label="Zoom in"
+                      disabled={lightboxImageZoom() >= LIGHTBOX_IMAGE_ZOOM_MAX}
+                      onClick={() =>
+                        setLightboxImageZoom((zoom) => getNextLightboxZoom(zoom, "in"))
+                      }
+                    >
+                      <span class="i-material-symbols:zoom-in-rounded size-5" />
+                    </button>
+                  </div>
+                </Show>
 
                 <Show when={lightboxItems().length > 1}>
                   <Carousel.Control
