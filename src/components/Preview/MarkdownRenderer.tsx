@@ -425,17 +425,17 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
                 loop
                 page={lightboxIndex() ?? 0}
                 onPageChange={(d) => setLightboxIndex(d.page)}
-                class="flex w-full flex-col items-center gap-3 overflow-hidden"
+                class="flex h-full min-h-0 w-full flex-col items-center gap-3 overflow-hidden"
               >
                 <Carousel.ItemGroup
-                  class="flex-1 overflow-hidden rounded outline-none"
+                  class="min-h-0 w-full flex-1 overflow-hidden rounded outline-none"
                   ref={setCarouselContainerRef}
                 >
                   <For each={lightboxItems()}>
                     {(item, i) => (
                       <Carousel.Item
                         index={i()}
-                        class="flex items-center justify-center overflow-hidden"
+                        class="flex size-full items-center justify-center overflow-hidden"
                       >
                         <Switch>
                           <Match when={item.type === "image"}>
