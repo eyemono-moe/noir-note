@@ -1,17 +1,12 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import {
-  APP_HOME_PATH,
-  LICENSE_MARKDOWN_PATH,
-  LICENSE_PAGE_PATH,
-  loadLicenseMarkdown,
-} from "./licensePage";
+import { LICENSE_DIALOG_TITLE, LICENSE_MARKDOWN_PATH, loadLicenseMarkdown } from "./licensePage";
 
-describe("license page navigation", () => {
-  test("uses an in-app route with a home return path instead of the raw markdown URL", () => {
-    expect(LICENSE_PAGE_PATH).toBe("/licenses");
-    expect(APP_HOME_PATH).toBe("/");
-    expect(LICENSE_PAGE_PATH).not.toBe(LICENSE_MARKDOWN_PATH);
+describe("license dialog content", () => {
+  test("uses the generated markdown asset without reserving a memo route", () => {
+    expect(LICENSE_DIALOG_TITLE).toBe("Licenses");
+    expect(LICENSE_MARKDOWN_PATH).toBe("/licenses.md");
+    expect(LICENSE_MARKDOWN_PATH).not.toBe("/licenses");
   });
 
   test("loads the generated markdown license document", async () => {

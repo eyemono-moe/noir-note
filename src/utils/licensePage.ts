@@ -1,5 +1,4 @@
-export const APP_HOME_PATH = "/";
-export const LICENSE_PAGE_PATH = "/licenses";
+export const LICENSE_DIALOG_TITLE = "Licenses";
 export const LICENSE_MARKDOWN_PATH = "/licenses.md";
 
 export async function loadLicenseMarkdown(fetcher: typeof fetch = fetch): Promise<string> {
