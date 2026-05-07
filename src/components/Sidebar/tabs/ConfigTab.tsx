@@ -17,6 +17,7 @@ import {
   useEmbedConfig,
   useScrollSyncEnabled,
 } from "../../../store/configStore";
+import { LICENSE_PAGE_PATH } from "../../../utils/licensePage";
 import { EMBED_MATCHERS } from "../../Preview/embeds";
 
 const MarkdownRenderer = lazy(() => import("../../Preview/MarkdownRenderer"));
@@ -205,14 +206,11 @@ export const ConfigTab: Component = () => {
             Privacy Policy
           </button>
           <a
-            href="/licenses.md"
-            target="_blank"
-            rel="noopener noreferrer"
+            href={LICENSE_PAGE_PATH}
             class="focus-ring text-text-secondary hover:text-text-primary flex items-center gap-1.5 rounded px-1 py-1 text-xs transition-colors"
           >
             <span class="i-material-symbols:description-outline-rounded size-3.5 shrink-0" />
             License (MIT)
-            <span class="i-material-symbols:open-in-new-rounded size-3.5 shrink-0" />
           </a>
           <a
             href="https://github.com/eyemono-moe/noir-note"

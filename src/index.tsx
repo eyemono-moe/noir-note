@@ -7,6 +7,7 @@ import { render } from "solid-js/web";
 
 import App from "./App";
 import FeatureCheckGate from "./components/FeatureCheckGate";
+import LicensePage from "./routes/LicensePage";
 import MemoPage from "./routes/MemoPage";
 
 const root = document.getElementById("root");
@@ -21,6 +22,7 @@ render(
   () => (
     <FeatureCheckGate>
       <Router root={App}>
+        <Route path="/licenses" component={LicensePage} />
         <Route path="*" component={MemoPage} />
       </Router>
     </FeatureCheckGate>
