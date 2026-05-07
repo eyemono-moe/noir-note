@@ -1,7 +1,16 @@
 import { Dialog } from "@ark-ui/solid/dialog";
 import { RadioGroup } from "@ark-ui/solid/radio-group";
 import { Switch } from "@ark-ui/solid/switch";
-import { type Component, createSignal, For, lazy, Show, Suspense } from "solid-js";
+import {
+  type Component,
+  createResource,
+  createSignal,
+  ErrorBoundary,
+  For,
+  lazy,
+  Show,
+  Suspense,
+} from "solid-js";
 import { Portal } from "solid-js/web";
 
 // Import privacy policy markdown as a raw string at build time.
@@ -17,6 +26,11 @@ import {
   useEmbedConfig,
   useScrollSyncEnabled,
 } from "../../../store/configStore";
+import {
+  LICENSE_DIALOG_TITLE,
+  LICENSE_MARKDOWN_PATH,
+  loadLicenseMarkdown,
+} from "../../../utils/licensePage";
 import { EMBED_MATCHERS } from "../../Preview/embeds";
 
 const MarkdownRenderer = lazy(() => import("../../Preview/MarkdownRenderer"));
@@ -89,6 +103,72 @@ const PrivacyDialog: Component<{ open: boolean; onClose: () => void }> = (props)
 );
 
 // ---------------------------------------------------------------------------
+// LicenseDialog
+// ---------------------------------------------------------------------------
+
+const LicenseDialog: Component<{ open: boolean; onClose: () => void }> = (props) => {
+  const [license] = createResource(
+    () => (props.open ? LICENSE_MARKDOWN_PATH : undefined),
+    () => loadLicenseMarkdown(),
+  );
+
+  return (
+    <Dialog.Root
+      open={props.open}
+      onOpenChange={(d) => {
+        if (!d.open) props.onClose();
+      }}
+      lazyMount
+      unmountOnExit
+    >
+      <Dialog.Backdrop class="bg-overlay fixed inset-0 z-50" />
+      <Dialog.Positioner class="pointer-events-auto fixed inset-x-0 top-1/2 z-50 flex max-h-screen -translate-y-1/2 items-start justify-center p-4">
+        <Dialog.Content
+          class="border-border-primary bg-surface-primary grid max-h-screen w-[48rem] max-w-[95vw] grid-rows-[auto_1fr] overflow-hidden rounded-xl border shadow-xl"
+          style={{ "max-height": "calc(90dvh - 2rem)" }}
+        >
+          <div class="border-border-primary flex shrink-0 items-center gap-2 border-b px-4 py-3">
+            <Dialog.Title class="text-text-primary flex-1 text-sm font-semibold">
+              {LICENSE_DIALOG_TITLE}
+            </Dialog.Title>
+            <a
+              href={LICENSE_MARKDOWN_PATH}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="focus-ring text-text-secondary hover:text-text-primary flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors"
+              title="Open raw licenses.md"
+            >
+              <span class="i-material-symbols:open-in-new-rounded size-3.5 shrink-0" />
+              Raw licenses.md
+            </a>
+            <Dialog.CloseTrigger class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex appearance-none rounded bg-transparent p-1 transition-colors">
+              <span class="i-material-symbols:close-rounded size-4" />
+            </Dialog.CloseTrigger>
+          </div>
+          <ErrorBoundary
+            fallback={(error) => (
+              <div class="text-text-danger p-4 text-sm" role="alert">
+                {error instanceof Error ? error.message : "Failed to load licenses.md"}
+              </div>
+            )}
+          >
+            <Suspense
+              fallback={
+                <div class="text-text-secondary flex h-40 items-center justify-center text-sm">
+                  Loading…
+                </div>
+              }
+            >
+              <MarkdownRenderer content={license() ?? ""} />
+            </Suspense>
+          </ErrorBoundary>
+        </Dialog.Content>
+      </Dialog.Positioner>
+    </Dialog.Root>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // ConfigTab
 // ---------------------------------------------------------------------------
 
@@ -97,6 +177,7 @@ export const ConfigTab: Component = () => {
   const scrollSyncEnabled = useScrollSyncEnabled();
   const embedConfig = useEmbedConfig();
   const [privacyOpen, setPrivacyOpen] = createSignal(false);
+  const [licenseOpen, setLicenseOpen] = createSignal(false);
 
   return (
     <>
@@ -204,16 +285,14 @@ export const ConfigTab: Component = () => {
             <span class="i-material-symbols:shield-outline-rounded size-3.5 shrink-0" />
             Privacy Policy
           </button>
-          <a
-            href="/licenses.md"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="focus-ring text-text-secondary hover:text-text-primary flex items-center gap-1.5 rounded px-1 py-1 text-xs transition-colors"
+          <button
+            type="button"
+            class="focus-ring text-text-secondary hover:text-text-primary flex items-center gap-1.5 rounded bg-transparent px-1 py-1 text-left text-xs transition-colors"
+            onClick={() => setLicenseOpen(true)}
           >
             <span class="i-material-symbols:description-outline-rounded size-3.5 shrink-0" />
             License (MIT)
-            <span class="i-material-symbols:open-in-new-rounded size-3.5 shrink-0" />
-          </a>
+          </button>
           <a
             href="https://github.com/eyemono-moe/noir-note"
             target="_blank"
@@ -241,6 +320,7 @@ export const ConfigTab: Component = () => {
 
       <Portal>
         <PrivacyDialog open={privacyOpen()} onClose={() => setPrivacyOpen(false)} />
+        <LicenseDialog open={licenseOpen()} onClose={() => setLicenseOpen(false)} />
       </Portal>
     </>
   );
