@@ -1,6 +1,12 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import { normalizePath, getParentPath, getPathSegments, isChildPath } from "./path";
+import {
+  getAncestorPaths,
+  normalizePath,
+  getParentPath,
+  getPathSegments,
+  isChildPath,
+} from "./path";
 
 describe("normalizePath", () => {
   test("should add leading slash if missing", () => {
@@ -79,6 +85,24 @@ describe("getPathSegments", () => {
 
   test("should handle empty string as root", () => {
     expect(getPathSegments("")).toEqual([]);
+  });
+});
+
+describe("getAncestorPaths", () => {
+  test("should return root for a top-level note", () => {
+    expect(getAncestorPaths("/foo")).toEqual(["/"]);
+  });
+
+  test("should return every ancestor from root to direct parent", () => {
+    expect(getAncestorPaths("/foo/bar/baz")).toEqual(["/", "/foo", "/foo/bar"]);
+  });
+
+  test("should normalize paths before computing ancestors", () => {
+    expect(getAncestorPaths("foo/bar/")).toEqual(["/", "/foo"]);
+  });
+
+  test("should return root for the root path", () => {
+    expect(getAncestorPaths("/")).toEqual(["/"]);
   });
 });
 

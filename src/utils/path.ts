@@ -33,6 +33,22 @@ export function getPathSegments(path: string): string[] {
   return normalized.slice(1).split("/");
 }
 
+export function getAncestorPaths(path: string): string[] {
+  const segments = getPathSegments(path);
+  if (segments.length === 0) {
+    return ["/"];
+  }
+
+  const ancestors = ["/"];
+  let currentPath = "";
+  for (const segment of segments.slice(0, -1)) {
+    currentPath = currentPath ? `${currentPath}/${segment}` : `/${segment}`;
+    ancestors.push(currentPath);
+  }
+
+  return ancestors;
+}
+
 export function isChildPath(parentPath: string, childPath: string): boolean {
   const normalizedParent = normalizePath(parentPath);
   const normalizedChild = normalizePath(childPath);

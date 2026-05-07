@@ -6,6 +6,7 @@ import {
   batch,
   createMemo,
   createSignal,
+  createEffect,
   For,
   lazy,
   Match,
@@ -18,7 +19,7 @@ import {
 import { Portal } from "solid-js/web";
 
 import type { Memo, MemoWithoutContent } from "../../types/memo";
-import { getParentPath } from "../../utils/path";
+import { getAncestorPaths, getParentPath } from "../../utils/path";
 import { type TreeNode } from "../../utils/tree";
 import ConfirmDialog from "./ConfirmDialog";
 
@@ -121,6 +122,12 @@ export const Tree: Component<TreeProps> = (props) => {
   const effectiveExpandedPaths = createMemo((): string[] => {
     expandedPaths.add("/");
     return Array.from(expandedPaths);
+  });
+
+  createEffect(() => {
+    for (const path of getAncestorPaths(props.currentPath)) {
+      expandedPaths.add(path);
+    }
   });
 
   // Use getter-based props so reactive dependencies (collection, selectedValue,
