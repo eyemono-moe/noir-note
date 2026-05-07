@@ -3,7 +3,7 @@ import { createEffect, onCleanup, type Accessor } from "solid-js";
 import { parseFrontmatter } from "./frontmatter";
 import { normalizePath } from "./path";
 
-export const APP_DOCUMENT_TITLE = "eyemono.md";
+const APP_DOCUMENT_TITLE = "eyemono.md";
 
 export function getMemoDocumentTitle(path: string, frontmatterTitle?: string): string {
   const normalizedPath = normalizePath(path);
