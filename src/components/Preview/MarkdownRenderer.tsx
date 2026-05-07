@@ -34,9 +34,13 @@ import {
   MermaidRegistryContext,
 } from "./contexts";
 import {
+  getNextLightboxPan,
   getNextLightboxZoom,
+  getWheelLightboxZoom,
+  LIGHTBOX_IMAGE_PAN_CENTER,
   LIGHTBOX_IMAGE_ZOOM_MAX,
   LIGHTBOX_IMAGE_ZOOM_MIN,
+  type LightboxPan,
 } from "./lightboxZoom";
 import { FootNotesSection, NodesRenderer, createResolvedImageSrc } from "./NodesRenderer";
 import { processor } from "./processor";
@@ -62,8 +66,16 @@ interface MarkdownRendererProps {
 /**
  * Full-size image rendered inside the lightbox dialog.
  */
-const LightboxImage: Component<{ url: string; zoom: number }> = (props) => {
+const LightboxImage: Component<{
+  url: string;
+  zoom: number;
+  pan: LightboxPan;
+  onWheelZoom: (deltaY: number) => void;
+  onDragPan: (movement: LightboxPan) => void;
+}> = (props) => {
   const src = createResolvedImageSrc(() => props.url);
+  const [dragPointerId, setDragPointerId] = createSignal<number | null>(null);
+  const canPan = () => props.zoom > 1;
 
   return (
     <Show
@@ -75,17 +87,51 @@ const LightboxImage: Component<{ url: string; zoom: number }> = (props) => {
       }
     >
       {(s) => (
-        <div class="flex size-full items-center justify-center overflow-auto">
+        <div
+          role="presentation"
+          class="flex size-full items-center justify-center overflow-hidden"
+          onWheel={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            props.onWheelZoom(e.deltaY);
+          }}
+        >
           <img
             src={s()}
             alt=""
-            class="h-auto max-h-full rounded shadow-2xl [background:conic-gradient(#eee_90deg,transparent_90deg_180deg,#eee_180deg_270deg,transparent_270deg)_50%_50%/50px_50px,#fff]"
+            draggable={false}
+            class="h-auto max-h-full w-auto max-w-full touch-none rounded object-contain shadow-2xl transition-transform duration-100 select-none [background:conic-gradient(#eee_90deg,transparent_90deg_180deg,#eee_180deg_270deg,transparent_270deg)_50%_50%/50px_50px,#fff]"
+            classList={{
+              "cursor-grab active:cursor-grabbing": canPan(),
+              "cursor-default": !canPan(),
+            }}
             style={{
-              "max-width": props.zoom === 1 ? "100%" : "none",
-              width: `${props.zoom * 100}%`,
+              transform: `translate(${props.pan.x}px, ${props.pan.y}px) scale(${props.zoom})`,
+              "transform-origin": "center center",
             }}
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              if (!canPan()) return;
+              setDragPointerId(e.pointerId);
+              e.currentTarget.setPointerCapture(e.pointerId);
+            }}
+            onPointerMove={(e) => {
+              e.stopPropagation();
+              if (dragPointerId() !== e.pointerId || !canPan()) return;
+              props.onDragPan({ x: e.movementX, y: e.movementY });
+            }}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              if (dragPointerId() !== e.pointerId) return;
+              setDragPointerId(null);
+              e.currentTarget.releasePointerCapture(e.pointerId);
+            }}
+            onPointerCancel={(e) => {
+              e.stopPropagation();
+              setDragPointerId(null);
+            }}
           />
         </div>
       )}
@@ -290,11 +336,34 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
   // null = dialog closed; number = index of the currently displayed item.
   const [lightboxIndex, setLightboxIndex] = createSignal<number | null>(null);
   const [lightboxImageZoom, setLightboxImageZoom] = createSignal(1);
+  const [lightboxImagePan, setLightboxImagePan] =
+    createSignal<LightboxPan>(LIGHTBOX_IMAGE_PAN_CENTER);
 
   createEffect(() => {
     lightboxIndex();
     setLightboxImageZoom(1);
+    setLightboxImagePan(LIGHTBOX_IMAGE_PAN_CENTER);
   });
+
+  createEffect(() => {
+    if (lightboxImageZoom() <= 1) setLightboxImagePan(LIGHTBOX_IMAGE_PAN_CENTER);
+  });
+
+  const updateLightboxImageZoom = (action: "in" | "out" | "reset") => {
+    setLightboxImageZoom((zoom) => {
+      const nextZoom = getNextLightboxZoom(zoom, action);
+      if (nextZoom <= 1) setLightboxImagePan(LIGHTBOX_IMAGE_PAN_CENTER);
+      return nextZoom;
+    });
+  };
+
+  const updateLightboxImageZoomFromWheel = (deltaY: number) => {
+    setLightboxImageZoom((zoom) => {
+      const nextZoom = getWheelLightboxZoom(zoom, deltaY);
+      if (nextZoom <= 1) setLightboxImagePan(LIGHTBOX_IMAGE_PAN_CENTER);
+      return nextZoom;
+    });
+  };
 
   const openLightbox = (offset: number) => {
     const index = lightboxItems().findIndex((i) => i.offset === offset);
@@ -373,6 +442,13 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
                             <LightboxImage
                               url={(item as { url: string }).url}
                               zoom={lightboxImageZoom()}
+                              pan={lightboxImagePan()}
+                              onWheelZoom={updateLightboxImageZoomFromWheel}
+                              onDragPan={(movement) =>
+                                setLightboxImagePan((pan) =>
+                                  getNextLightboxPan(pan, movement, lightboxImageZoom()),
+                                )
+                              }
                             />
                           </Match>
                           <Match when={item.type === "mermaid"}>
@@ -397,9 +473,7 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
                       title="Zoom out"
                       aria-label="Zoom out"
                       disabled={lightboxImageZoom() <= LIGHTBOX_IMAGE_ZOOM_MIN}
-                      onClick={() =>
-                        setLightboxImageZoom((zoom) => getNextLightboxZoom(zoom, "out"))
-                      }
+                      onClick={() => updateLightboxImageZoom("out")}
                     >
                       <span class="i-material-symbols:zoom-out-rounded size-5" />
                     </button>
@@ -408,9 +482,7 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
                       class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex min-w-14 appearance-none justify-center rounded-full bg-transparent px-2 py-1 text-sm tabular-nums transition-colors"
                       title="Reset zoom"
                       aria-label="Reset zoom"
-                      onClick={() =>
-                        setLightboxImageZoom((zoom) => getNextLightboxZoom(zoom, "reset"))
-                      }
+                      onClick={() => updateLightboxImageZoom("reset")}
                     >
                       {Math.round(lightboxImageZoom() * 100)}%
                     </button>
@@ -420,9 +492,7 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
                       title="Zoom in"
                       aria-label="Zoom in"
                       disabled={lightboxImageZoom() >= LIGHTBOX_IMAGE_ZOOM_MAX}
-                      onClick={() =>
-                        setLightboxImageZoom((zoom) => getNextLightboxZoom(zoom, "in"))
-                      }
+                      onClick={() => updateLightboxImageZoom("in")}
                     >
                       <span class="i-material-symbols:zoom-in-rounded size-5" />
                     </button>
