@@ -31,6 +31,7 @@ import {
   LICENSE_MARKDOWN_PATH,
   loadLicenseMarkdown,
 } from "../../../utils/licensePage";
+import { HelpDialog } from "../../Help/HelpDialog";
 import { EMBED_MATCHERS } from "../../Preview/embeds";
 
 const MarkdownRenderer = lazy(() => import("../../Preview/MarkdownRenderer"));
@@ -178,6 +179,7 @@ export const ConfigTab: Component = () => {
   const embedConfig = useEmbedConfig();
   const [privacyOpen, setPrivacyOpen] = createSignal(false);
   const [licenseOpen, setLicenseOpen] = createSignal(false);
+  const [helpOpen, setHelpOpen] = createSignal(false);
 
   return (
     <>
@@ -280,6 +282,14 @@ export const ConfigTab: Component = () => {
           <button
             type="button"
             class="focus-ring text-text-secondary hover:text-text-primary flex items-center gap-1.5 rounded bg-transparent px-1 py-1 text-left text-xs transition-colors"
+            onClick={() => setHelpOpen(true)}
+          >
+            <span class="i-material-symbols:help-outline-rounded size-3.5 shrink-0" />
+            Help / Usage Guide
+          </button>
+          <button
+            type="button"
+            class="focus-ring text-text-secondary hover:text-text-primary flex items-center gap-1.5 rounded bg-transparent px-1 py-1 text-left text-xs transition-colors"
             onClick={() => setPrivacyOpen(true)}
           >
             <span class="i-material-symbols:shield-outline-rounded size-3.5 shrink-0" />
@@ -319,6 +329,7 @@ export const ConfigTab: Component = () => {
       </div>
 
       <Portal>
+        <HelpDialog open={helpOpen()} onClose={() => setHelpOpen(false)} />
         <PrivacyDialog open={privacyOpen()} onClose={() => setPrivacyOpen(false)} />
         <LicenseDialog open={licenseOpen()} onClose={() => setLicenseOpen(false)} />
       </Portal>

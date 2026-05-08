@@ -8,9 +8,11 @@ import {
   type ParentComponent,
   useContext,
 } from "solid-js";
+import { Portal } from "solid-js/web";
 
 import { allCommands } from "../commands/definitions";
 import type { Command, CommandContext } from "../commands/types";
+import { HelpDialog } from "../components/Help/HelpDialog";
 import { normalizePath } from "../utils/path";
 import { useEditorSplit } from "./editorSplit";
 
@@ -82,11 +84,13 @@ export const CommandsProvider: ParentComponent = (props) => {
 
   // Command palette state
   const [paletteOpen, setPaletteOpen] = createSignal(false);
+  const [helpOpen, setHelpOpen] = createSignal(false);
 
   // Create reactive CommandContext
   const commandContext = createMemo<CommandContext>(() => ({
     currentPath: normalizePath(location.pathname),
     navigate: (path: string) => navigate(path),
+    openHelp: () => setHelpOpen(true),
     setMode: (mode) => {
       const api = editorSplitter();
       if (!api) return;
@@ -144,7 +148,14 @@ export const CommandsProvider: ParentComponent = (props) => {
     setPaletteOpen,
   };
 
-  return <CommandsContext.Provider value={value}>{props.children}</CommandsContext.Provider>;
+  return (
+    <CommandsContext.Provider value={value}>
+      {props.children}
+      <Portal>
+        <HelpDialog open={helpOpen()} onClose={() => setHelpOpen(false)} />
+      </Portal>
+    </CommandsContext.Provider>
+  );
 };
 
 /**

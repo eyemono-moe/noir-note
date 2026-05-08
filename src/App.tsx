@@ -10,15 +10,15 @@ import { ThemeProvider } from "./context/theme";
 const App: ParentComponent = (props) => {
   return (
     <EditorSplitProvider>
-      <CommandsProvider>
-        <ThemeProvider>
+      <ThemeProvider>
+        <CommandsProvider>
           <DBProvider>
             <CommandPalette />
             <ToastViewport />
             {props.children}
           </DBProvider>
-        </ThemeProvider>
-      </CommandsProvider>
+        </CommandsProvider>
+      </ThemeProvider>
     </EditorSplitProvider>
   );
 };
