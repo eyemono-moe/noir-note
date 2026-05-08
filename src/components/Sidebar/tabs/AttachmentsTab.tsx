@@ -26,6 +26,7 @@ import {
 import { getThumbnailUrl, getStorageEstimate } from "../../../db/imageStore";
 import { queryMemoPathsReferencingAttachment } from "../../../db/memoCollection";
 import { noteStore } from "../../../db/noteStore";
+import { showToast, updateToast } from "../../../store/toastStore";
 
 import treeStyles from "../tree.module.css";
 
@@ -403,9 +404,35 @@ export const AttachmentsTab: Component = () => {
 
   const handleFileChange = async (e: Event) => {
     const input = e.currentTarget as HTMLInputElement;
-    const files = input.files;
-    if (!files?.length) return;
-    await Promise.all(Array.from(files).map((f) => addAttachment(f)));
+    const files = Array.from(input.files ?? []);
+    if (files.length === 0) return;
+
+    const label = files.length === 1 ? "attachment" : "attachments";
+    const toastId = showToast({ type: "loading", title: `Uploading ${files.length} ${label}…` });
+    const results = await Promise.allSettled(files.map((file) => addAttachment(file)));
+    const failed = results.filter((result) => result.status === "rejected");
+
+    if (failed.length === 0) {
+      updateToast(toastId, {
+        type: "success",
+        title: `Uploaded ${files.length} ${label}`,
+        duration: 3000,
+      });
+    } else {
+      const firstReason = failed[0]?.reason;
+      const message = firstReason instanceof Error ? firstReason.message : "Unknown error";
+      const uploaded = files.length - failed.length;
+      updateToast(toastId, {
+        type: "error",
+        title:
+          uploaded === 0
+            ? `Failed to upload ${label}`
+            : `Uploaded ${uploaded} of ${files.length} ${label}`,
+        description: `Failed to save ${failed.length} ${failed.length === 1 ? "attachment" : "attachments"}: ${message}`,
+        duration: 6000,
+      });
+    }
+
     input.value = "";
   };
 
