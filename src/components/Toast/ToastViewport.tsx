@@ -46,7 +46,7 @@ function ToastItem(props: { toast: () => ToastOptions }) {
         </Show>
       </div>
       <Toast.CloseTrigger
-        class="focus-ring text-text-secondary hover:text-text-primary inline-flex rounded bg-transparent p-0.5 transition-colors"
+        class="focus-ring text-text-secondary hover:text-text-primary bg-surface-control-rest not-active:hover:bg-surface-control-hover active:bg-surface-control-active inline-flex rounded bg-transparent p-0.5 transition-colors"
         aria-label="Dismiss notification"
       >
         <span class="i-material-symbols:close size-4 shrink-0" aria-hidden="true" />
