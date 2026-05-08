@@ -28,6 +28,7 @@ export interface PaletteItem {
   label: string;
   description?: string;
   preview?: string; // For pages: content preview
+  tags?: string[]; // For pages: metadata tags
   shortcut?: RegisterableHotkey; // Keyboard shortcut for commands
   category?: string;
 }
