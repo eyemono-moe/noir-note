@@ -1,40 +1,56 @@
-import { describe, expect, test, vi } from "vite-plus/test";
+import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import { dismissToast, showToast, toasts, updateToast } from "./toastStore";
+type MockToaster = {
+  create: (data: unknown) => string;
+  update: (id: string, data: unknown) => string;
+  dismiss: (id?: string) => void;
+};
+
+const createMock = vi.fn<(data: unknown) => string>(() => "toast-id");
+const updateMock = vi.fn<(id: string, data: unknown) => string>(() => "toast-id");
+const dismissMock = vi.fn<(id?: string) => void>();
+const createToasterMock = vi.fn<() => MockToaster>(() => ({
+  create: createMock,
+  update: updateMock,
+  dismiss: dismissMock,
+}));
+
+vi.mock("@ark-ui/solid/toast", () => ({
+  createToaster: createToasterMock,
+}));
 
 describe("toastStore", () => {
-  test("adds, updates, and dismisses toast notifications", () => {
-    const id = showToast({ type: "loading", title: "Saving images…" });
-
-    expect(toasts()).toEqual([
-      expect.objectContaining({ id, type: "loading", title: "Saving images…" }),
-    ]);
-
-    updateToast(id, { type: "success", title: "Inserted images" });
-
-    expect(toasts()).toEqual([
-      expect.objectContaining({ id, type: "success", title: "Inserted images" }),
-    ]);
-
-    dismissToast(id);
-
-    expect(toasts()).toEqual([]);
+  beforeEach(() => {
+    createMock.mockClear();
+    updateMock.mockClear();
+    dismissMock.mockClear();
+    createToasterMock.mockClear();
   });
 
-  test("automatically dismisses toast notifications after their duration", () => {
-    vi.useFakeTimers();
-    try {
-      const id = showToast({ type: "success", title: "Inserted image", duration: 1000 });
+  test("configures Ark UI toaster placement for app notifications", async () => {
+    await import("./toastStore");
 
-      expect(toasts()).toEqual([expect.objectContaining({ id })]);
+    expect(createToasterMock).toHaveBeenCalledWith({
+      placement: "bottom-end",
+      overlap: true,
+      gap: 8,
+    });
+  });
 
-      vi.advanceTimersByTime(999);
-      expect(toasts()).toEqual([expect.objectContaining({ id })]);
+  test("delegates show, update, and dismiss operations to the Ark UI toaster", async () => {
+    const { dismissToast, showToast, updateToast } = await import("./toastStore");
 
-      vi.advanceTimersByTime(1);
-      expect(toasts()).toEqual([]);
-    } finally {
-      vi.useRealTimers();
-    }
+    const id = showToast({ type: "loading", title: "Saving images…" });
+    updateToast(id, { type: "success", title: "Inserted images", duration: 3000 });
+    dismissToast(id);
+
+    expect(id).toBe("toast-id");
+    expect(createMock).toHaveBeenCalledWith({ type: "loading", title: "Saving images…" });
+    expect(updateMock).toHaveBeenCalledWith("toast-id", {
+      type: "success",
+      title: "Inserted images",
+      duration: 3000,
+    });
+    expect(dismissMock).toHaveBeenCalledWith("toast-id");
   });
 });
