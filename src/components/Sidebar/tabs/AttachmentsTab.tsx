@@ -82,20 +82,29 @@ const ThumbnailImage: Component<{ id: string }> = (props) => {
 // HoverCard.Root is lifted to AttachmentsTab; this component only renders the trigger.
 // ---------------------------------------------------------------------------
 
+const getAttachmentFilename = (id: string) => {
+  const match = id.match(/^[0-9a-f-]{36}-(.+)$/i);
+  return match ? match[1] : id;
+};
+
 const NoteItem: Component<{
   path: string;
   onNavigate: (path: string) => void;
+  onClick?: () => void;
 }> = (props) => {
   return (
     <HoverCard.Trigger
       value={props.path}
       asChild={(hoverProps) => (
         <button
+          {...hoverProps()}
           type="button"
           class="focus-ring text-text-secondary hover:text-text-primary flex w-full min-w-0 items-center gap-1 rounded bg-transparent px-1 py-0.5 text-left text-[0.625rem] transition-colors"
           title={props.path}
-          onClick={() => props.onNavigate(props.path)}
-          {...hoverProps()}
+          onClick={() => {
+            props.onClick?.();
+            props.onNavigate(props.path);
+          }}
         >
           <span class="i-material-symbols:description-outline-rounded size-3 shrink-0" />
           <span class="truncate">{props.path}</span>
@@ -123,6 +132,7 @@ const NoteItem: Component<{
 const AttachmentRow: Component<{
   att: AttachmentMeta;
   onDelete: (id: string) => void;
+  onDeleteBlocked: (attachment: AttachmentMeta, references: string[]) => void;
   onNavigate: (path: string) => void;
 }> = (props) => {
   const [popoverOpen, setPopoverOpen] = createSignal(false);
@@ -137,21 +147,16 @@ const AttachmentRow: Component<{
     { initialValue: null },
   );
 
-  const [deleteRefs, setDeleteRefs] = createSignal<string[] | null>(null);
-
   const handleDeleteClick = async () => {
     const paths = await queryMemoPathsReferencingAttachment(props.att.id);
     if (paths.length === 0) {
       props.onDelete(props.att.id);
     } else {
-      setDeleteRefs(paths);
+      props.onDeleteBlocked(props.att, paths);
     }
   };
 
-  const filename = () => {
-    const match = props.att.id.match(/^[0-9a-f-]{36}-(.+)$/i);
-    return match ? match[1] : props.att.id;
-  };
+  const filename = () => getAttachmentFilename(props.att.id);
 
   const markdownRef = () =>
     `![${filename().replace(/\.[^.]+$/, "")}](attachment://${props.att.id})`;
@@ -161,30 +166,29 @@ const AttachmentRow: Component<{
   const refCount = () => refs.latest?.length ?? null;
 
   return (
-    <>
-      <div
-        class="group flex items-center gap-2 rounded-md px-2 py-1.5"
-        draggable="true"
-        onDragStart={(e) => {
-          e.dataTransfer?.setData("text/markdown", markdownRef());
-          e.dataTransfer?.setData("text/plain", markdownRef());
-        }}
-      >
-        <ThumbnailImage id={props.att.id} />
+    <div
+      class="group flex items-center gap-2 rounded-md px-2 py-1.5"
+      draggable="true"
+      onDragStart={(e) => {
+        e.dataTransfer?.setData("text/markdown", markdownRef());
+        e.dataTransfer?.setData("text/plain", markdownRef());
+      }}
+    >
+      <ThumbnailImage id={props.att.id} />
 
-        <div class="min-w-0 flex-1">
-          <p
-            class="text-text-primary truncate text-xs leading-tight font-medium"
-            title={props.att.id}
-          >
-            {filename()}
-          </p>
-          <div class="mt-0.5 flex items-center gap-1.5">
-            <span class="text-text-secondary text-xs tabular-nums">
-              {formatBytes(props.att.size)}
-            </span>
+      <div class="min-w-0 flex-1">
+        <p
+          class="text-text-primary truncate text-xs leading-tight font-medium"
+          title={props.att.id}
+        >
+          {filename()}
+        </p>
+        <div class="mt-0.5 flex items-center gap-1.5">
+          <span class="text-text-secondary text-xs tabular-nums">
+            {formatBytes(props.att.size)}
+          </span>
 
-            {/*
+          {/*
               Refs Popover — always rendered.
               Trigger label reflects the current state:
                 null  → "Check refs"  (not yet fetched)
@@ -193,143 +197,99 @@ const AttachmentRow: Component<{
               Closing the Popover resets the source to null, so reopening
               always triggers a fresh fetch.
             */}
-            <Popover.Root
-              open={popoverOpen()}
-              onOpenChange={(d) => setPopoverOpen(d.open)}
-              lazyMount
-              unmountOnExit
-              positioning={{
-                placement: "bottom-start",
-                offset: { mainAxis: 4, crossAxis: 0 },
-              }}
+          <Popover.Root
+            open={popoverOpen()}
+            onOpenChange={(d) => setPopoverOpen(d.open)}
+            lazyMount
+            unmountOnExit
+            positioning={{
+              placement: "bottom-start",
+              offset: { mainAxis: 4, crossAxis: 0 },
+            }}
+          >
+            <Popover.Trigger
+              type="button"
+              class="focus-ring text-text-secondary hover:text-text-primary inline-flex items-center gap-0.5 rounded bg-transparent p-0 text-xs transition-colors"
             >
-              <Popover.Trigger
-                type="button"
-                class="focus-ring text-text-secondary hover:text-text-primary inline-flex items-center gap-0.5 rounded bg-transparent p-0 text-xs transition-colors"
-              >
-                <Show
-                  when={refCount() !== null}
-                  fallback={
-                    <Show when={refs.loading} fallback={<span>Check refs</span>}>
-                      <span class="i-material-symbols:progress-activity size-3 animate-spin" />
-                    </Show>
-                  }
-                >
-                  <Show
-                    when={(refCount() ?? 0) > 0}
-                    fallback={
-                      <>
-                        <span class="bg-surface-secondary rounded px-1 py-px text-[0.625rem]">
-                          Unused
-                        </span>
-                        <span class="i-material-symbols:refresh-rounded size-2.5 opacity-60" />
-                      </>
-                    }
-                  >
-                    · {refCount()} note{refCount()! > 1 ? "s" : ""}
+              <Show
+                when={refCount() !== null}
+                fallback={
+                  <Show when={refs.loading} fallback={<span>Check refs</span>}>
+                    <span class="i-material-symbols:progress-activity size-3 animate-spin" />
                   </Show>
-                </Show>
-              </Popover.Trigger>
-              <Portal>
-                <Popover.Positioner>
-                  <Popover.Content class="bg-surface-secondary border-border-primary z-50 max-w-56 rounded-lg border p-1.5 shadow-lg outline-none">
-                    <Show
-                      when={!refs.loading}
-                      fallback={
-                        <div class="text-text-secondary flex items-center gap-1 px-1 py-0.5 text-xs">
-                          <span class="i-material-symbols:progress-activity size-3 animate-spin" />
-                          Loading…
-                        </div>
-                      }
-                    >
-                      <div class="flex flex-col gap-0.5">
-                        <For
-                          each={refs() ?? []}
-                          fallback={
-                            <div class="text-text-secondary px-1 py-0.5 text-xs">No references</div>
-                          }
-                        >
-                          {(path) => <NoteItem path={path} onNavigate={props.onNavigate} />}
-                        </For>
-                      </div>
-                    </Show>
-                  </Popover.Content>
-                </Popover.Positioner>
-              </Portal>
-            </Popover.Root>
-          </div>
-        </div>
-
-        {/* Action buttons — visible on hover */}
-        <div class="hidden shrink-0 items-center gap-0.5 group-focus-within:flex group-hover:flex">
-          <Clipboard.Root value={markdownRef()}>
-            <Clipboard.Trigger
-              title="Copy markdown reference"
-              class="focus-ring text-text-secondary hover:text-text-primary inline-flex appearance-none rounded bg-transparent p-0.5 transition-colors"
-            >
-              <Clipboard.Indicator
-                copied={
-                  <span class="i-material-symbols:check-rounded text-text-accent block size-3.5" />
                 }
               >
-                <span class="i-material-symbols:copy-all-outline-rounded block size-3.5" />
-              </Clipboard.Indicator>
-            </Clipboard.Trigger>
-          </Clipboard.Root>
-          <button
-            type="button"
-            class="focus-ring text-text-secondary hover:text-text-danger inline-flex appearance-none rounded bg-transparent p-0.5 transition-colors"
-            title="Delete attachment"
-            onClick={handleDeleteClick}
-          >
-            <span class="i-material-symbols:delete-outline-rounded size-3.5" />
-          </button>
+                <Show
+                  when={(refCount() ?? 0) > 0}
+                  fallback={
+                    <>
+                      <span class="bg-surface-secondary rounded px-1 py-px text-[0.625rem]">
+                        Unused
+                      </span>
+                      <span class="i-material-symbols:refresh-rounded size-2.5 opacity-60" />
+                    </>
+                  }
+                >
+                  · {refCount()} note{refCount()! > 1 ? "s" : ""}
+                </Show>
+              </Show>
+            </Popover.Trigger>
+            <Portal>
+              <Popover.Positioner>
+                <Popover.Content class="bg-surface-secondary border-border-primary z-50 max-w-56 rounded-lg border p-1.5 shadow-lg outline-none">
+                  <Show
+                    when={!refs.loading}
+                    fallback={
+                      <div class="text-text-secondary flex items-center gap-1 px-1 py-0.5 text-xs">
+                        <span class="i-material-symbols:progress-activity size-3 animate-spin" />
+                        Loading…
+                      </div>
+                    }
+                  >
+                    <div class="flex flex-col gap-0.5">
+                      <For
+                        each={refs() ?? []}
+                        fallback={
+                          <div class="text-text-secondary px-1 py-0.5 text-xs">No references</div>
+                        }
+                      >
+                        {(path) => <NoteItem path={path} onNavigate={props.onNavigate} />}
+                      </For>
+                    </div>
+                  </Show>
+                </Popover.Content>
+              </Popover.Positioner>
+            </Portal>
+          </Popover.Root>
         </div>
       </div>
 
-      {/* Delete confirmation dialog — only shown when the attachment is referenced */}
-      <Dialog.Root
-        open={deleteRefs() !== null}
-        onOpenChange={(d) => {
-          if (!d.open) setDeleteRefs(null);
-        }}
-        role="alertdialog"
-      >
-        <Dialog.Backdrop class="bg-overlay fixed inset-0 z-50" />
-        <Dialog.Positioner class="translate-y--1/2 pointer-events-auto fixed inset-x-0 top-1/2 z-50 flex max-h-full items-start justify-center overflow-y-auto overscroll-y-contain p-4">
-          <Dialog.Content class="border-border-primary bg-surface-primary w-96 max-w-[90vw] rounded-xl border p-6 shadow-xl">
-            <Dialog.Title class="text-text-primary text-base font-semibold">
-              Delete attachment?
-            </Dialog.Title>
-            <Dialog.Description class="text-text-secondary mt-2 text-sm">
-              <span class="text-text-primary font-medium">{filename()}</span> is referenced in{" "}
-              {deleteRefs()?.length} note{(deleteRefs()?.length ?? 0) > 1 ? "s" : ""}. Deleting it
-              will break those references.
-            </Dialog.Description>
-
-            <div class="mt-4 flex flex-col gap-0.5">
-              <For each={deleteRefs() ?? []}>
-                {(path) => <NoteItem path={path} onNavigate={props.onNavigate} />}
-              </For>
-            </div>
-
-            <div class="mt-6 flex justify-end gap-3">
-              <Dialog.CloseTrigger class="button text-text-primary">Cancel</Dialog.CloseTrigger>
-              <button
-                type="button"
-                class="button text-text-danger"
-                onClick={() => {
-                  setDeleteRefs(null);
-                  props.onDelete(props.att.id);
-                }}
-              >
-                Delete anyway
-              </button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Dialog.Root>
-    </>
+      {/* Action buttons — visible on hover */}
+      <div class="hidden shrink-0 items-center gap-0.5 group-focus-within:flex group-hover:flex">
+        <Clipboard.Root value={markdownRef()}>
+          <Clipboard.Trigger
+            title="Copy markdown reference"
+            class="focus-ring text-text-secondary hover:text-text-primary inline-flex appearance-none rounded bg-transparent p-0.5 transition-colors"
+          >
+            <Clipboard.Indicator
+              copied={
+                <span class="i-material-symbols:check-rounded text-text-accent block size-3.5" />
+              }
+            >
+              <span class="i-material-symbols:copy-all-outline-rounded block size-3.5" />
+            </Clipboard.Indicator>
+          </Clipboard.Trigger>
+        </Clipboard.Root>
+        <button
+          type="button"
+          class="focus-ring text-text-secondary hover:text-text-danger inline-flex appearance-none rounded bg-transparent p-0.5 transition-colors"
+          title="Delete attachment"
+          onClick={handleDeleteClick}
+        >
+          <span class="i-material-symbols:delete-outline-rounded size-3.5" />
+        </button>
+      </div>
+    </div>
   );
 };
 
@@ -353,6 +313,11 @@ const StorageBar: Component<{ used: number; quota: number }> = (props) => {
 // AttachmentsTab
 // ---------------------------------------------------------------------------
 
+type DeleteConfirmation = {
+  attachment: AttachmentMeta;
+  references: string[];
+};
+
 export const AttachmentsTab: Component = () => {
   const navigate = useNavigate();
   // oxlint-disable-next-line no-unassigned-vars --- needed for ref
@@ -361,6 +326,7 @@ export const AttachmentsTab: Component = () => {
   let scrollRef: HTMLDivElement | undefined;
 
   const [activePath, setActivePath] = createSignal<string | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = createSignal<DeleteConfirmation | null>(null);
 
   // Reactive attachment list — auto-updates on paste/delete from any context
   const attachmentsQuery = useLiveQuery(() => attachmentsCollection);
@@ -407,6 +373,22 @@ export const AttachmentsTab: Component = () => {
     if (!files?.length) return;
     await Promise.all(Array.from(files).map((f) => addAttachment(f)));
     input.value = "";
+  };
+
+  const closeDeleteDialog = () => setDeleteConfirmation(null);
+
+  const deleteDialogFilename = () => {
+    const confirmation = deleteConfirmation();
+    return confirmation ? getAttachmentFilename(confirmation.attachment.id) : "";
+  };
+
+  const deleteDialogReferences = () => deleteConfirmation()?.references ?? [];
+
+  const confirmDelete = () => {
+    const confirmation = deleteConfirmation();
+    if (!confirmation) return;
+    setDeleteConfirmation(null);
+    removeAttachment(confirmation.attachment.id);
   };
 
   return (
@@ -514,6 +496,9 @@ export const AttachmentsTab: Component = () => {
                       <AttachmentRow
                         att={sortedAttachments()[virtualItem.index]!}
                         onDelete={removeAttachment}
+                        onDeleteBlocked={(attachment, references) =>
+                          setDeleteConfirmation({ attachment, references })
+                        }
                         onNavigate={navigate}
                       />
                     </div>
@@ -524,15 +509,61 @@ export const AttachmentsTab: Component = () => {
           </Show>
         </div>
       </div>
+
+      {/* Delete confirmation dialog — shared by all attachment rows. */}
       <Portal>
-        <HoverCard.Positioner>
-          <HoverCard.Content class={treeStyles.HoverCardContent}>
-            <Suspense>
-              <Show when={activePath()}>{(path) => <MemoPreview path={path()} />}</Show>
-            </Suspense>
-          </HoverCard.Content>
-        </HoverCard.Positioner>
+        <Dialog.Root
+          open={deleteConfirmation() !== null}
+          onOpenChange={(d) => {
+            if (!d.open) closeDeleteDialog();
+          }}
+          role="alertdialog"
+        >
+          <Dialog.Backdrop class="bg-overlay fixed inset-0 z-50" />
+          <Dialog.Positioner class="translate-y--1/2 pointer-events-auto fixed inset-x-0 top-1/2 z-50 flex max-h-full items-start justify-center overflow-y-auto overscroll-y-contain p-4">
+            <Dialog.Content class="border-border-primary bg-surface-primary w-96 max-w-[90vw] rounded-xl border p-6 shadow-xl">
+              <Dialog.Title class="text-text-primary text-base font-semibold">
+                Delete attachment?
+              </Dialog.Title>
+              <Dialog.Description class="text-text-secondary mt-2 text-sm">
+                <span class="text-text-primary font-medium">{deleteDialogFilename()}</span> is
+                referenced in {deleteDialogReferences().length} note
+                {deleteDialogReferences().length > 1 ? "s" : ""}. Deleting it will break those
+                references.
+              </Dialog.Description>
+
+              <div class="mt-4 flex flex-col gap-0.5">
+                <For each={deleteDialogReferences()}>
+                  {(path) => (
+                    <NoteItem path={path} onNavigate={navigate} onClick={closeDeleteDialog} />
+                  )}
+                </For>
+              </div>
+
+              <div class="mt-6 flex justify-end gap-3">
+                <Dialog.CloseTrigger class="button text-text-primary">Cancel</Dialog.CloseTrigger>
+                <button type="button" class="button text-text-danger" onClick={confirmDelete}>
+                  Delete anyway
+                </button>
+              </div>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Dialog.Root>
       </Portal>
+
+      <Show when={activePath()}>
+        {(path) => (
+          <Portal>
+            <HoverCard.Positioner>
+              <HoverCard.Content class={treeStyles.HoverCardContent}>
+                <Suspense>
+                  <MemoPreview path={path()} />
+                </Suspense>
+              </HoverCard.Content>
+            </HoverCard.Positioner>
+          </Portal>
+        )}
+      </Show>
     </HoverCard.Root>
   );
 };
