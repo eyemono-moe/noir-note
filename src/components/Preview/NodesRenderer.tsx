@@ -18,6 +18,7 @@ import { useTheme } from "../../context/theme";
 import { getImageUrl } from "../../db/imageStore";
 import { bundledLanguages, codeToHtml } from "../../editor/shiki.bundle";
 import { useEmbedConfig } from "../../store/configStore";
+import { showToast } from "../../store/toastStore";
 import { parseFrontmatterYamlString } from "../../utils/frontmatter";
 import {
   CheckboxToggleContext,
@@ -26,6 +27,7 @@ import {
   MermaidRegistryContext,
 } from "./contexts";
 import { EMBED_MATCHERS, EmbedRenderer } from "./embeds";
+import { copyMermaidPngToClipboard, copyMermaidSvgToClipboard } from "./mermaidClipboard";
 
 import "katex/dist/katex.min.css";
 import "../../styles/shiki.css";
@@ -323,6 +325,46 @@ const MermaidDiagram: Component<{ code: string; offset: number }> = (props) => {
     }
   });
 
+  const copySvg = async (event: MouseEvent) => {
+    event.stopPropagation();
+    const svg = result.latest?.success ? result.latest.svg : null;
+    if (!svg) return;
+
+    try {
+      const copyResult = await copyMermaidSvgToClipboard(svg);
+      showToast({
+        type: "success",
+        title: copyResult.kind === "svg-image" ? "Copied Mermaid SVG" : "Copied Mermaid SVG source",
+        duration: 3000,
+      });
+    } catch (error) {
+      showToast({
+        type: "error",
+        title: "Failed to copy Mermaid SVG",
+        description: error instanceof Error ? error.message : String(error),
+        duration: 6000,
+      });
+    }
+  };
+
+  const copyPng = async (event: MouseEvent) => {
+    event.stopPropagation();
+    const svg = result.latest?.success ? result.latest.svg : null;
+    if (!svg) return;
+
+    try {
+      await copyMermaidPngToClipboard(svg);
+      showToast({ type: "success", title: "Copied Mermaid PNG", duration: 3000 });
+    } catch (error) {
+      showToast({
+        type: "error",
+        title: "Failed to copy Mermaid PNG",
+        description: error instanceof Error ? error.message : String(error),
+        duration: 6000,
+      });
+    }
+  };
+
   return (
     <Show
       when={result.latest?.success}
@@ -342,17 +384,37 @@ const MermaidDiagram: Component<{ code: string; offset: number }> = (props) => {
         </>
       }
     >
-      <button
-        type="button"
-        class="focus-ring w-full cursor-zoom-in appearance-none border-0 bg-transparent p-0"
-        onClick={() => openLightbox(props.offset)}
-      >
-        <div
-          class="mermaid-diagram bg-surface-secondary flex justify-center rounded-lg p-2"
-          // oxlint-disable-next-line solid/no-innerhtml
-          innerHTML={result.latest?.svg}
-        />
-      </button>
+      <div class="parent relative">
+        <div class="parent-hover:flex parent-focus-within:flex absolute top-2 right-2 z-10 hidden gap-2">
+          <button
+            type="button"
+            class="bg-surface-control-rest not-active:hover:bg-surface-control-hover active:bg-surface-control-active border-border-primary focus-ring rounded-lg border px-2 py-1 text-xs font-medium transition-colors"
+            onClick={copySvg}
+            title="Copy Mermaid diagram as SVG"
+          >
+            SVG
+          </button>
+          <button
+            type="button"
+            class="bg-surface-control-rest not-active:hover:bg-surface-control-hover active:bg-surface-control-active border-border-primary focus-ring rounded-lg border px-2 py-1 text-xs font-medium transition-colors"
+            onClick={copyPng}
+            title="Copy Mermaid diagram as PNG"
+          >
+            PNG
+          </button>
+        </div>
+        <button
+          type="button"
+          class="focus-ring w-full cursor-zoom-in appearance-none border-0 bg-transparent p-0"
+          onClick={() => openLightbox(props.offset)}
+        >
+          <div
+            class="mermaid-diagram bg-surface-secondary flex justify-center rounded-lg p-2"
+            // oxlint-disable-next-line solid/no-innerhtml
+            innerHTML={result.latest?.svg}
+          />
+        </button>
+      </div>
     </Show>
   );
 };
