@@ -1,5 +1,5 @@
 import type { Memo } from "../types/memo";
-import type { PageSearchResult } from "./types";
+import type { PageSearchResult, PaletteItem } from "./types";
 
 /**
  * Extract title from memo content
@@ -68,6 +68,15 @@ interface ParsedSearchQuery {
   tags: string[];
 }
 
+type MatchKind = "path" | "title" | "content" | "tag-only";
+
+const matchKindScore: Record<MatchKind, number> = {
+  path: 0,
+  title: 1,
+  content: 2,
+  "tag-only": 3,
+};
+
 const tagTokenPattern = /(?:^|\s)tag:(?:"([^"]+)"|'([^']+)'|(\S+))/gi;
 
 export function parseSearchQuery(query: string): ParsedSearchQuery {
@@ -89,7 +98,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
   return { text, tags };
 }
 
-export function matchesAllTags(tags: string[] | undefined, requiredTags: string[]): boolean {
+function matchesAllTags(tags: string[] | undefined, requiredTags: string[]): boolean {
   if (requiredTags.length === 0) {
     return true;
   }
@@ -101,54 +110,119 @@ export function matchesAllTags(tags: string[] | undefined, requiredTags: string[
   return requiredTags.every((requiredTag) => normalizedTags.has(requiredTag.toLowerCase()));
 }
 
-/**
- * Search pages by query string
- * Searches in path, title, content, and metadata tags via tag:<tag> filters.
- */
+function collapseWhitespace(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+function stripFrontmatter(content: string): string {
+  return content.replace(/^---\s*\n[\s\S]*?\n---\s*\n?/, "");
+}
+
+function createSearchableContent(content: string): string {
+  return stripFrontmatter(content)
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("# "))
+    .join("\n");
+}
+
+function createContentSnippet(content: string, query: string, maxChars = 80): string {
+  const normalizedContent = collapseWhitespace(createSearchableContent(content));
+  if (!normalizedContent || !query) {
+    return extractPreview(content);
+  }
+
+  const matchIndex = normalizedContent.toLowerCase().indexOf(query.toLowerCase());
+  if (matchIndex === -1) {
+    return extractPreview(content);
+  }
+
+  const contextBefore = 19;
+  const start = Math.max(0, matchIndex - contextBefore);
+  const end = Math.min(normalizedContent.length, start + maxChars);
+  const prefix = start > 0 ? "…" : "";
+  const suffix = end < normalizedContent.length ? "…" : "";
+  return `${prefix}${normalizedContent.slice(start, end)}${suffix}`;
+}
+
+function getMatchKind(memo: Memo, title: string, query: string): MatchKind | undefined {
+  if (!query) {
+    return "tag-only";
+  }
+
+  const lowerTextQuery = query.toLowerCase();
+  if (memo.path.toLowerCase().includes(lowerTextQuery)) return "path";
+  if (title.toLowerCase().includes(lowerTextQuery)) return "title";
+  if (memo.content.toLowerCase().includes(lowerTextQuery)) return "content";
+  return undefined;
+}
+
 export function searchPages(memos: Memo[], query: string): PageSearchResult[] {
   const parsedQuery = parseSearchQuery(query);
-  const lowerTextQuery = parsedQuery.text.toLowerCase();
+  const textQuery = parsedQuery.text;
 
-  if (!lowerTextQuery && parsedQuery.tags.length === 0) {
+  if (!textQuery && parsedQuery.tags.length === 0) {
     return [];
   }
 
-  const results: PageSearchResult[] = [];
+  const results: Array<PageSearchResult & { matchKind: MatchKind }> = [];
 
   for (const memo of memos) {
     const title = extractTitle(memo.path, memo.content);
-    const preview = extractPreview(memo.content);
 
     if (!matchesAllTags(memo.metadata?.tags, parsedQuery.tags)) {
       continue;
     }
 
-    // Check if query matches path, title, or content
-    const matchesPath = !lowerTextQuery || memo.path.toLowerCase().includes(lowerTextQuery);
-    const matchesTitle = !lowerTextQuery || title.toLowerCase().includes(lowerTextQuery);
-    const matchesContent = !lowerTextQuery || memo.content.toLowerCase().includes(lowerTextQuery);
-
-    if (matchesPath || matchesTitle || matchesContent) {
-      results.push({
-        path: memo.path,
-        title,
-        preview,
-      });
+    const matchKind = getMatchKind(memo, title, textQuery);
+    if (!matchKind) {
+      continue;
     }
+
+    results.push({
+      path: memo.path,
+      title,
+      preview:
+        matchKind === "content"
+          ? createContentSnippet(memo.content, textQuery)
+          : extractPreview(memo.content),
+      matchKind,
+    });
   }
 
-  // Sort by relevance (path match > title match > content match)
-  return results.sort((a, b) => {
-    const aPathMatch = lowerTextQuery ? a.path.toLowerCase().includes(lowerTextQuery) : false;
-    const bPathMatch = lowerTextQuery ? b.path.toLowerCase().includes(lowerTextQuery) : false;
-    const aTitleMatch = lowerTextQuery ? a.title.toLowerCase().includes(lowerTextQuery) : false;
-    const bTitleMatch = lowerTextQuery ? b.title.toLowerCase().includes(lowerTextQuery) : false;
+  return results
+    .sort((a, b) => {
+      const scoreDiff = matchKindScore[a.matchKind] - matchKindScore[b.matchKind];
+      if (scoreDiff !== 0) return scoreDiff;
+      return a.path.localeCompare(b.path);
+    })
+    .map(({ matchKind: _matchKind, ...result }) => result);
+}
 
-    if (aPathMatch && !bPathMatch) return -1;
-    if (!aPathMatch && bPathMatch) return 1;
-    if (aTitleMatch && !bTitleMatch) return -1;
-    if (!aTitleMatch && bTitleMatch) return 1;
+export function buildPagePaletteItems(
+  memos: Memo[],
+  query: string,
+  maxItems = Number.POSITIVE_INFINITY,
+): PaletteItem[] {
+  const trimmedQuery = query.trim();
+  const pageResults = trimmedQuery
+    ? searchPages(memos, trimmedQuery)
+    : [...memos]
+        .sort((a, b) => a.path.localeCompare(b.path))
+        .map((memo) => ({
+          path: memo.path,
+          title: extractTitle(memo.path, memo.content),
+          preview: extractPreview(memo.content),
+        }));
 
-    return a.path.localeCompare(b.path);
+  return pageResults.slice(0, maxItems).map((result) => {
+    const memo = memos.find((candidate) => candidate.path === result.path);
+    return {
+      type: "page",
+      value: result.path,
+      label: memo?.metadata?.title || result.title,
+      description: result.preview || result.path,
+      preview: result.preview,
+      tags: memo?.metadata?.tags,
+    };
   });
 }
