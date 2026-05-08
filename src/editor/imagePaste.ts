@@ -7,6 +7,7 @@
 import { EditorView } from "@codemirror/view";
 
 import { addAttachment } from "../db/attachmentCollection";
+import { showToast, updateToast } from "../store/toastStore";
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -22,20 +23,97 @@ function buildMarkdown(id: string, originalName: string): string {
   return `![${alt}](attachment://${id})`;
 }
 
-async function insertImages(files: File[], view: EditorView, pos: number): Promise<void> {
-  const markdowns = await Promise.all(
+function imageLabel(count: number): string {
+  return count === 1 ? "image" : "images";
+}
+
+function getErrorMessage(reason: unknown): string {
+  if (reason instanceof Error && reason.message) return reason.message;
+  if (typeof reason === "string" && reason) return reason;
+  return "Unknown error";
+}
+
+type ImageInsertionDispatchSpec = {
+  changes: { from: number; insert: string };
+  selection: { anchor: number };
+};
+
+type ImageInsertionView = {
+  dispatch: (spec: ImageInsertionDispatchSpec) => void;
+  focus: () => void;
+};
+
+type ImageInsertionDependencies = {
+  addAttachment: (file: File) => Promise<string>;
+  showToast: typeof showToast;
+  updateToast: typeof updateToast;
+};
+
+const defaultDependencies: ImageInsertionDependencies = {
+  addAttachment,
+  showToast,
+  updateToast,
+};
+
+export async function insertImages(
+  files: File[],
+  view: ImageInsertionView,
+  pos: number,
+  dependencies: ImageInsertionDependencies = defaultDependencies,
+): Promise<void> {
+  const total = files.length;
+  const toastId = dependencies.showToast({
+    type: "loading",
+    title: `Saving ${total} ${imageLabel(total)}…`,
+  });
+
+  const results = await Promise.allSettled(
     files.map(async (file) => {
-      const id = await addAttachment(file);
+      const id = await dependencies.addAttachment(file);
       return buildMarkdown(id, file.name);
     }),
   );
 
-  const insertion = markdowns.join("\n");
-  view.dispatch({
-    changes: { from: pos, insert: insertion },
-    selection: { anchor: pos + insertion.length },
+  const markdowns = results
+    .filter((result): result is PromiseFulfilledResult<string> => result.status === "fulfilled")
+    .map((result) => result.value);
+  const failures = results.filter(
+    (result): result is PromiseRejectedResult => result.status === "rejected",
+  );
+
+  if (markdowns.length > 0) {
+    const insertion = markdowns.join("\n");
+    view.dispatch({
+      changes: { from: pos, insert: insertion },
+      selection: { anchor: pos + insertion.length },
+    });
+    view.focus();
+  }
+
+  if (failures.length === 0) {
+    dependencies.updateToast(toastId, {
+      type: "success",
+      title: `Inserted ${total} ${imageLabel(total)}`,
+      duration: 3000,
+    });
+    return;
+  }
+
+  const firstErrorMessage = getErrorMessage(failures[0]?.reason);
+  const description =
+    markdowns.length === 0
+      ? firstErrorMessage
+      : `Failed to save ${failures.length} ${imageLabel(failures.length)}: ${firstErrorMessage}`;
+
+  dependencies.updateToast(toastId, {
+    type: "error",
+    title:
+      markdowns.length === 0
+        ? `Failed to insert ${imageLabel(total)}`
+        : `Inserted ${markdowns.length} of ${total} ${imageLabel(total)}`,
+    description,
+    duration: 6000,
   });
-  view.focus();
 }
 
 // ---------------------------------------------------------------------------
