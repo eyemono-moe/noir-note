@@ -21,6 +21,7 @@ import {
 } from "../context/commands";
 import { useMemosCollection } from "../context/db";
 import { getPathSegments } from "../utils/path";
+import { matchesAllTags, parseSearchQuery } from "./search";
 import type { PaletteItem } from "./types";
 
 import styles from "./palette.module.css";
@@ -71,9 +72,20 @@ const CommandPalette: Component = () => {
 
     return {
       initialItems: items,
-      // Custom filter that searches in label, description, and path
+      // Custom filter that searches in label, description, path, and tag:<tag> page metadata.
       filter: (_itemText: string, filterText: string, item: PaletteItem) => {
-        const lowerQuery = filterText.toLowerCase();
+        const { text, tags } = parseSearchQuery(filterText);
+        const lowerQuery = text.toLowerCase();
+
+        if (tags.length > 0) {
+          if (item.type !== "page" || !matchesAllTags(item.tags, tags)) {
+            return false;
+          }
+          if (!lowerQuery) {
+            return true;
+          }
+        }
+
         return (
           item.label.toLowerCase().includes(lowerQuery) ||
           item.description?.toLowerCase().includes(lowerQuery) ||
@@ -119,6 +131,7 @@ const CommandPalette: Component = () => {
           value: memo.path,
           label: memo.metadata?.title || defaultLabel,
           description: memo.path,
+          tags: memo.metadata?.tags,
         });
       }
     });

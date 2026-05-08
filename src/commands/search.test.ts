@@ -3,12 +3,13 @@ import { describe, expect, test } from "vite-plus/test";
 import type { Memo } from "../types/memo";
 import { extractPreview, extractTitle, searchPages } from "./search";
 
-function createMemo(path: string, content: string): Memo {
+function createMemo(path: string, content: string, metadata?: Memo["metadata"]): Memo {
   return {
     path,
     content,
     createdAt: Date.now(),
     updatedAt: Date.now(),
+    metadata,
   };
 }
 
@@ -143,5 +144,59 @@ describe("searchPages", () => {
     const results = searchPages(memos, "Random");
     expect(results).toHaveLength(1);
     expect(results[0].title).toBe("Random thoughts");
+  });
+
+  test("filters by a metadata tag query", () => {
+    const taggedMemos = [
+      createMemo("/work", "# Work", { tags: ["project", "important"] }),
+      createMemo("/personal", "# Personal", { tags: ["journal"] }),
+      createMemo("/untagged", "# Untagged"),
+    ];
+
+    const results = searchPages(taggedMemos, "tag:project");
+
+    expect(results.map((result) => result.path)).toEqual(["/work"]);
+  });
+
+  test("requires all metadata tags when multiple tag queries are provided", () => {
+    const taggedMemos = [
+      createMemo("/work", "# Work", { tags: ["project", "important"] }),
+      createMemo("/side", "# Side", { tags: ["project"] }),
+    ];
+
+    const results = searchPages(taggedMemos, "tag:project tag:important");
+
+    expect(results.map((result) => result.path)).toEqual(["/work"]);
+  });
+
+  test("combines metadata tag filters with normal text search", () => {
+    const taggedMemos = [
+      createMemo("/work/roadmap", "# Roadmap\nRelease checklist", { tags: ["project"] }),
+      createMemo("/personal/roadmap", "# Roadmap\nTrip ideas", { tags: ["journal"] }),
+      createMemo("/work/notes", "# Notes\nMeeting notes", { tags: ["project"] }),
+    ];
+
+    const results = searchPages(taggedMemos, "tag:project roadmap");
+
+    expect(results.map((result) => result.path)).toEqual(["/work/roadmap"]);
+  });
+
+  test("matches metadata tag queries case-insensitively", () => {
+    const taggedMemos = [createMemo("/work", "# Work", { tags: ["Project"] })];
+
+    const results = searchPages(taggedMemos, "tag:PROJECT");
+
+    expect(results.map((result) => result.path)).toEqual(["/work"]);
+  });
+
+  test("supports quoted metadata tags with spaces", () => {
+    const taggedMemos = [
+      createMemo("/design", "# Design", { tags: ["product design"] }),
+      createMemo("/dev", "# Dev", { tags: ["product"] }),
+    ];
+
+    const results = searchPages(taggedMemos, 'tag:"product design"');
+
+    expect(results.map((result) => result.path)).toEqual(["/design"]);
   });
 });
