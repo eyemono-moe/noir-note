@@ -85,17 +85,21 @@ const ThumbnailImage: Component<{ id: string }> = (props) => {
 const NoteItem: Component<{
   path: string;
   onNavigate: (path: string) => void;
+  onClick?: () => void;
 }> = (props) => {
   return (
     <HoverCard.Trigger
       value={props.path}
       asChild={(hoverProps) => (
         <button
+          {...hoverProps()}
           type="button"
           class="focus-ring text-text-secondary hover:text-text-primary flex w-full min-w-0 items-center gap-1 rounded bg-transparent px-1 py-0.5 text-left text-[0.625rem] transition-colors"
           title={props.path}
-          onClick={() => props.onNavigate(props.path)}
-          {...hoverProps()}
+          onClick={() => {
+            props.onClick?.();
+            props.onNavigate(props.path);
+          }}
         >
           <span class="i-material-symbols:description-outline-rounded size-3 shrink-0" />
           <span class="truncate">{props.path}</span>
@@ -310,7 +314,13 @@ const AttachmentRow: Component<{
 
               <div class="mt-4 flex flex-col gap-0.5">
                 <For each={deleteRefs() ?? []}>
-                  {(path) => <NoteItem path={path} onNavigate={props.onNavigate} />}
+                  {(path) => (
+                    <NoteItem
+                      path={path}
+                      onNavigate={props.onNavigate}
+                      onClick={() => setDeleteRefs(null)}
+                    />
+                  )}
                 </For>
               </div>
 
@@ -528,7 +538,7 @@ export const AttachmentsTab: Component = () => {
       </div>
       <Portal>
         <HoverCard.Positioner>
-          <HoverCard.Content class={treeStyles.HoverCardContent}>
+          <HoverCard.Content class={treeStyles.HoverCardContent} style={{ "z-index": 60 }}>
             <Suspense>
               <Show when={activePath()}>{(path) => <MemoPreview path={path()} />}</Show>
             </Suspense>
