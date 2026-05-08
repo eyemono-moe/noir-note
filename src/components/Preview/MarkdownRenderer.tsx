@@ -100,7 +100,7 @@ const LightboxImage: Component<{
             src={s()}
             alt=""
             draggable={false}
-            class="h-auto max-h-full w-auto max-w-full touch-none rounded object-contain shadow-2xl transition-transform duration-100 select-none [background:conic-gradient(#eee_90deg,transparent_90deg_180deg,#eee_180deg_270deg,transparent_270deg)_50%_50%/50px_50px,#fff]"
+            class="h-auto max-h-full w-auto max-w-full touch-none rounded object-contain shadow-2xl select-none [background:conic-gradient(#eee_90deg,transparent_90deg_180deg,#eee_180deg_270deg,transparent_270deg)_50%_50%/50px_50px,#fff]"
             classList={{
               "cursor-grab active:cursor-grabbing": canPan(),
               "cursor-default": !canPan(),
