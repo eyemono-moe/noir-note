@@ -75,7 +75,6 @@ const LightboxImage: Component<{
 }> = (props) => {
   const src = createResolvedImageSrc(() => props.url);
   const [dragPointerId, setDragPointerId] = createSignal<number | null>(null);
-  const canPan = () => props.zoom > 1;
 
   return (
     <Show
@@ -100,11 +99,7 @@ const LightboxImage: Component<{
             src={s()}
             alt=""
             draggable={false}
-            class="h-auto max-h-full w-auto max-w-full touch-none rounded object-contain shadow-2xl select-none [background:conic-gradient(#eee_90deg,transparent_90deg_180deg,#eee_180deg_270deg,transparent_270deg)_50%_50%/50px_50px,#fff]"
-            classList={{
-              "cursor-grab active:cursor-grabbing": canPan(),
-              "cursor-default": !canPan(),
-            }}
+            class="h-auto max-h-full w-auto max-w-full cursor-grab touch-none rounded object-contain shadow-2xl select-none [background:conic-gradient(#eee_90deg,transparent_90deg_180deg,#eee_180deg_270deg,transparent_270deg)_50%_50%/50px_50px,#fff] active:cursor-grabbing"
             style={{
               transform: `translate(${props.pan.x}px, ${props.pan.y}px) scale(${props.zoom})`,
               "transform-origin": "center center",
@@ -113,13 +108,12 @@ const LightboxImage: Component<{
             onKeyDown={(e) => e.stopPropagation()}
             onPointerDown={(e) => {
               e.stopPropagation();
-              if (!canPan()) return;
               setDragPointerId(e.pointerId);
               e.currentTarget.setPointerCapture(e.pointerId);
             }}
             onPointerMove={(e) => {
               e.stopPropagation();
-              if (dragPointerId() !== e.pointerId || !canPan()) return;
+              if (dragPointerId() !== e.pointerId) return;
               props.onDragPan({ x: e.movementX, y: e.movementY });
             }}
             onPointerUp={(e) => {
@@ -143,8 +137,15 @@ const LightboxImage: Component<{
  * Full-size Mermaid diagram rendered inside the lightbox dialog.
  * Re-renders the SVG with the current theme at a larger size.
  */
-const LightboxMermaid: Component<{ code: string }> = (props) => {
+const LightboxMermaid: Component<{
+  code: string;
+  zoom: number;
+  pan: LightboxPan;
+  onWheelZoom: (deltaY: number) => void;
+  onDragPan: (movement: LightboxPan) => void;
+}> = (props) => {
   const isDark = useTheme();
+  const [dragPointerId, setDragPointerId] = createSignal<number | null>(null);
 
   const [result] = createResource(
     () => ({ code: props.code, dark: isDark() }),
@@ -186,15 +187,49 @@ const LightboxMermaid: Component<{ code: string }> = (props) => {
         }
       >
         <div
-          role="img"
-          aria-label="Mermaid diagram"
-          class="children-[svg]:mx-auto children-[svg]:block children-[svg]:max-h-full children-[svg]:h-auto bg-surface-secondary max-h-full w-full min-w-0 rounded-lg"
-          style={{ "max-width": result.latest?.maxWidth ?? "100%" }}
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-          // oxlint-disable-next-line solid/no-innerhtml
-          innerHTML={result.latest?.svg}
-        />
+          role="presentation"
+          class="flex size-full items-center justify-center"
+          onWheel={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            props.onWheelZoom(e.deltaY);
+          }}
+        >
+          <div
+            role="img"
+            aria-label="Mermaid diagram"
+            class="children-[svg]:mx-auto children-[svg]:block children-[svg]:h-auto children-[svg]:max-h-full bg-surface-secondary max-h-full w-full min-w-0 cursor-grab touch-none rounded-lg select-none active:cursor-grabbing"
+            style={{
+              "max-width": result.latest?.maxWidth ?? "100%",
+              transform: `translate(${props.pan.x}px, ${props.pan.y}px) scale(${props.zoom})`,
+              "transform-origin": "center center",
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              setDragPointerId(e.pointerId);
+              e.currentTarget.setPointerCapture(e.pointerId);
+            }}
+            onPointerMove={(e) => {
+              e.stopPropagation();
+              if (dragPointerId() !== e.pointerId) return;
+              props.onDragPan({ x: e.movementX, y: e.movementY });
+            }}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              if (dragPointerId() !== e.pointerId) return;
+              setDragPointerId(null);
+              e.currentTarget.releasePointerCapture(e.pointerId);
+            }}
+            onPointerCancel={(e) => {
+              e.stopPropagation();
+              setDragPointerId(null);
+            }}
+            // oxlint-disable-next-line solid/no-innerhtml
+            innerHTML={result.latest?.svg}
+          />
+        </div>
       </Show>
     </Suspense>
   );
@@ -335,34 +370,25 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
 
   // null = dialog closed; number = index of the currently displayed item.
   const [lightboxIndex, setLightboxIndex] = createSignal<number | null>(null);
-  const [lightboxImageZoom, setLightboxImageZoom] = createSignal(1);
-  const [lightboxImagePan, setLightboxImagePan] =
-    createSignal<LightboxPan>(LIGHTBOX_IMAGE_PAN_CENTER);
+  const [lightboxZoom, setLightboxZoom] = createSignal(1);
+  const [lightboxPan, setLightboxPan] = createSignal<LightboxPan>(LIGHTBOX_IMAGE_PAN_CENTER);
 
   createEffect(() => {
     lightboxIndex();
-    setLightboxImageZoom(1);
-    setLightboxImagePan(LIGHTBOX_IMAGE_PAN_CENTER);
+    setLightboxZoom(1);
+    setLightboxPan(LIGHTBOX_IMAGE_PAN_CENTER);
   });
 
-  createEffect(() => {
-    if (lightboxImageZoom() <= 1) setLightboxImagePan(LIGHTBOX_IMAGE_PAN_CENTER);
-  });
-
-  const updateLightboxImageZoom = (action: "in" | "out" | "reset") => {
-    setLightboxImageZoom((zoom) => {
+  const updateLightboxZoom = (action: "in" | "out" | "reset") => {
+    setLightboxZoom((zoom) => {
       const nextZoom = getNextLightboxZoom(zoom, action);
-      if (nextZoom <= 1) setLightboxImagePan(LIGHTBOX_IMAGE_PAN_CENTER);
+      if (action === "reset") setLightboxPan(LIGHTBOX_IMAGE_PAN_CENTER);
       return nextZoom;
     });
   };
 
-  const updateLightboxImageZoomFromWheel = (deltaY: number) => {
-    setLightboxImageZoom((zoom) => {
-      const nextZoom = getWheelLightboxZoom(zoom, deltaY);
-      if (nextZoom <= 1) setLightboxImagePan(LIGHTBOX_IMAGE_PAN_CENTER);
-      return nextZoom;
-    });
+  const updateLightboxZoomFromWheel = (deltaY: number) => {
+    setLightboxZoom((zoom) => getWheelLightboxZoom(zoom, deltaY));
   };
 
   const openLightbox = (offset: number) => {
@@ -441,18 +467,24 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
                           <Match when={item.type === "image"}>
                             <LightboxImage
                               url={(item as { url: string }).url}
-                              zoom={lightboxImageZoom()}
-                              pan={lightboxImagePan()}
-                              onWheelZoom={updateLightboxImageZoomFromWheel}
+                              zoom={lightboxZoom()}
+                              pan={lightboxPan()}
+                              onWheelZoom={updateLightboxZoomFromWheel}
                               onDragPan={(movement) =>
-                                setLightboxImagePan((pan) =>
-                                  getNextLightboxPan(pan, movement, lightboxImageZoom()),
-                                )
+                                setLightboxPan((pan) => getNextLightboxPan(pan, movement))
                               }
                             />
                           </Match>
                           <Match when={item.type === "mermaid"}>
-                            <LightboxMermaid code={(item as { code: string }).code} />
+                            <LightboxMermaid
+                              code={(item as { code: string }).code}
+                              zoom={lightboxZoom()}
+                              pan={lightboxPan()}
+                              onWheelZoom={updateLightboxZoomFromWheel}
+                              onDragPan={(movement) =>
+                                setLightboxPan((pan) => getNextLightboxPan(pan, movement))
+                              }
+                            />
                           </Match>
                         </Switch>
                       </Carousel.Item>
@@ -460,65 +492,61 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
                   </For>
                 </Carousel.ItemGroup>
 
-                <Show when={lightboxItems()[lightboxIndex() ?? 0]?.type === "image"}>
-                  <div
-                    role="presentation"
-                    class="bg-surface-primary/90 border-border-primary flex shrink-0 items-center gap-2 rounded-full border px-2 py-1 shadow-lg backdrop-blur"
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      type="button"
-                      class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                      title="Zoom out"
-                      aria-label="Zoom out"
-                      disabled={lightboxImageZoom() <= LIGHTBOX_IMAGE_ZOOM_MIN}
-                      onClick={() => updateLightboxImageZoom("out")}
-                    >
-                      <span class="i-material-symbols:zoom-out-rounded size-5" />
-                    </button>
-                    <button
-                      type="button"
-                      class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex min-w-14 appearance-none justify-center rounded-full bg-transparent px-2 py-1 text-sm tabular-nums transition-colors"
-                      title="Reset zoom"
-                      aria-label="Reset zoom"
-                      onClick={() => updateLightboxImageZoom("reset")}
-                    >
-                      {Math.round(lightboxImageZoom() * 100)}%
-                    </button>
-                    <button
-                      type="button"
-                      class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                      title="Zoom in"
-                      aria-label="Zoom in"
-                      disabled={lightboxImageZoom() >= LIGHTBOX_IMAGE_ZOOM_MAX}
-                      onClick={() => updateLightboxImageZoom("in")}
-                    >
-                      <span class="i-material-symbols:zoom-in-rounded size-5" />
-                    </button>
-                  </div>
-                </Show>
+                <div
+                  role="presentation"
+                  class="bg-surface-primary/90 border-border-primary flex shrink-0 items-center gap-2 rounded-full border px-2 py-1 shadow-lg backdrop-blur"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  <Show when={lightboxItems().length > 1}>
+                    <Carousel.Control class="flex shrink-0 items-center justify-center gap-2">
+                      <Carousel.PrevTrigger
+                        title="Previous item (←)"
+                        class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors"
+                      >
+                        <span class="i-material-symbols:chevron-left-rounded size-5" />
+                      </Carousel.PrevTrigger>
+                      <Carousel.ProgressText class="text-text-secondary min-w-12 text-center text-sm tabular-nums select-none" />
+                      <Carousel.NextTrigger
+                        title="Next item (→)"
+                        class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors"
+                      >
+                        <span class="i-material-symbols:chevron-right-rounded size-5" />
+                      </Carousel.NextTrigger>
+                    </Carousel.Control>
+                    <span class="bg-border-primary h-5 w-px" aria-hidden="true" />
+                  </Show>
 
-                <Show when={lightboxItems().length > 1}>
-                  <Carousel.Control
-                    class="flex shrink-0 items-center justify-center gap-3"
-                    onClick={(e) => e.stopPropagation()}
+                  <button
+                    type="button"
+                    class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                    title="Zoom out"
+                    aria-label="Zoom out"
+                    disabled={lightboxZoom() <= LIGHTBOX_IMAGE_ZOOM_MIN}
+                    onClick={() => updateLightboxZoom("out")}
                   >
-                    <Carousel.PrevTrigger
-                      title="Previous image (←)"
-                      class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors"
-                    >
-                      <span class="i-material-symbols:chevron-left-rounded size-5" />
-                    </Carousel.PrevTrigger>
-                    <Carousel.ProgressText class="text-text-secondary min-w-12 text-center text-sm tabular-nums select-none" />
-                    <Carousel.NextTrigger
-                      title="Next image (→)"
-                      class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors"
-                    >
-                      <span class="i-material-symbols:chevron-right-rounded size-5" />
-                    </Carousel.NextTrigger>
-                  </Carousel.Control>
-                </Show>
+                    <span class="i-material-symbols:zoom-out-rounded size-5" />
+                  </button>
+                  <button
+                    type="button"
+                    class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex min-w-14 appearance-none justify-center rounded-full bg-transparent px-2 py-1 text-sm tabular-nums transition-colors"
+                    title="Reset zoom"
+                    aria-label="Reset zoom"
+                    onClick={() => updateLightboxZoom("reset")}
+                  >
+                    {Math.round(lightboxZoom() * 100)}%
+                  </button>
+                  <button
+                    type="button"
+                    class="focus-ring hover:bg-surface-transparent-hover text-text-secondary inline-flex appearance-none rounded-full bg-transparent p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                    title="Zoom in"
+                    aria-label="Zoom in"
+                    disabled={lightboxZoom() >= LIGHTBOX_IMAGE_ZOOM_MAX}
+                    onClick={() => updateLightboxZoom("in")}
+                  >
+                    <span class="i-material-symbols:zoom-in-rounded size-5" />
+                  </button>
+                </div>
               </Carousel.Root>
             </Dialog.Content>
           </Dialog.Positioner>

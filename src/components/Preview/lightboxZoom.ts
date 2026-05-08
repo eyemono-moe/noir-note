@@ -36,17 +36,7 @@ export const getWheelLightboxZoom = (currentZoom: number, deltaY: number) => {
 export const getNextLightboxPan = (
   currentPan: LightboxPan,
   movement: LightboxPan,
-  zoom: number,
-): LightboxPan => {
-  if (zoom <= 1) return LIGHTBOX_IMAGE_PAN_CENTER;
-
-  return {
-    x: currentPan.x + movement.x,
-    y: currentPan.y + movement.y,
-  };
-};
-
-export const resetLightboxPanIfFit = (currentPan: LightboxPan, zoom: number): LightboxPan => {
-  if (zoom <= 1) return LIGHTBOX_IMAGE_PAN_CENTER;
-  return currentPan;
-};
+): LightboxPan => ({
+  x: currentPan.x + movement.x,
+  y: currentPan.y + movement.y,
+});

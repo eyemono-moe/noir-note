@@ -7,7 +7,6 @@ import {
   LIGHTBOX_IMAGE_ZOOM_MAX,
   LIGHTBOX_IMAGE_ZOOM_MIN,
   LIGHTBOX_IMAGE_ZOOM_STEP,
-  resetLightboxPanIfFit,
 } from "./lightboxZoom";
 
 describe("getNextLightboxZoom", () => {
@@ -38,13 +37,8 @@ describe("getWheelLightboxZoom", () => {
 });
 
 describe("lightbox pan", () => {
-  test("keeps fit-to-dialog images centered instead of panned", () => {
-    expect(getNextLightboxPan({ x: 12, y: -8 }, { x: 5, y: 5 }, 1)).toEqual({ x: 0, y: 0 });
-    expect(resetLightboxPanIfFit({ x: 12, y: -8 }, 1)).toEqual({ x: 0, y: 0 });
-  });
-
-  test("adds drag movement while zoomed in", () => {
-    expect(getNextLightboxPan({ x: 12, y: -8 }, { x: 5, y: 7 }, 1.25)).toEqual({ x: 17, y: -1 });
-    expect(resetLightboxPanIfFit({ x: 12, y: -8 }, 1.25)).toEqual({ x: 12, y: -8 });
+  test("adds drag movement regardless of zoom level", () => {
+    expect(getNextLightboxPan({ x: 12, y: -8 }, { x: 5, y: 5 })).toEqual({ x: 17, y: -3 });
+    expect(getNextLightboxPan({ x: 12, y: -8 }, { x: 5, y: 7 })).toEqual({ x: 17, y: -1 });
   });
 });
