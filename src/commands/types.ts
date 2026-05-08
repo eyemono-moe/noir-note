@@ -7,6 +7,7 @@ export interface CommandContext {
   navigate: (path: string) => void;
   setMode: (mode: ViewMode) => void;
   toggleSidebar: () => void;
+  openNoteSearch: () => boolean;
 }
 
 export interface Command {

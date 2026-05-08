@@ -2,6 +2,7 @@ import { history, historyKeymap, indentWithTab, redo, redoSelection } from "@cod
 import { defaultKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { bracketMatching, indentUnit } from "@codemirror/language";
+import { search, searchKeymap } from "@codemirror/search";
 import { EditorState } from "@codemirror/state";
 import type { Extension } from "@codemirror/state";
 import { EditorView, highlightWhitespace } from "@codemirror/view";
@@ -35,6 +36,7 @@ export function createEditorExtensions(isDark: boolean): Extension[] {
     highlightActiveLine(),
     history(),
     bracketMatching(),
+    search({ top: true }),
 
     keymap.of(defaultKeymap),
     keymap.of([
@@ -42,6 +44,7 @@ export function createEditorExtensions(isDark: boolean): Extension[] {
       { key: "Mod-Shift-u", run: redoSelection, preventDefault: true },
     ]), // The official historyKeymap uses Meta+Y for redo on Windows; override to Mod-Shift-Z. see: https://code.haverbeke.berlin/codemirror/commands/src/commit/30a280ea8aa5822a8e0eb9fd560e0cd28d3c836b/src/history.ts#L395
     keymap.of(historyKeymap),
+    keymap.of(searchKeymap),
     keymap.of([indentWithTab]),
     indentUnit.of("  "), // 2 spaces; @codemirror/lang-markdown requires 2–5 for correct nested list behavior
     EditorView.lineWrapping,

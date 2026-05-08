@@ -5,7 +5,7 @@ import { type Component, Show, createDeferred, lazy, Suspense } from "solid-js";
 import SplitView from "../components/Layout/SplitView";
 import { CurrentMemoProvider, useCurrentMemo } from "../context/currentMemo";
 import { useMemosCollection } from "../context/db";
-import { EditorProvider, useEditorContext } from "../context/editor";
+import { useEditorContext } from "../context/editor";
 import { useEditorSplit } from "../context/editorSplit";
 import { useCheckboxSync } from "../hooks/useCheckboxSync";
 import { useMemoSaver } from "../hooks/useMemoOperations";
@@ -111,11 +111,9 @@ const MemoPageContent: Component = () => {
 const MemoPage: Component = () => {
   return (
     <main>
-      <EditorProvider>
-        <CurrentMemoProvider>
-          <MemoPageContent />
-        </CurrentMemoProvider>
-      </EditorProvider>
+      <CurrentMemoProvider>
+        <MemoPageContent />
+      </CurrentMemoProvider>
     </main>
   );
 };
