@@ -288,47 +288,49 @@ const AttachmentRow: Component<{
       </div>
 
       {/* Delete confirmation dialog — only shown when the attachment is referenced */}
-      <Dialog.Root
-        open={deleteRefs() !== null}
-        onOpenChange={(d) => {
-          if (!d.open) setDeleteRefs(null);
-        }}
-        role="alertdialog"
-      >
-        <Dialog.Backdrop class="bg-overlay fixed inset-0 z-50" />
-        <Dialog.Positioner class="translate-y--1/2 pointer-events-auto fixed inset-x-0 top-1/2 z-50 flex max-h-full items-start justify-center overflow-y-auto overscroll-y-contain p-4">
-          <Dialog.Content class="border-border-primary bg-surface-primary w-96 max-w-[90vw] rounded-xl border p-6 shadow-xl">
-            <Dialog.Title class="text-text-primary text-base font-semibold">
-              Delete attachment?
-            </Dialog.Title>
-            <Dialog.Description class="text-text-secondary mt-2 text-sm">
-              <span class="text-text-primary font-medium">{filename()}</span> is referenced in{" "}
-              {deleteRefs()?.length} note{(deleteRefs()?.length ?? 0) > 1 ? "s" : ""}. Deleting it
-              will break those references.
-            </Dialog.Description>
+      <Portal>
+        <Dialog.Root
+          open={deleteRefs() !== null}
+          onOpenChange={(d) => {
+            if (!d.open) setDeleteRefs(null);
+          }}
+          role="alertdialog"
+        >
+          <Dialog.Backdrop class="bg-overlay fixed inset-0 z-50" />
+          <Dialog.Positioner class="translate-y--1/2 pointer-events-auto fixed inset-x-0 top-1/2 z-50 flex max-h-full items-start justify-center overflow-y-auto overscroll-y-contain p-4">
+            <Dialog.Content class="border-border-primary bg-surface-primary w-96 max-w-[90vw] rounded-xl border p-6 shadow-xl">
+              <Dialog.Title class="text-text-primary text-base font-semibold">
+                Delete attachment?
+              </Dialog.Title>
+              <Dialog.Description class="text-text-secondary mt-2 text-sm">
+                <span class="text-text-primary font-medium">{filename()}</span> is referenced in{" "}
+                {deleteRefs()?.length} note{(deleteRefs()?.length ?? 0) > 1 ? "s" : ""}. Deleting it
+                will break those references.
+              </Dialog.Description>
 
-            <div class="mt-4 flex flex-col gap-0.5">
-              <For each={deleteRefs() ?? []}>
-                {(path) => <NoteItem path={path} onNavigate={props.onNavigate} />}
-              </For>
-            </div>
+              <div class="mt-4 flex flex-col gap-0.5">
+                <For each={deleteRefs() ?? []}>
+                  {(path) => <NoteItem path={path} onNavigate={props.onNavigate} />}
+                </For>
+              </div>
 
-            <div class="mt-6 flex justify-end gap-3">
-              <Dialog.CloseTrigger class="button text-text-primary">Cancel</Dialog.CloseTrigger>
-              <button
-                type="button"
-                class="button text-text-danger"
-                onClick={() => {
-                  setDeleteRefs(null);
-                  props.onDelete(props.att.id);
-                }}
-              >
-                Delete anyway
-              </button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Dialog.Root>
+              <div class="mt-6 flex justify-end gap-3">
+                <Dialog.CloseTrigger class="button text-text-primary">Cancel</Dialog.CloseTrigger>
+                <button
+                  type="button"
+                  class="button text-text-danger"
+                  onClick={() => {
+                    setDeleteRefs(null);
+                    props.onDelete(props.att.id);
+                  }}
+                >
+                  Delete anyway
+                </button>
+              </div>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Dialog.Root>
+      </Portal>
     </>
   );
 };
