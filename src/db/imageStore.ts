@@ -85,23 +85,38 @@ function buildScreenshotName(mimeType: string): string {
  * Returns the attachment ID (= the OPFS filename) to be embedded in markdown.
  */
 export async function saveImage(file: File): Promise<string> {
-  const dir = await getAttachmentsDir();
-
   // Use a generic screenshot name when the file has a generic name like "image.png"
   const isGenericName = /^image\.(png|jpe?g|gif|webp|bmp)$/i.test(file.name);
   const baseName = isGenericName ? buildScreenshotName(file.type) : sanitizeFilename(file.name);
-
   const id = `${crypto.randomUUID()}-${baseName}`;
+  await writeAttachmentFile(id, file);
+  return id;
+}
 
+/**
+ * Write attachment bytes using a known attachment ID.
+ * Used by import/restore flows where markdown references already point at IDs.
+ */
+export async function writeAttachmentFile(id: string, blob: Blob): Promise<void> {
+  const dir = await getAttachmentsDir();
   const fileHandle = await dir.getFileHandle(id, { create: true });
   const writable = await fileHandle.createWritable();
   try {
-    await writable.write(file);
+    await writable.write(blob);
   } finally {
     await writable.close();
   }
+}
 
-  return id;
+/** Read an attachment file from OPFS for backup/export. */
+export async function readAttachmentFile(id: string): Promise<File | null> {
+  try {
+    const dir = await getAttachmentsDir();
+    const fileHandle = await dir.getFileHandle(id);
+    return fileHandle.getFile();
+  } catch {
+    return null;
+  }
 }
 
 /**
