@@ -8,6 +8,7 @@ export interface CommandContext {
   openHelp: () => void;
   setMode: (mode: ViewMode) => void;
   toggleSidebar: () => void;
+  openNoteSearch: () => boolean;
 }
 
 export interface Command {

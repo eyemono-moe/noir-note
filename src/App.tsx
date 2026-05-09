@@ -4,21 +4,24 @@ import CommandPalette from "./commands/palette";
 import ToastViewport from "./components/Toast/ToastViewport";
 import { CommandsProvider } from "./context/commands";
 import { DBProvider } from "./context/db";
+import { EditorProvider } from "./context/editor";
 import { EditorSplitProvider } from "./context/editorSplit";
 import { ThemeProvider } from "./context/theme";
 
 const App: ParentComponent = (props) => {
   return (
     <EditorSplitProvider>
-      <ThemeProvider>
+      <EditorProvider>
         <CommandsProvider>
-          <DBProvider>
-            <CommandPalette />
-            <ToastViewport />
-            {props.children}
-          </DBProvider>
+          <ThemeProvider>
+            <DBProvider>
+              <CommandPalette />
+              <ToastViewport />
+              {props.children}
+            </DBProvider>
+          </ThemeProvider>
         </CommandsProvider>
-      </ThemeProvider>
+      </EditorProvider>
     </EditorSplitProvider>
   );
 };

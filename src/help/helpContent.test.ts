@@ -28,6 +28,7 @@ describe("help usage guide", () => {
       },
       setMode: () => undefined,
       toggleSidebar: () => undefined,
+      openNoteSearch: () => false,
     });
 
     expect(opened).toBe(true);
