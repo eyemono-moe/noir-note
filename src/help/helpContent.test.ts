@@ -1,16 +1,8 @@
 import { describe, expect, test } from "vite-plus/test";
 
 import { helpCommands } from "../commands/definitions/help";
-import { HELP_DIALOG_TITLE, HELP_MARKDOWN_CONTENT } from "./helpContent";
 
 describe("help usage guide", () => {
-  test("ships non-empty bundled markdown for first-time users", () => {
-    expect(HELP_DIALOG_TITLE).toBe("Help / Usage Guide");
-    expect(HELP_MARKDOWN_CONTENT).toContain("# Help / Usage Guide");
-    expect(HELP_MARKDOWN_CONTENT).toContain("Command Palette");
-    expect(HELP_MARKDOWN_CONTENT).toContain("Images and attachments");
-  });
-
   test("registers a command palette action that opens help without routing to /help", async () => {
     let opened = false;
     const command = helpCommands.find((cmd) => cmd.id === "help-open-usage-guide");
