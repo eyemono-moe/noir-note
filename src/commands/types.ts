@@ -5,6 +5,7 @@ import type { ViewMode } from "../types/ui";
 export interface CommandContext {
   currentPath: string;
   navigate: (path: string) => void;
+  openHelp: () => void;
   setMode: (mode: ViewMode) => void;
   toggleSidebar: () => void;
   openNoteSearch: () => boolean;
