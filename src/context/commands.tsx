@@ -123,7 +123,8 @@ export const CommandsProvider: ParentComponent = (props) => {
       if (api) {
         const sizes = api.getSizes();
         if (sizes[1] === 0) {
-          api.setSizes([sizes[0], 100 - sizes[0], 0]);
+          const contentSize = 100 - sizes[0];
+          api.setSizes([sizes[0], contentSize / 2, contentSize / 2]);
         }
       }
 
