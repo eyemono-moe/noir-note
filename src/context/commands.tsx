@@ -11,7 +11,9 @@ import {
 
 import { allCommands } from "../commands/definitions";
 import type { Command, CommandContext } from "../commands/types";
+import { openNoteSearchPanel } from "../editor/noteSearch";
 import { normalizePath } from "../utils/path";
+import { useEditorContext } from "./editor";
 import { useEditorSplit } from "./editorSplit";
 
 /**
@@ -75,6 +77,7 @@ async function executeCommandImpl(
 export const CommandsProvider: ParentComponent = (props) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { editorView } = useEditorContext();
   const editorSplitter = useEditorSplit();
 
   // Command registry
@@ -114,6 +117,18 @@ export const CommandsProvider: ParentComponent = (props) => {
       } else {
         api.setSizes([0, sizes[1], sizes[2]]);
       }
+    },
+    openNoteSearch: () => {
+      const api = editorSplitter();
+      if (api) {
+        const sizes = api.getSizes();
+        if (sizes[1] === 0) {
+          const contentSize = 100 - sizes[0];
+          api.setSizes([sizes[0], contentSize / 2, contentSize / 2]);
+        }
+      }
+
+      return openNoteSearchPanel(editorView());
     },
   }));
 

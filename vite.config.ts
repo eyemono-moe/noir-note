@@ -100,6 +100,7 @@ export default defineConfig({
       "@codemirror/state",
       "@codemirror/view",
       "@codemirror/commands",
+      "@codemirror/search",
       "@codemirror/language",
       "@codemirror/autocomplete",
       "unified",
