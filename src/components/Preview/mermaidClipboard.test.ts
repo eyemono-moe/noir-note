@@ -5,26 +5,21 @@ import { copyMermaidPngToClipboard, copyMermaidSvgToClipboard } from "./mermaidC
 describe("mermaidClipboard", () => {
   const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="5"><text>Hi</text></svg>';
 
-  test("copies Mermaid SVG as an image ClipboardItem when supported", async () => {
+  test("copies Mermaid SVG source text when text clipboard write is available", async () => {
     const write = vi.fn<(items: ClipboardItem[]) => Promise<void>>(async () => {});
-    const clipboardItemPayloads: Record<string, Blob>[] = [];
+    const writeText = vi.fn<(text: string) => Promise<void>>(async () => {});
     class MockClipboardItem {
-      constructor(items: Record<string, Blob>) {
-        clipboardItemPayloads.push(items);
-      }
+      constructor(_items: Record<string, Blob>) {}
     }
 
     const result = await copyMermaidSvgToClipboard(svg, {
-      clipboard: { write },
+      clipboard: { write, writeText },
       ClipboardItem: MockClipboardItem as unknown as typeof ClipboardItem,
     });
 
-    expect(result).toEqual({ kind: "svg-image" });
-    expect(clipboardItemPayloads).toHaveLength(1);
-    const payload = clipboardItemPayloads[0];
-    expect(payload?.["image/svg+xml"]).toBeInstanceOf(Blob);
-    expect(payload?.["image/svg+xml"]?.type).toBe("image/svg+xml");
-    expect(write).toHaveBeenCalledOnce();
+    expect(result).toEqual({ kind: "svg-text" });
+    expect(writeText).toHaveBeenCalledWith(svg);
+    expect(write).not.toHaveBeenCalled();
   });
 
   test("falls back to writing SVG text when image clipboard write is unavailable", async () => {
@@ -56,25 +51,27 @@ describe("mermaidClipboard", () => {
     expect(writeText).toHaveBeenCalledWith(svg);
   });
 
-  test("copies Mermaid SVG as PNG through injected rasterization", async () => {
+  test("removes Mermaid HTML labels before PNG rasterization to avoid tainted canvas", async () => {
+    const htmlLabelSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="5">
+      <foreignObject><div xmlns="http://www.w3.org/1999/xhtml">HTML label</div></foreignObject>
+      <text>Fallback label</text>
+    </svg>`;
     const pngBlob = new Blob(["png"], { type: "image/png" });
     const write = vi.fn<(items: ClipboardItem[]) => Promise<void>>(async () => {});
-    const clipboardItemPayloads: Record<string, Blob>[] = [];
     class MockClipboardItem {
-      constructor(items: Record<string, Blob>) {
-        clipboardItemPayloads.push(items);
-      }
+      constructor(_items: Record<string, Blob>) {}
     }
     const rasterizeSvgToPng = vi.fn<(input: string) => Promise<Blob>>(async () => pngBlob);
 
-    await copyMermaidPngToClipboard(svg, {
+    await copyMermaidPngToClipboard(htmlLabelSvg, {
       clipboard: { write },
       ClipboardItem: MockClipboardItem as unknown as typeof ClipboardItem,
       rasterizeSvgToPng,
     });
 
-    expect(rasterizeSvgToPng).toHaveBeenCalledWith(svg);
-    expect(clipboardItemPayloads).toEqual([{ "image/png": pngBlob }]);
-    expect(write).toHaveBeenCalledOnce();
+    const rasterizedSvg = rasterizeSvgToPng.mock.calls[0]?.[0];
+    expect(rasterizedSvg).toContain("Fallback label");
+    expect(rasterizedSvg).not.toContain("foreignObject");
+    expect(rasterizedSvg).not.toContain("HTML label");
   });
 });

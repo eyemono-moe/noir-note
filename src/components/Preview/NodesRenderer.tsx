@@ -388,18 +388,26 @@ const MermaidDiagram: Component<{ code: string; offset: number }> = (props) => {
         <div class="parent-hover:flex parent-focus-within:flex absolute top-2 right-2 z-10 hidden gap-2">
           <button
             type="button"
-            class="bg-surface-control-rest not-active:hover:bg-surface-control-hover active:bg-surface-control-active border-border-primary focus-ring rounded-lg border px-2 py-1 text-xs font-medium transition-colors"
+            class="bg-surface-control-rest not-active:hover:bg-surface-control-hover active:bg-surface-control-active border-border-primary focus-ring inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium transition-colors"
             onClick={copySvg}
-            title="Copy Mermaid diagram as SVG"
+            title="Copy Mermaid diagram as SVG source"
           >
+            <span
+              class="i-material-symbols:content-copy-outline-rounded size-3.5 shrink-0"
+              aria-hidden="true"
+            />
             SVG
           </button>
           <button
             type="button"
-            class="bg-surface-control-rest not-active:hover:bg-surface-control-hover active:bg-surface-control-active border-border-primary focus-ring rounded-lg border px-2 py-1 text-xs font-medium transition-colors"
+            class="bg-surface-control-rest not-active:hover:bg-surface-control-hover active:bg-surface-control-active border-border-primary focus-ring inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium transition-colors"
             onClick={copyPng}
             title="Copy Mermaid diagram as PNG"
           >
+            <span
+              class="i-material-symbols:image-outline-rounded size-3.5 shrink-0"
+              aria-hidden="true"
+            />
             PNG
           </button>
         </div>

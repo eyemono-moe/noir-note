@@ -35,18 +35,14 @@ export async function copyMermaidSvgToClipboard(
   const clipboard = dependencies.clipboard ?? getClipboard();
   const ClipboardItemCtor = dependencies.ClipboardItem ?? getClipboardItem();
 
-  if (clipboard?.write && ClipboardItemCtor) {
-    try {
-      await clipboard.write([new ClipboardItemCtor({ "image/svg+xml": createSvgBlob(svg) })]);
-      return { kind: "svg-image" };
-    } catch (error) {
-      if (!clipboard.writeText) throw error;
-    }
-  }
-
   if (clipboard?.writeText) {
     await clipboard.writeText(svg);
     return { kind: "svg-text" };
+  }
+
+  if (clipboard?.write && ClipboardItemCtor) {
+    await clipboard.write([new ClipboardItemCtor({ "image/svg+xml": createSvgBlob(svg) })]);
+    return { kind: "svg-image" };
   }
 
   throw new Error("Clipboard write is not supported in this browser.");
@@ -63,8 +59,31 @@ export async function copyMermaidPngToClipboard(
     throw new Error("PNG clipboard write is not supported in this browser.");
   }
 
-  const png = await (dependencies.rasterizeSvgToPng ?? rasterizeSvgToPng)(svg);
+  const png = await (dependencies.rasterizeSvgToPng ?? rasterizeSvgToPng)(sanitizeSvgForPng(svg));
   await clipboard.write([new ClipboardItemCtor({ "image/png": png })]);
+}
+
+function sanitizeSvgForPng(svg: string): string {
+  const Parser = globalThis.DOMParser;
+  const Serializer = globalThis.XMLSerializer;
+  if (!Parser || !Serializer) return svg.replace(/<foreignObject\b[\s\S]*?<\/foreignObject>/gi, "");
+
+  const document = new Parser().parseFromString(svg, "image/svg+xml");
+  const parseError = document.querySelector("parsererror");
+  if (parseError) return svg.replace(/<foreignObject\b[\s\S]*?<\/foreignObject>/gi, "");
+
+  for (const node of Array.from(document.querySelectorAll("foreignObject"))) {
+    node.remove();
+  }
+
+  for (const image of Array.from(document.querySelectorAll("image"))) {
+    const href = image.getAttribute("href") ?? image.getAttribute("xlink:href");
+    if (href && !href.startsWith("data:") && !href.startsWith("blob:")) {
+      image.remove();
+    }
+  }
+
+  return new Serializer().serializeToString(document.documentElement);
 }
 
 async function rasterizeSvgToPng(svg: string): Promise<Blob> {
