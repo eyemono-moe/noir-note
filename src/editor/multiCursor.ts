@@ -3,7 +3,7 @@ import { selectNextOccurrence, selectSelectionMatches } from "@codemirror/search
 import { EditorSelection, EditorState } from "@codemirror/state";
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { keymap, rectangularSelection, crosshairCursor } from "@codemirror/view";
+import { keymap, rectangularSelection, crosshairCursor, drawSelection } from "@codemirror/view";
 
 /**
  * Pure helper: collapse a multi-range selection down to its primary range.
@@ -56,6 +56,10 @@ const addCursorBelow = (view: EditorView): boolean =>
  */
 export const multiCursorExtension: Extension = [
   EditorState.allowMultipleSelections.of(true),
+  // CodeMirror's default selection rendering relies on the browser's native
+  // selection, which only paints the primary range. `drawSelection` is required
+  // for secondary cursors / selections to be visible at all.
+  drawSelection(),
   EditorView.clickAddsSelectionRange.of((event) => event.altKey),
   rectangularSelection(),
   crosshairCursor(),
