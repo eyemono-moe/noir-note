@@ -20,8 +20,7 @@ import {
   useCommands,
 } from "../context/commands";
 import { useMemosCollection } from "../context/db";
-import { getPathSegments } from "../utils/path";
-import { matchesAllTags, parseSearchQuery } from "./search";
+import { buildPagePaletteItems, parseSearchQuery } from "./search";
 import type { PaletteItem } from "./types";
 
 import styles from "./palette.module.css";
@@ -50,6 +49,9 @@ const CommandPalette: Component = () => {
   const allMemosQuery = useLiveQuery((q) =>
     q.from({ memos: memosCollection }).select(({ memos }) => ({
       path: memos.path,
+      content: memos.content,
+      createdAt: memos.createdAt,
+      updatedAt: memos.updatedAt,
       title: memos.metadata?.title,
       metadata: memos.metadata,
     })),
@@ -72,20 +74,19 @@ const CommandPalette: Component = () => {
 
     return {
       initialItems: items,
-      // Custom filter that searches in label, description, path, and tag:<tag> page metadata.
+      // Page items are ranked and prefiltered by searchPages before being upserted.
+      // Keep commands searchable by label/description/value, ignoring tag:<tag> tokens.
       filter: (_itemText: string, filterText: string, item: PaletteItem) => {
-        const { text, tags } = parseSearchQuery(filterText);
-        const lowerQuery = text.toLowerCase();
-
-        if (tags.length > 0) {
-          if (item.type !== "page" || !matchesAllTags(item.tags, tags)) {
-            return false;
-          }
-          if (!lowerQuery) {
-            return true;
-          }
+        if (item.type === "page") {
+          return true;
         }
 
+        const { text, tags } = parseSearchQuery(filterText);
+        if (tags.length > 0) {
+          return false;
+        }
+
+        const lowerQuery = text.toLowerCase();
         return (
           item.label.toLowerCase().includes(lowerQuery) ||
           item.description?.toLowerCase().includes(lowerQuery) ||
@@ -108,31 +109,17 @@ const CommandPalette: Component = () => {
   createEffect(() => {
     const allMemos = allMemosQuery();
     if (!allMemos) return;
-    // Create a Set of current memo paths for efficient lookup
-    const currentMemoPaths = new Set(allMemos.map((memo) => memo.path));
+    // Build page items from full memo contents so palette queries can match note bodies.
+    const pageItems = buildPagePaletteItems(allMemos, inputValue(), MAX_PALETTE_ITEMS);
     untrack(() => {
-      // Get all existing page items from collection
+      // Recreate page items so search ranking controls their display order.
       const existingPageItems = collection().items.filter((item) => item.type === "page");
-
-      // Remove page items that no longer exist in memos
       for (const item of existingPageItems) {
-        if (!currentMemoPaths.has(item.value)) {
-          remove(item.value);
-        }
+        remove(item.value);
       }
 
-      // Upsert all current memos (updates existing, adds new)
-      for (const memo of allMemos) {
-        const pathParts = getPathSegments(memo.path);
-        const defaultLabel = pathParts.at(-1) || "Untitled";
-
-        upsert(memo.path, {
-          type: "page",
-          value: memo.path,
-          label: memo.metadata?.title || defaultLabel,
-          description: memo.path,
-          tags: memo.metadata?.tags,
-        });
+      for (const item of pageItems) {
+        upsert(item.value, item);
       }
     });
   });

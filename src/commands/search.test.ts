@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
 
 import type { Memo } from "../types/memo";
-import { extractPreview, extractTitle, searchPages } from "./search";
+import { buildPagePaletteItems, extractPreview, extractTitle, searchPages } from "./search";
 
 function createMemo(path: string, content: string, metadata?: Memo["metadata"]): Memo {
   return {
@@ -146,6 +146,36 @@ describe("searchPages", () => {
     expect(results[0].title).toBe("Random thoughts");
   });
 
+  test("uses a content match snippet as the preview", () => {
+    const results = searchPages(
+      [
+        createMemo(
+          "/deep-note",
+          "# Deep Note\nIntro text\n\nThe buried paragraph explains deterministic indexing for local notes.",
+        ),
+      ],
+      "deterministic",
+    );
+
+    expect(results[0].preview).toBe("…paragraph explains deterministic indexing for local notes.");
+  });
+
+  test("prioritizes path, then title, then content matches", () => {
+    const rankedMemos = [
+      createMemo("/content-only", "# Background\nalpha appears in the body"),
+      createMemo("/alpha-path", "# Background\nNo body hit"),
+      createMemo("/title-only", "# Alpha Heading\nNo body hit"),
+    ];
+
+    const results = searchPages(rankedMemos, "alpha");
+
+    expect(results.map((result) => result.path)).toEqual([
+      "/alpha-path",
+      "/title-only",
+      "/content-only",
+    ]);
+  });
+
   test("filters by a metadata tag query", () => {
     const taggedMemos = [
       createMemo("/work", "# Work", { tags: ["project", "important"] }),
@@ -198,5 +228,32 @@ describe("searchPages", () => {
     const results = searchPages(taggedMemos, 'tag:"product design"');
 
     expect(results.map((result) => result.path)).toEqual(["/design"]);
+  });
+});
+
+describe("buildPagePaletteItems", () => {
+  test("uses full-text search ranking and snippets for page items", () => {
+    const items = buildPagePaletteItems(
+      [
+        createMemo("/content-only", "# Background\nalpha appears in the body"),
+        createMemo("/alpha-path", "# Background\nNo body hit"),
+        createMemo("/title-only", "# Alpha Heading\nNo body hit"),
+      ],
+      "alpha",
+      10,
+    );
+
+    expect(items.map((item) => item.value)).toEqual([
+      "/alpha-path",
+      "/title-only",
+      "/content-only",
+    ]);
+    expect(items[2].description).toBe("alpha appears in the body");
+  });
+
+  test("shows existing pages when the query is empty", () => {
+    const items = buildPagePaletteItems([createMemo("/b", "# B"), createMemo("/a", "# A")], "", 10);
+
+    expect(items.map((item) => item.value)).toEqual(["/a", "/b"]);
   });
 });
