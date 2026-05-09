@@ -12,6 +12,7 @@ import { keymap } from "@codemirror/view";
 import { emojiCompletionExtension } from "./emojiCompletion";
 import { formatKeyBindings } from "./formatter";
 import { imagePasteExtension } from "./imagePaste";
+import { multiCursorExtension } from "./multiCursor";
 import { darkTheme, lightTheme } from "./theme";
 import { wrapSelectionExtension } from "./wrapSelection";
 
@@ -52,6 +53,7 @@ export function createEditorExtensions(isDark: boolean): Extension[] {
     keymap.of(formatKeyBindings),
     wrapSelectionExtension,
     imagePasteExtension,
+    multiCursorExtension,
 
     // Language support
     markdown(),
