@@ -24,6 +24,7 @@ import type {
   UpdateMutationFnParams,
 } from "@tanstack/solid-db";
 
+import { extractMemoLinks } from "../utils/noteLinks";
 import { migrateNotesFromRxDB } from "./migration";
 import { encodeNoteId, noteStore, type MemoDocument } from "./noteStore";
 import { createOpfsBroadcastSync } from "./opfsSync";
@@ -170,6 +171,24 @@ export async function queryMemoPathsReferencingAttachment(attachmentId: string):
         paths.push(doc.path);
         break; // count each note at most once
       }
+    }
+  }
+  return paths;
+}
+
+/**
+ * One-shot query that returns the paths of every memo whose Markdown content
+ * links to the given target memo path. Self-references are excluded.
+ * Safe to call outside a reactive context.
+ */
+export async function queryMemoPathsReferencingMemo(targetPath: string): Promise<string[]> {
+  const docs = await noteStore.list();
+  const paths: string[] = [];
+  for (const doc of docs) {
+    if (doc.path === targetPath) continue;
+    const linked = extractMemoLinks(doc.content, doc.path);
+    if (linked.includes(targetPath)) {
+      paths.push(doc.path);
     }
   }
   return paths;
