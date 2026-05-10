@@ -1,6 +1,8 @@
 import type { RegisterableHotkey } from "@tanstack/solid-hotkeys";
 
 import type { ViewMode } from "../types/ui";
+import type { InsertionSpec } from "../utils/editorInsertion";
+import type { InsertionPickerRequest } from "./insertion/types";
 
 export interface CommandContext {
   currentPath: string;
@@ -9,6 +11,14 @@ export interface CommandContext {
   setMode: (mode: ViewMode) => void;
   toggleSidebar: () => void;
   openNoteSearch: () => boolean;
+  /**
+   * Insert text/snippet into the current editor view at the current selection
+   * (or the explicit replace range when provided). Returns false when no
+   * editor is currently mounted.
+   */
+  insertIntoEditor: (spec: InsertionSpec) => boolean;
+  /** Open the shared insertion picker with the given request. */
+  openInsertionPicker: (request: InsertionPickerRequest) => void;
 }
 
 export interface Command {

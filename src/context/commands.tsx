@@ -11,9 +11,12 @@ import {
 import { Portal } from "solid-js/web";
 
 import { allCommands } from "../commands/definitions";
+import InsertionPicker from "../commands/insertion/InsertionPicker";
+import type { InsertionPickerRequest } from "../commands/insertion/types";
 import type { Command, CommandContext } from "../commands/types";
 import { HelpDialog } from "../components/Help/HelpDialog";
 import { openNoteSearchPanel } from "../editor/noteSearch";
+import { insertIntoEditor as insertIntoEditorView } from "../utils/editorInsertion";
 import { normalizePath } from "../utils/path";
 import { useEditorContext } from "./editor";
 import { useEditorSplit } from "./editorSplit";
@@ -88,6 +91,7 @@ export const CommandsProvider: ParentComponent = (props) => {
   // Command palette state
   const [paletteOpen, setPaletteOpen] = createSignal(false);
   const [helpOpen, setHelpOpen] = createSignal(false);
+  const [insertionRequest, setInsertionRequest] = createSignal<InsertionPickerRequest | null>(null);
 
   // Create reactive CommandContext
   const commandContext = createMemo<CommandContext>(() => ({
@@ -134,6 +138,8 @@ export const CommandsProvider: ParentComponent = (props) => {
 
       return openNoteSearchPanel(editorView());
     },
+    insertIntoEditor: (spec) => insertIntoEditorView(editorView(), spec),
+    openInsertionPicker: (request) => setInsertionRequest(request),
   }));
 
   // Register keyboard shortcuts for all commands
@@ -169,6 +175,7 @@ export const CommandsProvider: ParentComponent = (props) => {
       <Portal>
         <HelpDialog open={helpOpen()} onClose={() => setHelpOpen(false)} />
       </Portal>
+      <InsertionPicker request={insertionRequest()} onClose={() => setInsertionRequest(null)} />
     </CommandsContext.Provider>
   );
 };
