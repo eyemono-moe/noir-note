@@ -14,6 +14,7 @@ import { allCommands } from "../commands/definitions";
 import type { Command, CommandContext } from "../commands/types";
 import { HelpDialog } from "../components/Help/HelpDialog";
 import { openNoteSearchPanel } from "../editor/noteSearch";
+import { insertIntoEditor as insertIntoEditorView } from "../utils/editorInsertion";
 import { normalizePath } from "../utils/path";
 import { useEditorContext } from "./editor";
 import { useEditorSplit } from "./editorSplit";
@@ -134,6 +135,7 @@ export const CommandsProvider: ParentComponent = (props) => {
 
       return openNoteSearchPanel(editorView());
     },
+    insertIntoEditor: (spec) => insertIntoEditorView(editorView(), spec),
   }));
 
   // Register keyboard shortcuts for all commands
