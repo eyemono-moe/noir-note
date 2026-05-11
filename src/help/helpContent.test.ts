@@ -22,7 +22,6 @@ describe("help usage guide", () => {
       toggleSidebar: () => undefined,
       openNoteSearch: () => false,
       insertIntoEditor: () => false,
-      openInsertionPicker: () => undefined,
     });
 
     expect(opened).toBe(true);
