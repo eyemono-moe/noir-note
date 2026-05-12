@@ -1,4 +1,3 @@
-import { autocompletion } from "@codemirror/autocomplete";
 import type { CompletionContext, CompletionResult } from "@codemirror/autocomplete";
 
 const MAX_RESULTS = 50;
@@ -22,7 +21,9 @@ function loadEmojiList(): Promise<readonly EmojiEntry[]> {
  * a word character or `/` (to avoid false positives on URLs and times like
  * `10:30`). Starts-with matches are ranked before contains matches.
  */
-async function emojiCompletionSource(context: CompletionContext): Promise<CompletionResult | null> {
+export async function emojiCompletionSource(
+  context: CompletionContext,
+): Promise<CompletionResult | null> {
   // (?<![/\w]) — exclude ':' preceded by '/', letters, digits, or '_'
   // so 'https://' and '10:30' won't trigger completion
   const match = context.matchBefore(/(?<![/\w]):[+\w-]*/);
@@ -59,7 +60,3 @@ async function emojiCompletionSource(context: CompletionContext): Promise<Comple
     filter: false,
   };
 }
-
-export const emojiCompletionExtension = autocompletion({
-  override: [emojiCompletionSource],
-});

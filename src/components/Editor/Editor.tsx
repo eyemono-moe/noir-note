@@ -6,12 +6,15 @@ import { createEffect, type Component } from "solid-js";
 import { EditorStateLRUCache } from "../../context/editorStateCache";
 import { useTheme } from "../../context/theme";
 import { createEditorExtensions } from "../../editor/extensions";
+import type { MemoWithoutContent } from "../../types/memo";
 
 interface EditorProps {
   /** Current memo path. When this changes, the editor state is saved and potentially restored from cache. */
   path: string;
   /** Current memo content. Used to control editor document and detect stale cache. */
   content: string;
+  /** Existing memos used by inline note-link completion. */
+  allMemos?: readonly MemoWithoutContent[];
   /** Called whenever user makes manual edits to the editor. */
   onChange: (content: string) => void;
   placeholder?: string;
@@ -38,8 +41,10 @@ const Editor: Component<EditorProps> = (props) => {
     onValueChange: (value) => props.onChange(value),
   });
 
-  // Setup extensions with theme
-  createExtension(() => createEditorExtensions(isDark()));
+  // Setup extensions with theme and reactive note-link completion context
+  createExtension(() =>
+    createEditorExtensions(isDark(), { currentPath: props.path, memos: props.allMemos ?? [] }),
+  );
 
   // Single effect that handles: save on path change, then restore or sync document.
   //
@@ -81,7 +86,10 @@ const Editor: Component<EditorProps> = (props) => {
           view.setState(
             EditorState.create({
               doc: newContent,
-              extensions: createEditorExtensions(isDark()),
+              extensions: createEditorExtensions(isDark(), {
+                currentPath: props.path,
+                memos: props.allMemos ?? [],
+              }),
             }),
           );
         }

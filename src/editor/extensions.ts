@@ -1,3 +1,5 @@
+import { autocompletion } from "@codemirror/autocomplete";
+import type { CompletionContext } from "@codemirror/autocomplete";
 import { history, historyKeymap, indentWithTab, redo, redoSelection } from "@codemirror/commands";
 import { defaultKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
@@ -9,10 +11,12 @@ import { EditorView, highlightWhitespace } from "@codemirror/view";
 import { lineNumbers, highlightActiveLineGutter, highlightActiveLine } from "@codemirror/view";
 import { keymap } from "@codemirror/view";
 
-import { emojiCompletionExtension } from "./emojiCompletion";
+import { emojiCompletionSource } from "./emojiCompletion";
 import { formatKeyBindings } from "./formatter";
 import { imagePasteExtension } from "./imagePaste";
 import { multiCursorExtension } from "./multiCursor";
+import { noteLinkCompletionSource } from "./noteLinkCompletion";
+import type { NoteLinkCompletionContext } from "./noteLinkCompletion";
 import { darkTheme, lightTheme } from "./theme";
 import { wrapSelectionExtension } from "./wrapSelection";
 
@@ -29,7 +33,17 @@ const highlightWhitespaceTheme = EditorView.theme({
   },
 });
 
-export function createEditorExtensions(isDark: boolean): Extension[] {
+export function createEditorExtensions(
+  isDark: boolean,
+  noteLinkContext?: NoteLinkCompletionContext,
+): Extension[] {
+  const completionSources = noteLinkContext
+    ? [
+        emojiCompletionSource,
+        (context: CompletionContext) => noteLinkCompletionSource({ context, ...noteLinkContext }),
+      ]
+    : [emojiCompletionSource];
+
   return [
     // Basic editing
     lineNumbers(),
@@ -57,7 +71,7 @@ export function createEditorExtensions(isDark: boolean): Extension[] {
 
     // Language support
     markdown(),
-    emojiCompletionExtension,
+    autocompletion({ override: completionSources }),
 
     [highlightWhitespace(), highlightWhitespaceTheme],
 
