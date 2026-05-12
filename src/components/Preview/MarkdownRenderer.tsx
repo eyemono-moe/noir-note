@@ -73,63 +73,73 @@ const LightboxImage: Component<{
   onWheelZoom: (deltaY: number) => void;
   onDragPan: (movement: LightboxPan) => void;
 }> = (props) => {
-  const src = createResolvedImageSrc(() => props.url);
+  const image = createResolvedImageSrc(() => props.url);
   const [dragPointerId, setDragPointerId] = createSignal<number | null>(null);
 
   return (
-    <Show
-      when={src()}
+    <Switch
       fallback={
         <div class="flex size-32 items-center justify-center">
           <span class="i-material-symbols:hourglass-empty text-text-secondary size-8 shrink-0 animate-spin" />
         </div>
       }
     >
-      {(s) => (
-        <div
-          role="presentation"
-          class="flex size-full items-center justify-center overflow-hidden"
-          onWheel={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            props.onWheelZoom(e.deltaY);
-          }}
-        >
-          <img
-            src={s()}
-            alt=""
-            draggable={false}
-            class="h-auto max-h-full w-auto max-w-full cursor-grab touch-none rounded object-contain shadow-2xl select-none [background:conic-gradient(#eee_90deg,transparent_90deg_180deg,#eee_180deg_270deg,transparent_270deg)_50%_50%/50px_50px,#fff] active:cursor-grabbing"
-            style={{
-              transform: `translate(${props.pan.x}px, ${props.pan.y}px) scale(${props.zoom})`,
-              "transform-origin": "center center",
-            }}
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-            onPointerDown={(e) => {
+      <Match when={image().status === "ready" && image().src}>
+        {(src) => (
+          <div
+            role="presentation"
+            class="flex size-full items-center justify-center overflow-hidden"
+            onWheel={(e) => {
+              e.preventDefault();
               e.stopPropagation();
-              setDragPointerId(e.pointerId);
-              e.currentTarget.setPointerCapture(e.pointerId);
+              props.onWheelZoom(e.deltaY);
             }}
-            onPointerMove={(e) => {
-              e.stopPropagation();
-              if (dragPointerId() !== e.pointerId) return;
-              props.onDragPan({ x: e.movementX, y: e.movementY });
-            }}
-            onPointerUp={(e) => {
-              e.stopPropagation();
-              if (dragPointerId() !== e.pointerId) return;
-              setDragPointerId(null);
-              e.currentTarget.releasePointerCapture(e.pointerId);
-            }}
-            onPointerCancel={(e) => {
-              e.stopPropagation();
-              setDragPointerId(null);
-            }}
+          >
+            <img
+              src={src()}
+              alt=""
+              draggable={false}
+              class="h-auto max-h-full w-auto max-w-full cursor-grab touch-none rounded object-contain shadow-2xl select-none [background:conic-gradient(#eee_90deg,transparent_90deg_180deg,#eee_180deg_270deg,transparent_270deg)_50%_50%/50px_50px,#fff] active:cursor-grabbing"
+              style={{
+                transform: `translate(${props.pan.x}px, ${props.pan.y}px) scale(${props.zoom})`,
+                "transform-origin": "center center",
+              }}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                setDragPointerId(e.pointerId);
+                e.currentTarget.setPointerCapture(e.pointerId);
+              }}
+              onPointerMove={(e) => {
+                e.stopPropagation();
+                if (dragPointerId() !== e.pointerId) return;
+                props.onDragPan({ x: e.movementX, y: e.movementY });
+              }}
+              onPointerUp={(e) => {
+                e.stopPropagation();
+                if (dragPointerId() !== e.pointerId) return;
+                setDragPointerId(null);
+                e.currentTarget.releasePointerCapture(e.pointerId);
+              }}
+              onPointerCancel={(e) => {
+                e.stopPropagation();
+                setDragPointerId(null);
+              }}
+            />
+          </div>
+        )}
+      </Match>
+      <Match when={image().status === "missing"}>
+        <div class="border-border-secondary bg-surface-secondary text-text-secondary flex items-center gap-2 rounded-md border border-dashed px-4 py-3 text-sm">
+          <span
+            class="i-material-symbols:broken-image-outline size-5 shrink-0"
+            aria-hidden="true"
           />
+          <span class="text-text-primary font-medium">存在しない画像です</span>
         </div>
-      )}
-    </Show>
+      </Match>
+    </Switch>
   );
 };
 

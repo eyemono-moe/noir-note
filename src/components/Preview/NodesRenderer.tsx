@@ -26,6 +26,7 @@ import {
   MermaidRegistryContext,
 } from "./contexts";
 import { EMBED_MATCHERS, EmbedRenderer } from "./embeds";
+import { getAttachmentImageId, getResolvedImageState } from "./imageResolution";
 
 import "katex/dist/katex.min.css";
 import "../../styles/shiki.css";
@@ -41,25 +42,24 @@ type RenderableNode = RootContent;
 // ============================================================================
 
 /**
- * SolidJS primitive that resolves an image URL to a renderable `src` string.
+ * SolidJS primitive that resolves an image URL to a renderable image state.
  * Handles `attachment://` URLs by fetching an object URL via `getImageUrl`.
  *
- * Returns `() => string | null`. `null` means the URL is not yet ready — do
- * not pass it to `<img src>` directly as it would render a broken-image icon.
+ * Attachment URLs distinguish pending lookup (`loading`) from settled missing
+ * attachments (`missing`) so the preview can render a stable placeholder.
  *
  * `createResource` uses `initialValue: null` so it never suspends. Always
  * read the result via `.latest`, not the call form, to avoid propagating the
  * pending state to the nearest Suspense boundary.
  */
-export function createResolvedImageSrc(url: () => string | null | undefined): () => string | null {
-  const attachmentId = (): string | null => {
-    const u = url();
-    return u?.startsWith("attachment://") ? u.slice("attachment://".length) : null;
-  };
-
-  const [objectUrl] = createResource(attachmentId, (id) => getImageUrl(id), {
-    initialValue: null,
-  });
+export function createResolvedImageSrc(url: () => string | null | undefined) {
+  const [objectUrl] = createResource(
+    () => getAttachmentImageId(url()),
+    (id) => getImageUrl(id),
+    {
+      initialValue: null,
+    },
+  );
 
   // Revoke the object URL whenever it changes or the component is unmounted.
   createEffect(() => {
@@ -69,13 +69,15 @@ export function createResolvedImageSrc(url: () => string | null | undefined): ()
     });
   });
 
-  const src = createMemo(() => {
-    const u = url();
-    if (!u) return null;
-    if (!u.startsWith("attachment://")) return u;
-    return objectUrl.latest ?? null;
-  });
-  return src;
+  const imageState = createMemo(() =>
+    getResolvedImageState({
+      url: url(),
+      objectUrl: objectUrl.latest,
+      loading: objectUrl.loading,
+    }),
+  );
+
+  return imageState;
 }
 
 // ============================================================================
@@ -196,28 +198,54 @@ const LinkNode: Component<{ node: RootContentMap["link"] }> = (props) => {
   );
 };
 
-const ImageNode: Component<{ node: RootContentMap["image"] }> = (props) => {
-  const openLightbox = useContext(LightboxContext);
-  const src = createResolvedImageSrc(() => props.node.url);
+const MissingImagePlaceholder: Component<{ alt?: string | null; title?: string | null }> = (
+  props,
+) => {
+  const alt = () => props.alt?.trim();
 
   return (
-    <button
-      type="button"
-      class="focus-ring cursor-zoom-in appearance-none border-0 bg-transparent p-0"
-      onClick={() => openLightbox(props.node.position?.start?.offset ?? -1)}
+    <span
+      role="img"
+      aria-label={alt() ? `存在しない画像です: ${alt()}` : "存在しない画像です"}
+      title={props.title ?? undefined}
+      class="border-border-secondary bg-surface-secondary text-text-secondary inline-flex max-w-full items-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm"
     >
-      <Show when={src()}>
-        {(s) => (
-          <img
-            src={s()}
-            alt={props.node.alt ?? ""}
-            title={props.node.title ?? undefined}
-            loading="lazy"
-            decoding="async"
-          />
+      <span class="i-material-symbols:broken-image-outline size-5 shrink-0" aria-hidden="true" />
+      <span class="min-w-0">
+        <span class="text-text-primary font-medium">存在しない画像です</span>
+        <Show when={alt()}>{(text) => <span class="ml-2 break-all">{text()}</span>}</Show>
+      </span>
+    </span>
+  );
+};
+
+const ImageNode: Component<{ node: RootContentMap["image"] }> = (props) => {
+  const openLightbox = useContext(LightboxContext);
+  const image = createResolvedImageSrc(() => props.node.url);
+
+  return (
+    <Switch>
+      <Match when={image().status === "ready" && image().src}>
+        {(src) => (
+          <button
+            type="button"
+            class="focus-ring cursor-zoom-in appearance-none border-0 bg-transparent p-0"
+            onClick={() => openLightbox(props.node.position?.start?.offset ?? -1)}
+          >
+            <img
+              src={src()}
+              alt={props.node.alt ?? ""}
+              title={props.node.title ?? undefined}
+              loading="lazy"
+              decoding="async"
+            />
+          </button>
         )}
-      </Show>
-    </button>
+      </Match>
+      <Match when={image().status === "missing"}>
+        <MissingImagePlaceholder alt={props.node.alt} title={props.node.title} />
+      </Match>
+    </Switch>
   );
 };
 
@@ -249,28 +277,33 @@ const ImageReferenceNode: Component<{ node: RootContentMap["imageReference"] }> 
   const getDefs = useContext(DefinitionsContext);
   const openLightbox = useContext(LightboxContext);
   const def = () => getDefs().get(props.node.identifier);
-  const src = createResolvedImageSrc(() => def()?.url);
+  const image = createResolvedImageSrc(() => def()?.url);
 
   return (
     <Show when={def()}>
       {(d) => (
-        <button
-          type="button"
-          class="focus-ring cursor-zoom-in appearance-none border-0 bg-transparent p-0"
-          onClick={() => openLightbox(props.node.position?.start?.offset ?? -1)}
-        >
-          <Show when={src()}>
-            {(s) => (
-              <img
-                src={s()}
-                alt={props.node.alt ?? ""}
-                title={d().title ?? undefined}
-                loading="lazy"
-                decoding="async"
-              />
+        <Switch>
+          <Match when={image().status === "ready" && image().src}>
+            {(src) => (
+              <button
+                type="button"
+                class="focus-ring cursor-zoom-in appearance-none border-0 bg-transparent p-0"
+                onClick={() => openLightbox(props.node.position?.start?.offset ?? -1)}
+              >
+                <img
+                  src={src()}
+                  alt={props.node.alt ?? ""}
+                  title={d().title ?? undefined}
+                  loading="lazy"
+                  decoding="async"
+                />
+              </button>
             )}
-          </Show>
-        </button>
+          </Match>
+          <Match when={image().status === "missing"}>
+            <MissingImagePlaceholder alt={props.node.alt} title={d().title} />
+          </Match>
+        </Switch>
       )}
     </Show>
   );
