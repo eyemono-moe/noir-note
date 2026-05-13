@@ -1,3 +1,4 @@
+import { autocompletion } from "@codemirror/autocomplete";
 import { history, historyKeymap, indentWithTab, redo, redoSelection } from "@codemirror/commands";
 import { defaultKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
@@ -9,7 +10,8 @@ import { EditorView, highlightWhitespace } from "@codemirror/view";
 import { lineNumbers, highlightActiveLineGutter, highlightActiveLine } from "@codemirror/view";
 import { keymap } from "@codemirror/view";
 
-import { emojiCompletionExtension } from "./emojiCompletion";
+import { dateCompletionSource } from "./dateCompletion";
+import { emojiCompletionSource } from "./emojiCompletion";
 import { formatKeyBindings } from "./formatter";
 import { imagePasteExtension } from "./imagePaste";
 import { multiCursorExtension } from "./multiCursor";
@@ -57,7 +59,11 @@ export function createEditorExtensions(isDark: boolean): Extension[] {
 
     // Language support
     markdown(),
-    emojiCompletionExtension,
+    // Combine inline completion sources into one autocompletion extension so
+    // multiple `override` registrations don't compete.
+    autocompletion({
+      override: [emojiCompletionSource, dateCompletionSource],
+    }),
 
     [highlightWhitespace(), highlightWhitespaceTheme],
 
