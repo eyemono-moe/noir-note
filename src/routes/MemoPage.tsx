@@ -75,6 +75,7 @@ const MemoPageContent: Component = () => {
                 const now = Date.now();
                 collection.insert({ ...memo, content: "", createdAt: now, updatedAt: now });
               }}
+              onCurrentContentChange={handleContentChange}
               allMemos={allMemosQuery() || []}
               memosCollection={collection}
             />

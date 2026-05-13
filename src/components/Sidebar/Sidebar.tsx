@@ -15,6 +15,7 @@ interface SidebarProps {
   onNavigate: (path: string) => void;
   onDelete: (path: string) => void;
   onInsert: (memo: Omit<Memo, "content" | "createdAt" | "updatedAt">) => void;
+  onCurrentContentChange: (content: string) => void;
   allMemos: MemoWithoutContent[];
   memosCollection: MemosCollection;
 }
@@ -132,7 +133,9 @@ const Sidebar: Component<SidebarProps> = (props) => {
           <PropertiesTab
             currentPath={props.currentPath}
             currentContent={props.currentContent}
+            onCurrentContentChange={props.onCurrentContentChange}
             allMemos={props.allMemos}
+            onNavigate={props.onNavigate}
           />
         </Tabs.Content>
 
