@@ -131,7 +131,7 @@ const LightboxImage: Component<{
         )}
       </Match>
       <Match when={image().status === "missing"}>
-        <div class="border-border-secondary bg-surface-secondary text-text-secondary flex items-center gap-2 rounded-md border border-dashed px-4 py-3 text-sm">
+        <div class="border-border-primary bg-surface-secondary text-text-secondary flex items-center gap-2 rounded-md border border-dashed px-4 py-3 text-sm">
           <span
             class="i-material-symbols:broken-image-outline size-5 shrink-0"
             aria-hidden="true"

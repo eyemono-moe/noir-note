@@ -208,7 +208,7 @@ const MissingImagePlaceholder: Component<{ alt?: string | null; title?: string |
       role="img"
       aria-label={alt() ? `存在しない画像です: ${alt()}` : "存在しない画像です"}
       title={props.title ?? undefined}
-      class="border-border-secondary bg-surface-secondary text-text-secondary inline-flex max-w-full items-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm"
+      class="border-border-primary bg-surface-secondary text-text-secondary inline-flex max-w-full items-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm"
     >
       <span class="i-material-symbols:broken-image-outline size-5 shrink-0" aria-hidden="true" />
       <span class="min-w-0">
