@@ -20,8 +20,9 @@ import {
   useCommands,
 } from "../context/commands";
 import { useMemosCollection } from "../context/db";
+import { getSearchClient } from "../search/searchClient";
 import { buildPagePaletteItems, parseSearchQuery } from "./search";
-import type { PaletteItem } from "./types";
+import type { PageSearchResult, PaletteItem } from "./types";
 
 import styles from "./palette.module.css";
 
@@ -43,6 +44,7 @@ const CommandPalette: Component = () => {
   const { isOpen, setOpen } = useCommandPalette();
 
   const [inputValue, setInputValue] = createSignal("");
+  const [workerResults, setWorkerResults] = createSignal<PageSearchResult[] | undefined>();
 
   // Get all memos for palette
   const memosCollection = useMemosCollection();
@@ -105,14 +107,66 @@ const CommandPalette: Component = () => {
     }
   });
 
-  // Sync page in palette when memos change
+  // Keep the Worker index in sync with the reactive memo collection.
   createEffect(() => {
     const allMemos = allMemosQuery();
     if (!allMemos) return;
-    // Build page items from full memo contents so palette queries can match note bodies.
-    const pageItems = buildPagePaletteItems(allMemos, inputValue(), MAX_PALETTE_ITEMS);
+
+    const query = untrack(inputValue);
+    void getSearchClient()
+      .rebuild(allMemos)
+      .then(() => {
+        if (query.trim()) {
+          return getSearchClient().search(query, { limit: MAX_PALETTE_ITEMS });
+        }
+        setWorkerResults(undefined);
+        return undefined;
+      })
+      .then((results) => {
+        if (results) setWorkerResults(results);
+      })
+      .catch((error: unknown) => {
+        console.error("[CommandPalette] Search index update failed:", error);
+        setWorkerResults(undefined);
+      });
+  });
+
+  // Query the Worker when the palette input changes. Empty input still uses the
+  // local memo list so existing pages show immediately before any search.
+  createEffect(() => {
+    const query = inputValue();
+    if (!query.trim()) {
+      setWorkerResults(undefined);
+      return;
+    }
+
+    let cancelled = false;
+    void getSearchClient()
+      .search(query, { limit: MAX_PALETTE_ITEMS })
+      .then((results) => {
+        if (!cancelled) setWorkerResults(results);
+      })
+      .catch((error: unknown) => {
+        console.error("[CommandPalette] Search query failed:", error);
+        if (!cancelled) setWorkerResults(undefined);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  });
+
+  // Sync page in palette when memos or Worker results change.
+  createEffect(() => {
+    const allMemos = allMemosQuery();
+    if (!allMemos) return;
+    const pageItems = buildPagePaletteItems(
+      allMemos,
+      inputValue(),
+      MAX_PALETTE_ITEMS,
+      workerResults(),
+    );
     untrack(() => {
-      // Recreate page items so search ranking controls their display order.
       const existingPageItems = collection().items.filter((item) => item.type === "page");
       for (const item of existingPageItems) {
         remove(item.value);
