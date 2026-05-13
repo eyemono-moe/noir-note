@@ -136,7 +136,7 @@ const LightboxImage: Component<{
             class="i-material-symbols:broken-image-outline size-5 shrink-0"
             aria-hidden="true"
           />
-          <span class="text-text-primary font-medium">存在しない画像です</span>
+          <span class="text-text-primary font-medium">The image does not exist</span>
         </div>
       </Match>
     </Switch>
