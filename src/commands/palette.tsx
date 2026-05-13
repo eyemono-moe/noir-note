@@ -44,6 +44,7 @@ const CommandPalette: Component = () => {
   const { isOpen, setOpen } = useCommandPalette();
 
   const [inputValue, setInputValue] = createSignal("");
+  const [isSearchIndexReady, setSearchIndexReady] = createSignal(false);
   const [workerResults, setWorkerResults] = createSignal<PageSearchResult[] | undefined>();
 
   // Get all memos for palette
@@ -112,10 +113,12 @@ const CommandPalette: Component = () => {
     const allMemos = allMemosQuery();
     if (!allMemos) return;
 
+    setSearchIndexReady(false);
     const query = untrack(inputValue);
     void getSearchClient()
       .rebuild(allMemos)
       .then(() => {
+        setSearchIndexReady(true);
         if (query.trim()) {
           return getSearchClient().search(query, { limit: MAX_PALETTE_ITEMS });
         }
@@ -127,6 +130,7 @@ const CommandPalette: Component = () => {
       })
       .catch((error: unknown) => {
         console.error("[CommandPalette] Search index update failed:", error);
+        setSearchIndexReady(false);
         setWorkerResults(undefined);
       });
   });
@@ -136,6 +140,11 @@ const CommandPalette: Component = () => {
   createEffect(() => {
     const query = inputValue();
     if (!query.trim()) {
+      setWorkerResults(undefined);
+      return;
+    }
+
+    if (!isSearchIndexReady()) {
       setWorkerResults(undefined);
       return;
     }
