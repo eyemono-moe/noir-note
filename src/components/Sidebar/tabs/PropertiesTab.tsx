@@ -89,10 +89,17 @@ const EditableFrontmatterFields: Component<{
     filter: (item, input) => filterFn().contains(item, input),
   });
 
+  // Keep the tag suggestion collection in sync with memo metadata so users can
+  // select tags that already exist in other notes. This currently scans the
+  // sidebar memo list; if this becomes hot with large vaults, move the distinct
+  // tag aggregation into TanStack DB or another indexed derived query.
   createEffect(() => {
     set(collectFrontmatterTags(props.allMemos).map((tag) => ({ label: tag, value: tag })));
   });
 
+  // Reset local edit controls when the selected note/frontmatter changes. The
+  // inputs keep local state while focused, but must reflect navigation and
+  // external content updates instead of leaking values across notes.
   createEffect(() => {
     setTitle(props.title ?? "");
     setTags(normalizeTags(props.tags));
