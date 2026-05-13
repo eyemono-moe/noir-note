@@ -30,14 +30,14 @@ function contextAt(doc: string, pos: number, explicit = false) {
 }
 
 describe("noteLinkCompletionSource", () => {
-  test("returns markdown-link options for a [[ trigger", () => {
+  test("returns markdown-link options for a [ trigger", () => {
     const result = noteLinkCompletionSource({
-      context: contextAt("See [[pro", 9),
+      context: contextAt("See [pro", 8),
       memos,
       currentPath: "/notes/today",
     });
 
-    expect(result).toMatchObject({ from: 4, to: 9, filter: false });
+    expect(result).toMatchObject({ from: 4, to: 8, filter: false });
     expect(result?.options).toEqual([
       expect.objectContaining({
         label: "Project Alpha",
@@ -50,7 +50,7 @@ describe("noteLinkCompletionSource", () => {
   test("returns null when no candidates match", () => {
     expect(
       noteLinkCompletionSource({
-        context: contextAt("See [[missing", 13),
+        context: contextAt("See [missing", 12),
         memos,
         currentPath: "/notes/today",
       }),
@@ -60,7 +60,17 @@ describe("noteLinkCompletionSource", () => {
   test("does not trigger inside an existing word", () => {
     expect(
       noteLinkCompletionSource({
-        context: contextAt("abc[[pro", 8),
+        context: contextAt("abc[pro", 7),
+        memos,
+        currentPath: "/notes/today",
+      }),
+    ).toBeNull();
+  });
+
+  test("does not trigger for a markdown link URL after ]", () => {
+    expect(
+      noteLinkCompletionSource({
+        context: contextAt("[label](pro", 10),
         memos,
         currentPath: "/notes/today",
       }),
@@ -69,7 +79,7 @@ describe("noteLinkCompletionSource", () => {
 
   test("excludes the current note from options", () => {
     const result = noteLinkCompletionSource({
-      context: contextAt("[[", 2),
+      context: contextAt("[", 1),
       memos,
       currentPath: "/notes/today",
     });

@@ -1,4 +1,5 @@
 import { EditorState, Transaction } from "@codemirror/state";
+import type { Extension } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { createCodeMirror } from "solid-codemirror";
 import { createEffect, type Component } from "solid-js";
@@ -41,10 +42,16 @@ const Editor: Component<EditorProps> = (props) => {
     onValueChange: (value) => props.onChange(value),
   });
 
-  // Setup extensions with theme and reactive note-link completion context
-  createExtension(() =>
-    createEditorExtensions(isDark(), { currentPath: props.path, memos: props.allMemos ?? [] }),
-  );
+  const extensions = (): Extension[] =>
+    createEditorExtensions(isDark(), { currentPath: props.path, memos: props.allMemos ?? [] });
+
+  // Setup extensions with theme and reactive note-link completion context.
+  // Keep this as the only dynamic CodeMirror extension compartment. When we
+  // restore a cached EditorState or create a fresh state on path transitions,
+  // the state must not include another copy of the full extension set — adding
+  // another autocompletion override causes CodeMirror to throw
+  // "Config merge conflict for field override" and leaves navigation half-applied.
+  createExtension(extensions);
 
   // Single effect that handles: save on path change, then restore or sync document.
   //
@@ -83,15 +90,7 @@ const Editor: Component<EditorProps> = (props) => {
           view.setState(restored);
         } else {
           // no valid cache -> clear history by creating a fresh state
-          view.setState(
-            EditorState.create({
-              doc: newContent,
-              extensions: createEditorExtensions(isDark(), {
-                currentPath: props.path,
-                memos: props.allMemos ?? [],
-              }),
-            }),
-          );
+          view.setState(EditorState.create({ doc: newContent }));
         }
         // Transition handled — clear the flag
         return { path: newPath, content: newContent, justChangedPath: false };

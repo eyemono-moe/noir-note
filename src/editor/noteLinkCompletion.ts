@@ -7,7 +7,7 @@ import {
   getNoteLinkDisplayName,
 } from "../utils/noteLinkInsertion";
 
-const NOTE_LINK_TRIGGER_RE = /(?<![\w])\[\[[^\]\n]*/;
+const NOTE_LINK_TRIGGER_RE = /(?<![\w\]])\[[^\]\n]*/;
 
 export type NoteLinkCompletionContext = {
   memos: readonly MemoWithoutContent[];
@@ -33,7 +33,7 @@ export function noteLinkCompletionSource({
   if (!match) return null;
   if (match.from === match.to && !context.explicit) return null;
 
-  const query = match.text.slice(2).trim();
+  const query = match.text.slice(1).trim();
   const candidates = buildNoteLinkCandidates({ memos, currentPath, query });
   if (candidates.length === 0) return null;
 
