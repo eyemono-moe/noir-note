@@ -7,9 +7,11 @@ import type { Memo, MemoWithoutContent } from "../../types/memo";
 import { AttachmentsTab } from "./tabs/AttachmentsTab";
 import { ConfigTab } from "./tabs/ConfigTab";
 import { ExplorerTab } from "./tabs/ExplorerTab";
+import { PropertiesTab } from "./tabs/PropertiesTab";
 
 interface SidebarProps {
   currentPath: string;
+  currentContent: string;
   onNavigate: (path: string) => void;
   onDelete: (path: string) => void;
   onInsert: (memo: Omit<Memo, "content" | "createdAt" | "updatedAt">) => void;
@@ -39,6 +41,11 @@ const TAB_DEFS: TabDef[] = [
     id: "attachments",
     icon: "i-material-symbols:image-outline-rounded",
     label: "Attachments",
+  },
+  {
+    id: "properties",
+    icon: "i-material-symbols:info-outline-rounded",
+    label: "Properties",
   },
 ];
 
@@ -119,6 +126,14 @@ const Sidebar: Component<SidebarProps> = (props) => {
 
         <Tabs.Content value="attachments" class="h-full data-[state=inactive]:hidden">
           <AttachmentsTab />
+        </Tabs.Content>
+
+        <Tabs.Content value="properties" class="h-full data-[state=inactive]:hidden">
+          <PropertiesTab
+            currentPath={props.currentPath}
+            currentContent={props.currentContent}
+            allMemos={props.allMemos}
+          />
         </Tabs.Content>
 
         <Tabs.Content value="config" class="h-full data-[state=inactive]:hidden">
