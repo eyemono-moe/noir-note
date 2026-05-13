@@ -1,3 +1,4 @@
+import { devtools } from "@tanstack/devtools-vite";
 import UnoCSS from "unocss/vite";
 import { analyzer } from "vite-bundle-analyzer";
 import { VitePWA } from "vite-plugin-pwa";
@@ -8,6 +9,7 @@ import { gitHashPlugin } from "./plugins/vite-plugin-git-hash.ts";
 
 export default defineConfig({
   plugins: [
+    devtools(),
     UnoCSS(),
     solidPlugin(),
     gitHashPlugin(),

@@ -3,6 +3,7 @@ import "uno.css";
 import "@unocss/reset/tailwind-compat.css";
 import "./styles/colors.css";
 import { Route, Router } from "@solidjs/router";
+import { TanStackDevtools } from "@tanstack/solid-devtools";
 import { render } from "solid-js/web";
 
 import App from "./App";
@@ -19,11 +20,14 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
 
 render(
   () => (
-    <FeatureCheckGate>
-      <Router root={App}>
-        <Route path="*" component={MemoPage} />
-      </Router>
-    </FeatureCheckGate>
+    <>
+      <FeatureCheckGate>
+        <Router root={App}>
+          <Route path="*" component={MemoPage} />
+        </Router>
+      </FeatureCheckGate>
+      <TanStackDevtools />
+    </>
   ),
   root!,
 );
