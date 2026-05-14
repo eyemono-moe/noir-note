@@ -7,6 +7,7 @@ import { CurrentMemoProvider, useCurrentMemo } from "../context/currentMemo";
 import { useMemosCollection } from "../context/db";
 import { useEditorContext } from "../context/editor";
 import { useEditorSplit } from "../context/editorSplit";
+import { openNoteSearchPanel } from "../editor/noteSearch";
 import { useCheckboxSync } from "../hooks/useCheckboxSync";
 import { useMemoSaver } from "../hooks/useMemoOperations";
 import { useScrollSync } from "../hooks/useScrollSync";
@@ -40,6 +41,13 @@ const MemoPageContent: Component = () => {
   const handleContentChange = (newContent: string) => {
     setContent(newContent);
     debouncedSave(currentPath(), newContent);
+  };
+
+  const handleSearchResultNavigate = (path: string, query: string) => {
+    navigate(path);
+    requestAnimationFrame(() => {
+      openNoteSearchPanel(editorView(), { query });
+    });
   };
 
   const scrollSyncEnabled = useScrollSyncEnabled();
@@ -76,6 +84,7 @@ const MemoPageContent: Component = () => {
                 collection.insert({ ...memo, content: "", createdAt: now, updatedAt: now });
               }}
               onCurrentContentChange={handleContentChange}
+              onSearchResultNavigate={handleSearchResultNavigate}
               allMemos={allMemosQuery() || []}
               memosCollection={collection}
             />

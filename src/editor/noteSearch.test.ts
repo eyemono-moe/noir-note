@@ -21,6 +21,28 @@ describe("openNoteSearchPanel", () => {
     expect(focusPanelInput).toHaveBeenCalledOnce();
   });
 
+  test("sets the CodeMirror search query before opening the panel", () => {
+    const focusEditor = vi.fn<() => void>();
+    const dispatch = vi.fn<(spec: unknown) => void>();
+    const openPanel = vi.fn<() => void>();
+    const focusPanelInput = vi.fn<() => void>();
+    const enqueue = vi.fn<(callback: () => void) => void>((callback) => callback());
+    const makeSearchQueryEffect = vi.fn<(query: string) => never>((query) => ({ query }) as never);
+
+    const opened = openNoteSearchPanel({ focus: focusEditor, dispatch } as never, {
+      query: "sidebar",
+      openPanel,
+      focusPanelInput,
+      enqueue,
+      makeSearchQueryEffect,
+    });
+
+    expect(opened).toBe(true);
+    expect(makeSearchQueryEffect).toHaveBeenCalledWith("sidebar");
+    expect(dispatch).toHaveBeenCalledWith({ effects: { query: "sidebar" } });
+    expect(openPanel).toHaveBeenCalledOnce();
+  });
+
   test("reports that search could not open when there is no editor view", () => {
     const openPanel = vi.fn<() => void>();
 

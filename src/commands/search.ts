@@ -4,8 +4,20 @@ import type { PageSearchResult, PaletteItem } from "./types";
 
 export { extractPreview, extractTitle, parseSearchQuery } from "../search/searchIndex";
 
+const fallbackSearchIndex = new SearchIndex();
+let fallbackSignature = "";
+
+function createMemosSignature(memos: readonly Memo[]): string {
+  return memos.map((memo) => `${memo.path}\0${memo.updatedAt}`).join("\0");
+}
+
 export function searchPages(memos: Memo[], query: string) {
-  return new SearchIndex(memos).search(query);
+  const signature = createMemosSignature(memos);
+  if (signature !== fallbackSignature) {
+    fallbackSearchIndex.rebuild(memos);
+    fallbackSignature = signature;
+  }
+  return fallbackSearchIndex.search(query);
 }
 
 export function buildPagePaletteItems(

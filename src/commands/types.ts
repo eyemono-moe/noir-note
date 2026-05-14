@@ -46,4 +46,8 @@ export interface PageSearchResult {
   path: string;
   title: string;
   preview: string;
+  matches?: Array<{
+    preview: string;
+    lineNumber?: number;
+  }>;
 }

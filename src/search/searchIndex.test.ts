@@ -44,6 +44,27 @@ describe("SearchIndex", () => {
     expect(results[2].preview).toBe("alpha appears in the body");
   });
 
+  test("uses frontmatter title before the first heading", () => {
+    const index = createSearchIndex([
+      createMemo("/titled", "# Heading Title\nBody notes", { title: "Frontmatter Title" }),
+    ]);
+
+    expect(index.search("frontmatter")).toEqual([
+      { path: "/titled", title: "Frontmatter Title", preview: "Body notes" },
+    ]);
+  });
+
+  test("returns multiple content snippets for repeated matches in one memo", () => {
+    const index = createSearchIndex([
+      createMemo("/repeated", "# Repeated\nalpha appears first\nother text\nalpha appears second"),
+    ]);
+
+    expect(index.search("alpha")[0]?.matches).toEqual([
+      { preview: "alpha appears first", lineNumber: 2 },
+      { preview: "alpha appears second", lineNumber: 4 },
+    ]);
+  });
+
   test("supports tag filters and incremental updates", () => {
     const index = createSearchIndex([
       createMemo("/work", "# Work\nInitial notes", { tags: ["project"] }),

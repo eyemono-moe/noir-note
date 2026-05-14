@@ -20,7 +20,7 @@ import {
   useCommands,
 } from "../context/commands";
 import { useMemosCollection } from "../context/db";
-import { getSearchClient } from "../search/searchClient";
+import { useSearch } from "../search/SearchProvider";
 import { buildPagePaletteItems, parseSearchQuery } from "./search";
 import type { PageSearchResult, PaletteItem } from "./types";
 
@@ -44,8 +44,8 @@ const CommandPalette: Component = () => {
   const { isOpen, setOpen } = useCommandPalette();
 
   const [inputValue, setInputValue] = createSignal("");
-  const [isSearchIndexReady, setSearchIndexReady] = createSignal(false);
   const [workerResults, setWorkerResults] = createSignal<PageSearchResult[] | undefined>();
+  const search = useSearch();
 
   // Get all memos for palette
   const memosCollection = useMemosCollection();
@@ -108,49 +108,17 @@ const CommandPalette: Component = () => {
     }
   });
 
-  // Keep the Worker index in sync with the reactive memo collection.
-  createEffect(() => {
-    const allMemos = allMemosQuery();
-    if (!allMemos) return;
-
-    setSearchIndexReady(false);
-    const query = untrack(inputValue);
-    void getSearchClient()
-      .rebuild(allMemos)
-      .then(() => {
-        setSearchIndexReady(true);
-        if (query.trim()) {
-          return getSearchClient().search(query, { limit: MAX_PALETTE_ITEMS });
-        }
-        setWorkerResults(undefined);
-        return undefined;
-      })
-      .then((results) => {
-        if (results) setWorkerResults(results);
-      })
-      .catch((error: unknown) => {
-        console.error("[CommandPalette] Search index update failed:", error);
-        setSearchIndexReady(false);
-        setWorkerResults(undefined);
-      });
-  });
-
-  // Query the Worker when the palette input changes. Empty input still uses the
-  // local memo list so existing pages show immediately before any search.
+  // Query the shared Worker index when the palette input changes.
   createEffect(() => {
     const query = inputValue();
-    if (!query.trim()) {
-      setWorkerResults(undefined);
-      return;
-    }
-
-    if (!isSearchIndexReady()) {
+    const isReady = search.isReady();
+    if (!query.trim() || !isReady) {
       setWorkerResults(undefined);
       return;
     }
 
     let cancelled = false;
-    void getSearchClient()
+    void search
       .search(query, { limit: MAX_PALETTE_ITEMS })
       .then((results) => {
         if (!cancelled) setWorkerResults(results);

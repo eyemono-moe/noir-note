@@ -48,6 +48,10 @@ export function extractTitle(path: string, content: string): string {
   return path;
 }
 
+function getMemoTitle(memo: Memo): string {
+  return memo.metadata?.title || extractTitle(memo.path, memo.content);
+}
+
 export function extractPreview(content: string, maxLines = 2, maxChars = 100): string {
   const lines = content.split("\n");
   const previewLines: string[] = [];
@@ -159,12 +163,46 @@ function createContentSnippet(content: string, query: string, maxChars = 80): st
     return extractPreview(content);
   }
 
+  return createLineSnippet(normalizedContent, query, maxChars);
+}
+
+function createLineSnippet(line: string, query: string, maxChars = 80): string {
+  const normalizedLine = collapseWhitespace(line);
+  if (!normalizedLine || !query) return normalizedLine;
+
+  const matchIndex = normalizedLine.toLowerCase().indexOf(query.toLowerCase());
+  if (matchIndex === -1) {
+    return normalizedLine.length > maxChars
+      ? `${normalizedLine.slice(0, maxChars)}...`
+      : normalizedLine;
+  }
+
   const contextBefore = 19;
   const start = Math.max(0, matchIndex - contextBefore);
-  const end = Math.min(normalizedContent.length, start + maxChars);
+  const end = Math.min(normalizedLine.length, start + maxChars);
   const prefix = start > 0 ? "…" : "";
-  const suffix = end < normalizedContent.length ? "…" : "";
-  return `${prefix}${normalizedContent.slice(start, end)}${suffix}`;
+  const suffix = end < normalizedLine.length ? "…" : "";
+  return `${prefix}${normalizedLine.slice(start, end)}${suffix}`;
+}
+
+function createContentMatches(
+  content: string,
+  query: string,
+): Array<{ preview: string; lineNumber?: number }> {
+  if (!query) return [{ preview: extractPreview(content) }];
+
+  const matches: Array<{ preview: string; lineNumber?: number }> = [];
+  const lowerQuery = query.toLowerCase();
+  const lines = stripFrontmatter(content).split("\n");
+
+  for (const [index, line] of lines.entries()) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("# ")) continue;
+    if (!trimmed.toLowerCase().includes(lowerQuery)) continue;
+    matches.push({ preview: createLineSnippet(trimmed, query), lineNumber: index + 1 });
+  }
+
+  return matches.length > 0 ? matches : [{ preview: createContentSnippet(content, query) }];
 }
 
 function getMatchKind(memo: Memo, title: string, query: string): MatchKind | undefined {
@@ -220,7 +258,7 @@ export class SearchIndex {
 
   update(memo: Memo): void {
     this.docs.set(memo.path, memo);
-    const title = extractTitle(memo.path, memo.content);
+    const title = getMemoTitle(memo);
     const document = toSearchDocument(memo, title);
     if (this.index.contain(memo.path)) {
       this.index.update(memo.path, document);
@@ -248,7 +286,7 @@ export class SearchIndex {
     const results: Array<PageSearchResult & { matchKind: MatchKind }> = [];
 
     for (const memo of candidates) {
-      const title = extractTitle(memo.path, memo.content);
+      const title = getMemoTitle(memo);
 
       if (!matchesAllTags(memo.metadata?.tags, parsedQuery.tags)) {
         continue;
@@ -268,6 +306,9 @@ export class SearchIndex {
           matchKind === "content"
             ? createContentSnippet(memo.content, textQuery)
             : extractPreview(memo.content),
+        ...(matchKind === "content"
+          ? { matches: createContentMatches(memo.content, textQuery) }
+          : {}),
         matchKind,
       });
     }
