@@ -7,12 +7,14 @@ import type { Memo, MemoWithoutContent } from "../../types/memo";
 import { AttachmentsTab } from "./tabs/AttachmentsTab";
 import { ConfigTab } from "./tabs/ConfigTab";
 import { ExplorerTab } from "./tabs/ExplorerTab";
+import { SearchTab } from "./tabs/SearchTab";
 
 interface SidebarProps {
   currentPath: string;
   onNavigate: (path: string) => void;
   onDelete: (path: string) => void;
   onInsert: (memo: Omit<Memo, "content" | "createdAt" | "updatedAt">) => void;
+  onSearchResultNavigate: (path: string, query: string) => void;
   allMemos: MemoWithoutContent[];
   memosCollection: MemosCollection;
 }
@@ -34,6 +36,11 @@ const TAB_DEFS: TabDef[] = [
     id: "explorer",
     icon: "i-material-symbols:folder-outline-rounded",
     label: "Explorer",
+  },
+  {
+    id: "search",
+    icon: "i-material-symbols:search-rounded",
+    label: "Search",
   },
   {
     id: "attachments",
@@ -114,6 +121,13 @@ const Sidebar: Component<SidebarProps> = (props) => {
             onInsert={props.onInsert}
             allMemos={props.allMemos}
             memosCollection={props.memosCollection}
+          />
+        </Tabs.Content>
+
+        <Tabs.Content value="search" class="h-full data-[state=inactive]:hidden">
+          <SearchTab
+            memosCollection={props.memosCollection}
+            onNavigateToResult={props.onSearchResultNavigate}
           />
         </Tabs.Content>
 
