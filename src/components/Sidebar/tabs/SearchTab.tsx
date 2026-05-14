@@ -17,6 +17,7 @@ export const SearchTab: Component<SearchTabProps> = (props) => {
   const [results, setResults] = createSignal<PageSearchResult[]>([]);
   const search = useSearch();
 
+  // Perform search when query changes
   createEffect(() => {
     const nextQuery = query();
     if (!nextQuery.trim()) {
