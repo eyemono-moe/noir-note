@@ -39,14 +39,14 @@ const TAB_DEFS: TabDef[] = [
     label: "Explorer",
   },
   {
-    id: "attachments",
-    icon: "i-material-symbols:image-outline-rounded",
-    label: "Attachments",
-  },
-  {
     id: "properties",
     icon: "i-material-symbols:info-outline-rounded",
     label: "Properties",
+  },
+  {
+    id: "attachments",
+    icon: "i-material-symbols:image-outline-rounded",
+    label: "Attachments",
   },
 ];
 
