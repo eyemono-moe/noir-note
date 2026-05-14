@@ -12,7 +12,7 @@ export interface SearchClient {
   search(query: string, options?: SearchOptions): Promise<PageSearchResult[]>;
 }
 
-export interface SearchOptions {
+interface SearchOptions {
   limit?: number;
 }
 
