@@ -23,6 +23,7 @@ interface AppConfig {
   splitterSizes?: number[];
   scrollSyncEnabled?: boolean;
   sidebarAccordionState?: string[];
+  propertiesAccordionState?: string[];
   sidebarTab?: string;
   embed?: EmbedConfig;
 }
@@ -87,6 +88,14 @@ export function updateSidebarAccordionState(state: string[]) {
 
 export function useSidebarAccordionState() {
   return () => config.sidebarAccordionState ?? ["explorer"];
+}
+
+export function updatePropertiesAccordionState(state: string[]) {
+  setConfig("propertiesAccordionState", state);
+}
+
+export function usePropertiesAccordionState() {
+  return () => config.propertiesAccordionState ?? ["system", "frontmatter", "outline", "backlinks"];
 }
 
 export function updateSidebarTab(tab: string) {

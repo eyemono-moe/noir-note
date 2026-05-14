@@ -1,3 +1,4 @@
+import { Accordion } from "@ark-ui/solid/accordion";
 import { Combobox, useListCollection } from "@ark-ui/solid/combobox";
 import { useFilter } from "@ark-ui/solid/locale";
 import {
@@ -13,11 +14,17 @@ import {
 import { Portal } from "solid-js/web";
 
 import { queryMemoPathsReferencingMemo } from "../../../db/memoCollection";
+import {
+  updatePropertiesAccordionState,
+  usePropertiesAccordionState,
+} from "../../../store/configStore";
 import type { MemoWithoutContent } from "../../../types/memo";
 import { collectFrontmatterTags, updateEditableFrontmatter } from "../../../utils/frontmatterEdit";
 import { buildNoteProperties } from "../../../utils/noteProperties";
 import { BacklinkList } from "../Backlinks";
 import { Outline } from "../Outline";
+
+import styles from "../sidebar.module.css";
 
 interface PropertiesTabProps {
   currentPath: string;
@@ -43,13 +50,28 @@ const formatAbsoluteDateTime = (iso: string) =>
     timeStyle: "short",
   }).format(new Date(iso));
 
-const Section: Component<{ title: string; children: JSX.Element }> = (props) => (
-  <section class="border-border-primary border-b px-3 py-3 last:border-b-0">
-    <h2 class="text-text-secondary mb-2 text-[0.6875rem] font-bold tracking-[0.06em] uppercase">
-      {props.title}
-    </h2>
-    <div class="flex flex-col gap-2">{props.children}</div>
-  </section>
+const Section: Component<{
+  title: string;
+  value: string;
+  fill?: boolean;
+  children: JSX.Element;
+}> = (props) => (
+  <Accordion.Item
+    class={`flex shrink-0 flex-col overflow-hidden ${
+      props.fill ? "data-[state=open]:min-h-0 data-[state=open]:flex-1" : ""
+    }`}
+    value={props.value}
+  >
+    <Accordion.ItemTrigger class="focus-ring text-text-secondary hover:bg-surface-transparent-hover hover:text-text-primary flex w-full shrink-0 cursor-pointer items-center justify-between bg-transparent px-3 py-1.5 text-[0.6875rem] font-bold tracking-[0.06em] uppercase select-none">
+      <span>{props.title}</span>
+      <Accordion.ItemIndicator class="inline-flex items-center justify-center [transition:rotate_150ms_ease] data-[state=open]:[rotate:90deg]">
+        <span class="i-material-symbols:chevron-right-rounded size-3.5 shrink-0" />
+      </Accordion.ItemIndicator>
+    </Accordion.ItemTrigger>
+    <Accordion.ItemContent class={styles.ItemContent}>
+      <div class="flex min-h-0 flex-1 flex-col gap-2 px-3 py-3">{props.children}</div>
+    </Accordion.ItemContent>
+  </Accordion.Item>
 );
 
 const PropertyRow: Component<{ label: string; children: JSX.Element }> = (props) => (
@@ -228,6 +250,8 @@ const EditableFrontmatterFields: Component<{
 };
 
 export const PropertiesTab: Component<PropertiesTabProps> = (props) => {
+  const accordionState = usePropertiesAccordionState();
+
   const currentMemo = createMemo(() =>
     props.allMemos.find((memo) => memo.path === props.currentPath),
   );
@@ -256,7 +280,14 @@ export const PropertiesTab: Component<PropertiesTabProps> = (props) => {
   };
 
   return (
-    <div class="text-text-primary bg-surface-primary h-full overflow-y-auto">
+    <Accordion.Root
+      class="text-text-primary bg-surface-primary divide-border-primary flex h-full w-full flex-col divide-y overflow-hidden"
+      multiple
+      collapsible
+      lazyMount
+      value={accordionState()}
+      onValueChange={(details) => updatePropertiesAccordionState(details.value)}
+    >
       <Show
         when={properties()}
         fallback={
@@ -267,7 +298,7 @@ export const PropertiesTab: Component<PropertiesTabProps> = (props) => {
       >
         {(info) => (
           <>
-            <Section title="System">
+            <Section title="System" value="system">
               <PropertyRow label="Path">
                 <code class="bg-surface-secondary rounded px-1.5 py-0.5 text-xs">
                   {info().system.path}
@@ -285,7 +316,7 @@ export const PropertiesTab: Component<PropertiesTabProps> = (props) => {
               </PropertyRow>
             </Section>
 
-            <Section title="Frontmatter">
+            <Section title="Frontmatter" value="frontmatter">
               <Show when={info().frontmatter.status === "invalid"}>
                 <div class="text-text-danger border-border-primary bg-surface-secondary rounded-md border px-2 py-1.5 text-xs leading-4">
                   Frontmatter issue: {info().frontmatter.message}
@@ -323,11 +354,11 @@ export const PropertiesTab: Component<PropertiesTabProps> = (props) => {
               </Show>
             </Section>
 
-            <Section title="Outline">
+            <Section title="Outline" value="outline" fill>
               <Outline />
             </Section>
 
-            <Section title="Backlinks">
+            <Section title="Backlinks" value="backlinks" fill>
               <BacklinkList
                 paths={info().backlinks.paths}
                 allMemos={props.allMemos}
@@ -338,6 +369,6 @@ export const PropertiesTab: Component<PropertiesTabProps> = (props) => {
           </>
         )}
       </Show>
-    </div>
+    </Accordion.Root>
   );
 };
