@@ -1,5 +1,4 @@
 import { EditorState, Transaction } from "@codemirror/state";
-import type { Extension } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { createCodeMirror } from "solid-codemirror";
 import { createEffect, type Component } from "solid-js";
@@ -7,6 +6,7 @@ import { createEffect, type Component } from "solid-js";
 import { EditorStateLRUCache } from "../../context/editorStateCache";
 import { useTheme } from "../../context/theme";
 import { createEditorExtensions } from "../../editor/extensions";
+import { ensureEditorExtensions } from "../../editor/stateTransition";
 import type { MemoWithoutContent } from "../../types/memo";
 
 interface EditorProps {
@@ -38,20 +38,17 @@ const Editor: Component<EditorProps> = (props) => {
   // Editor-owned LRU cache for EditorState
   const stateCache = new EditorStateLRUCache({ maxSize: 8 });
 
-  const { ref, editorView, createExtension } = createCodeMirror({
+  const { ref, editorView } = createCodeMirror({
     onValueChange: (value) => props.onChange(value),
   });
 
-  const extensions = (): Extension[] =>
+  const extensions = () =>
     createEditorExtensions(isDark(), { currentPath: props.path, memos: props.allMemos ?? [] });
 
-  // Setup extensions with theme and reactive note-link completion context.
-  // Keep this as the only dynamic CodeMirror extension compartment. When we
-  // restore a cached EditorState or create a fresh state on path transitions,
-  // the state must not include another copy of the full extension set — adding
-  // another autocompletion override causes CodeMirror to throw
-  // "Config merge conflict for field override" and leaves navigation half-applied.
-  createExtension(extensions);
+  // Install/reconfigure the app-owned extension compartment. This intentionally
+  // does not use solid-codemirror's `createExtension`: `EditorView.setState()`
+  // replaces the whole state during memo path transitions, so the app must own
+  // reinstallation after every state replacement.
 
   // Single effect that handles: save on path change, then restore or sync document.
   //
@@ -68,6 +65,8 @@ const Editor: Component<EditorProps> = (props) => {
     if (!view) {
       return { path: newPath, content: newContent, justChangedPath: false };
     }
+
+    ensureEditorExtensions(view, extensions());
 
     const prevPath = prev?.path as string | undefined;
     const pathChanged = !!prev && prevPath !== newPath;
@@ -92,6 +91,7 @@ const Editor: Component<EditorProps> = (props) => {
           // no valid cache -> clear history by creating a fresh state
           view.setState(EditorState.create({ doc: newContent }));
         }
+        ensureEditorExtensions(view, extensions());
         // Transition handled — clear the flag
         return { path: newPath, content: newContent, justChangedPath: false };
       } else {
