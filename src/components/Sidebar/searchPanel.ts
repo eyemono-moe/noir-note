@@ -52,11 +52,12 @@ export function buildSidebarSearchGroups(
   return results.map((result) => ({
     path: result.path,
     title: result.title,
-    matches: [
-      {
-        lineNumber: undefined,
-        preview: highlightSearchSnippet(result.preview || result.path, query),
-      },
-    ],
+    matches: (result.matches && result.matches.length > 0
+      ? result.matches
+      : [{ preview: result.preview || result.path }]
+    ).map((match) => ({
+      lineNumber: match.lineNumber,
+      preview: highlightSearchSnippet(match.preview, query),
+    })),
   }));
 }

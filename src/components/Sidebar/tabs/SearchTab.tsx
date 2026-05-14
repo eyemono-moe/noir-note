@@ -5,6 +5,7 @@ import { useSearch } from "../../../search/SearchProvider";
 import { buildSidebarSearchGroups } from "../searchPanel";
 
 const SEARCH_RESULT_LIMIT = 100;
+const SEARCH_DEBOUNCE_MS = 150;
 
 interface SearchTabProps {
   onNavigateToResult: (path: string, query: string) => void;
@@ -15,11 +16,19 @@ export const SearchTab: Component<SearchTabProps> = (props) => {
   const [isSearching, setSearching] = createSignal(false);
   const [error, setError] = createSignal<string | undefined>();
   const [results, setResults] = createSignal<PageSearchResult[]>([]);
+  const [debouncedQuery, setDebouncedQuery] = createSignal("");
   const search = useSearch();
 
-  // Perform search when query changes
+  // Delay applying the text input so intermediate keystrokes do not flash a transient Searching state.
   createEffect(() => {
     const nextQuery = query();
+    const timeoutId = window.setTimeout(() => setDebouncedQuery(nextQuery), SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timeoutId);
+  });
+
+  // Perform search when the debounced query or shared search index state changes.
+  createEffect(() => {
+    const nextQuery = debouncedQuery();
     if (!nextQuery.trim()) {
       setResults([]);
       setSearching(false);
@@ -66,7 +75,7 @@ export const SearchTab: Component<SearchTabProps> = (props) => {
     };
   });
 
-  const groups = () => buildSidebarSearchGroups(results(), query());
+  const groups = () => buildSidebarSearchGroups(results(), debouncedQuery());
 
   return (
     <section class="text-text-primary flex h-full min-h-0 flex-col overflow-hidden">
@@ -102,11 +111,19 @@ export const SearchTab: Component<SearchTabProps> = (props) => {
           </div>
         </Show>
 
-        <Show when={query().trim() && isSearching()}>
+        <Show when={debouncedQuery().trim() && isSearching()}>
           <p class="text-text-secondary px-2 py-3 text-sm">Searching…</p>
         </Show>
 
-        <Show when={query().trim() && !isSearching() && groups().length === 0 && !error()}>
+        <Show
+          when={
+            debouncedQuery().trim() &&
+            debouncedQuery().trim() === query().trim() &&
+            !isSearching() &&
+            groups().length === 0 &&
+            !error()
+          }
+        >
           <div class="text-text-secondary flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-sm">
             <span class="i-material-symbols:search-off size-8 opacity-50" />
             <p class="m-0">No results found</p>

@@ -3,10 +3,18 @@ import { describe, expect, test } from "vite-plus/test";
 import { buildSidebarSearchGroups, highlightSearchSnippet } from "./searchPanel";
 
 describe("buildSidebarSearchGroups", () => {
-  test("groups worker search results by memo and keeps matching snippets", () => {
+  test("groups worker search results by memo and keeps all matching snippets", () => {
     const groups = buildSidebarSearchGroups(
       [
-        { path: "daily/2026-05-14", title: "Daily Note", preview: "met with Noir about search" },
+        {
+          path: "daily/2026-05-14",
+          title: "Daily Note",
+          preview: "met with Noir about search",
+          matches: [
+            { preview: "met with Noir about search", lineNumber: 3 },
+            { preview: "follow-up search notes", lineNumber: 8 },
+          ],
+        },
         { path: "projects/search", title: "Search Plan", preview: "sidebar search panel" },
       ],
       "search",
@@ -18,10 +26,18 @@ describe("buildSidebarSearchGroups", () => {
         title: "Daily Note",
         matches: [
           {
-            lineNumber: undefined,
+            lineNumber: 3,
             preview: [
               { text: "met with Noir about ", matched: false },
               { text: "search", matched: true },
+            ],
+          },
+          {
+            lineNumber: 8,
+            preview: [
+              { text: "follow-up ", matched: false },
+              { text: "search", matched: true },
+              { text: " notes", matched: false },
             ],
           },
         ],
