@@ -207,6 +207,30 @@ test.describe("Memo app", () => {
   // Regression test for the bug fixed in fix/file.undo:
   // Undoing in note B must not surface content typed in note A.
 
+  test("editor extensions remain active after sidebar navigation to a fresh note", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await waitForEditor(page);
+    await expect(page.locator(".cm-gutters")).toBeVisible();
+
+    const rootItem = await hoverTreeItem(page, "/");
+    await rootItem.getByRole("button", { name: "Add child note" }).click();
+    await page.getByPlaceholder("Enter note name...").fill("extension-state-note");
+    await page.keyboard.press("Enter");
+    await waitForEditor(page);
+
+    // Regression: replacing the EditorState during navigation must not drop the
+    // CodeMirror extension compartment. Line numbers are a visible proxy for the
+    // broader extension set, including markdown language support and autocomplete.
+    await expect(page.locator(".cm-gutters")).toBeVisible();
+    await expect(page.locator(".cm-lineNumbers")).toBeVisible();
+
+    await page.locator(".cm-content").click();
+    await page.keyboard.type("[");
+    await expect(page.locator(".cm-tooltip-autocomplete")).toBeVisible();
+  });
+
   test("undo does not leak content from a previously visited note", async ({ page }) => {
     const contentA = "Content that belongs to note A only";
 

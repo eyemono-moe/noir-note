@@ -6,12 +6,7 @@
   "unocss": true,
   "vite": true,
   "vitest": true,
-  "ignoreDependencies": [
-    "@iconify-json/material-symbols",
-    "eslint-plugin-solid",
-    "jsdom",
-    "wrangler"
-  ],
+  "ignoreDependencies": ["@iconify-json/material-symbols", "eslint-plugin-solid", "wrangler"],
   "project": ["src/**/*.{ts,tsx}"],
   "ignore": ["src/editor/shiki.bundle.ts"],
   "exclude": ["catalog"]

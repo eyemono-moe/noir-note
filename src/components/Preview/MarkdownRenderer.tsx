@@ -383,6 +383,7 @@ const MarkdownRenderer: Component<MarkdownRendererProps> = (props) => {
   const [lightboxZoom, setLightboxZoom] = createSignal(1);
   const [lightboxPan, setLightboxPan] = createSignal<LightboxPan>(LIGHTBOX_IMAGE_PAN_CENTER);
 
+  // Reset transient pan/zoom state whenever a different lightbox item is opened.
   createEffect(() => {
     lightboxIndex();
     setLightboxZoom(1);
