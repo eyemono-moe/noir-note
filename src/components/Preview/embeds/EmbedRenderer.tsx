@@ -70,6 +70,7 @@ const TwitterEmbed: Component<{ url: string; sourceLine: number | undefined }> =
   let containerEl: HTMLDivElement | undefined;
   const isDark = useTheme();
 
+  // Re-render the embedded tweet when the URL, theme, or container changes.
   createEffect(() => {
     const container = containerEl;
     if (!container) return;

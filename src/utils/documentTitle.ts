@@ -18,6 +18,7 @@ export function getMemoDocumentTitle(path: string, frontmatterTitle?: string): s
 }
 
 export function useMemoDocumentTitle(path: Accessor<string>, content: Accessor<string>) {
+  // Keep the browser tab title synchronized with the current memo path/title.
   createEffect(() => {
     const { metadata } = parseFrontmatter(content());
     document.title = getMemoDocumentTitle(path(), metadata?.title);

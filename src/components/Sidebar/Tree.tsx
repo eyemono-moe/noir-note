@@ -124,6 +124,7 @@ export const Tree: Component<TreeProps> = (props) => {
     return Array.from(expandedPaths);
   });
 
+  // Expand ancestor folders so the currently selected memo remains visible.
   createEffect(() => {
     for (const path of getAncestorPaths(props.currentPath)) {
       expandedPaths.add(path);
