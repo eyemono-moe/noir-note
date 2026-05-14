@@ -87,6 +87,7 @@ const MemoPageContent: Component = () => {
               <Editor
                 path={currentPath()}
                 content={content()}
+                allMemos={allMemosQuery() || []}
                 onChange={handleContentChange}
                 placeholder="Start typing..."
                 onEditorView={setEditorView}

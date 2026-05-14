@@ -6,12 +6,16 @@ import { createEffect, type Component } from "solid-js";
 import { EditorStateLRUCache } from "../../context/editorStateCache";
 import { useTheme } from "../../context/theme";
 import { createEditorExtensions } from "../../editor/extensions";
+import { ensureEditorExtensions } from "../../editor/stateTransition";
+import type { MemoWithoutContent } from "../../types/memo";
 
 interface EditorProps {
   /** Current memo path. When this changes, the editor state is saved and potentially restored from cache. */
   path: string;
   /** Current memo content. Used to control editor document and detect stale cache. */
   content: string;
+  /** Existing memos used by inline note-link completion. */
+  allMemos?: readonly MemoWithoutContent[];
   /** Called whenever user makes manual edits to the editor. */
   onChange: (content: string) => void;
   placeholder?: string;
@@ -34,12 +38,17 @@ const Editor: Component<EditorProps> = (props) => {
   // Editor-owned LRU cache for EditorState
   const stateCache = new EditorStateLRUCache({ maxSize: 8 });
 
-  const { ref, editorView, createExtension } = createCodeMirror({
+  const { ref, editorView } = createCodeMirror({
     onValueChange: (value) => props.onChange(value),
   });
 
-  // Setup extensions with theme
-  createExtension(() => createEditorExtensions(isDark()));
+  const extensions = () =>
+    createEditorExtensions(isDark(), { currentPath: props.path, memos: props.allMemos ?? [] });
+
+  // Install/reconfigure the app-owned extension compartment. This intentionally
+  // does not use solid-codemirror's `createExtension`: `EditorView.setState()`
+  // replaces the whole state during memo path transitions, so the app must own
+  // reinstallation after every state replacement.
 
   // Single effect that handles: save on path change, then restore or sync document.
   //
@@ -56,6 +65,8 @@ const Editor: Component<EditorProps> = (props) => {
     if (!view) {
       return { path: newPath, content: newContent, justChangedPath: false };
     }
+
+    ensureEditorExtensions(view, extensions());
 
     const prevPath = prev?.path as string | undefined;
     const pathChanged = !!prev && prevPath !== newPath;
@@ -78,13 +89,9 @@ const Editor: Component<EditorProps> = (props) => {
           view.setState(restored);
         } else {
           // no valid cache -> clear history by creating a fresh state
-          view.setState(
-            EditorState.create({
-              doc: newContent,
-              extensions: createEditorExtensions(isDark()),
-            }),
-          );
+          view.setState(EditorState.create({ doc: newContent }));
         }
+        ensureEditorExtensions(view, extensions());
         // Transition handled — clear the flag
         return { path: newPath, content: newContent, justChangedPath: false };
       } else {
