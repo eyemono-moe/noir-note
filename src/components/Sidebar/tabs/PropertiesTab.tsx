@@ -74,8 +74,18 @@ const Section: Component<{
   </Accordion.Item>
 );
 
-const PropertyRow: Component<{ label: string; children: JSX.Element }> = (props) => (
-  <div class="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-2 text-sm leading-5">
+const PropertyRow: Component<{
+  label: string;
+  orientation?: "horizontal" | "vertical";
+  children: JSX.Element;
+}> = (props) => (
+  <div
+    class={
+      props.orientation === "vertical"
+        ? "flex flex-col gap-1 text-sm"
+        : "grid grid-cols-[5.5rem_minmax(0,1fr)] gap-2 text-sm"
+    }
+  >
     <div class="text-text-secondary truncate">{props.label}</div>
     <div class="text-text-primary min-w-0 break-words">{props.children}</div>
   </div>
@@ -147,7 +157,7 @@ const EditableFrontmatterFields: Component<{
 
   return (
     <>
-      <PropertyRow label="Title">
+      <PropertyRow label="Title" orientation="vertical">
         <input
           class="focus-ring border-border-primary bg-surface-secondary text-text-primary placeholder:text-text-secondary w-full rounded border px-2 py-1 text-sm"
           value={title()}
@@ -159,7 +169,7 @@ const EditableFrontmatterFields: Component<{
           }}
         />
       </PropertyRow>
-      <PropertyRow label="Tags">
+      <PropertyRow label="Tags" orientation="vertical">
         <Combobox.Root<TagOption>
           collection={collection()}
           value={tags()}
@@ -342,7 +352,7 @@ export const PropertiesTab: Component<PropertiesTabProps> = (props) => {
                   <div class="flex flex-col gap-1.5">
                     <For each={info().frontmatter.extraFields}>
                       {(field) => (
-                        <PropertyRow label={field.key}>
+                        <PropertyRow label={field.key} orientation="horizontal">
                           <code class="bg-surface-secondary rounded px-1.5 py-0.5 text-xs">
                             {field.value}
                           </code>
