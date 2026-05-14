@@ -1,17 +1,14 @@
 import { Combobox, useListCollection } from "@ark-ui/solid/combobox";
-import { HoverCard } from "@ark-ui/solid/hover-card";
 import { useFilter } from "@ark-ui/solid/locale";
 import {
   type Component,
   For,
   type JSX,
   Show,
-  Suspense,
   createEffect,
   createMemo,
   createResource,
   createSignal,
-  lazy,
 } from "solid-js";
 import { Portal } from "solid-js/web";
 
@@ -19,10 +16,8 @@ import { queryMemoPathsReferencingMemo } from "../../../db/memoCollection";
 import type { MemoWithoutContent } from "../../../types/memo";
 import { collectFrontmatterTags, updateEditableFrontmatter } from "../../../utils/frontmatterEdit";
 import { buildNoteProperties } from "../../../utils/noteProperties";
-
-import treeStyles from "../tree.module.css";
-
-const MemoPreview = lazy(() => import("../MemoPreview"));
+import { BacklinkList } from "../Backlinks";
+import { Outline } from "../Outline";
 
 interface PropertiesTabProps {
   currentPath: string;
@@ -32,18 +27,21 @@ interface PropertiesTabProps {
   onNavigate: (path: string) => void;
 }
 
+const createBacklinkSource =
+  (currentPath: () => string, allMemos: () => MemoWithoutContent[]) => () => {
+    const memos = allMemos();
+    let maxUpdated = 0;
+    for (const memo of memos) {
+      if (memo.updatedAt > maxUpdated) maxUpdated = memo.updatedAt;
+    }
+    return { path: currentPath(), key: `${memos.length}:${maxUpdated}` };
+  };
+
 const formatAbsoluteDateTime = (iso: string) =>
   new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(iso));
-
-const getMemoDisplayName = (path: string, allMemos: MemoWithoutContent[]): string => {
-  const memo = allMemos.find((m) => m.path === path);
-  if (memo?.metadata?.title) return memo.metadata.title;
-  const segments = path.split("/").filter(Boolean);
-  return segments[segments.length - 1] ?? path;
-};
 
 const Section: Component<{ title: string; children: JSX.Element }> = (props) => (
   <section class="border-border-primary border-b px-3 py-3 last:border-b-0">
@@ -230,22 +228,15 @@ const EditableFrontmatterFields: Component<{
 };
 
 export const PropertiesTab: Component<PropertiesTabProps> = (props) => {
-  const [activePath, setActivePath] = createSignal<string | null>(null);
   const currentMemo = createMemo(() =>
     props.allMemos.find((memo) => memo.path === props.currentPath),
   );
 
-  const backlinkSource = () => {
-    const memos = props.allMemos;
-    let maxUpdated = 0;
-    for (const memo of memos) {
-      if (memo.updatedAt > maxUpdated) maxUpdated = memo.updatedAt;
-    }
-    return { path: props.currentPath, key: `${memos.length}:${maxUpdated}` };
-  };
-
   const [backlinks] = createResource<string[], { path: string; key: string }>(
-    backlinkSource,
+    createBacklinkSource(
+      () => props.currentPath,
+      () => props.allMemos,
+    ),
     (source) => queryMemoPathsReferencingMemo(source.path),
     { initialValue: [] },
   );
@@ -265,126 +256,88 @@ export const PropertiesTab: Component<PropertiesTabProps> = (props) => {
   };
 
   return (
-    <HoverCard.Root
-      lazyMount
-      unmountOnExit
-      openDelay={600}
-      closeDelay={200}
-      positioning={{ placement: "right-start", offset: { mainAxis: 8, crossAxis: 0 } }}
-      onTriggerValueChange={(event) => setActivePath(event.value)}
-    >
-      <div class="text-text-primary bg-surface-primary h-full overflow-y-auto">
-        <Show
-          when={properties()}
-          fallback={
-            <div class="text-text-secondary px-4 py-8 text-center text-sm">
-              No current note metadata
-            </div>
-          }
-        >
-          {(info) => (
-            <>
-              <Section title="System">
-                <PropertyRow label="Path">
-                  <code class="bg-surface-secondary rounded px-1.5 py-0.5 text-xs">
-                    {info().system.path}
-                  </code>
-                </PropertyRow>
-                <PropertyRow label="Created">
-                  <time dateTime={info().system.createdAtIso} title={info().system.createdAtIso}>
-                    {formatAbsoluteDateTime(info().system.createdAtIso)}
-                  </time>
-                </PropertyRow>
-                <PropertyRow label="Updated">
-                  <time dateTime={info().system.updatedAtIso} title={info().system.updatedAtIso}>
-                    {formatAbsoluteDateTime(info().system.updatedAtIso)}
-                  </time>
-                </PropertyRow>
-              </Section>
+    <div class="text-text-primary bg-surface-primary h-full overflow-y-auto">
+      <Show
+        when={properties()}
+        fallback={
+          <div class="text-text-secondary px-4 py-8 text-center text-sm">
+            No current note metadata
+          </div>
+        }
+      >
+        {(info) => (
+          <>
+            <Section title="System">
+              <PropertyRow label="Path">
+                <code class="bg-surface-secondary rounded px-1.5 py-0.5 text-xs">
+                  {info().system.path}
+                </code>
+              </PropertyRow>
+              <PropertyRow label="Created">
+                <time dateTime={info().system.createdAtIso} title={info().system.createdAtIso}>
+                  {formatAbsoluteDateTime(info().system.createdAtIso)}
+                </time>
+              </PropertyRow>
+              <PropertyRow label="Updated">
+                <time dateTime={info().system.updatedAtIso} title={info().system.updatedAtIso}>
+                  {formatAbsoluteDateTime(info().system.updatedAtIso)}
+                </time>
+              </PropertyRow>
+            </Section>
 
-              <Section title="Frontmatter">
-                <Show when={info().frontmatter.status === "invalid"}>
-                  <div class="text-text-danger border-border-primary bg-surface-secondary rounded-md border px-2 py-1.5 text-xs leading-4">
-                    Frontmatter issue: {info().frontmatter.message}
-                  </div>
-                </Show>
-
-                <Show when={info().frontmatter.status === "absent"}>
-                  <div class="text-text-secondary border-border-primary bg-surface-secondary rounded-md border px-2 py-1.5 text-xs leading-4">
-                    No frontmatter block found. Editing title or tags will create one.
-                  </div>
-                </Show>
-
-                <EditableFrontmatterFields
-                  title={info().frontmatter.title}
-                  tags={info().frontmatter.tags}
-                  allMemos={props.allMemos}
-                  onChange={updateFrontmatter}
-                />
-
-                <Show when={info().frontmatter.extraFields.length > 0}>
-                  <div class="border-border-primary mt-1 border-t pt-2">
-                    <div class="text-text-secondary mb-1 text-xs font-medium">Extra keys</div>
-                    <div class="flex flex-col gap-1.5">
-                      <For each={info().frontmatter.extraFields}>
-                        {(field) => (
-                          <PropertyRow label={field.key}>
-                            <code class="bg-surface-secondary rounded px-1.5 py-0.5 text-xs">
-                              {field.value}
-                            </code>
-                          </PropertyRow>
-                        )}
-                      </For>
-                    </div>
-                  </div>
-                </Show>
-              </Section>
-
-              <Section title="Backlinks">
-                <div class="text-text-secondary text-xs leading-4">
-                  Same backlink list as Explorer. Hover a note to preview it.
+            <Section title="Frontmatter">
+              <Show when={info().frontmatter.status === "invalid"}>
+                <div class="text-text-danger border-border-primary bg-surface-secondary rounded-md border px-2 py-1.5 text-xs leading-4">
+                  Frontmatter issue: {info().frontmatter.message}
                 </div>
-                <PropertyRow label="Count">{info().backlinks.count}</PropertyRow>
-                <Show
-                  when={info().backlinks.paths.length > 0}
-                  fallback={<div class="text-text-secondary text-sm">No backlinks</div>}
-                >
-                  <div class="flex flex-col gap-0.5">
-                    <For each={info().backlinks.paths}>
-                      {(path) => (
-                        <HoverCard.Trigger
-                          value={path}
-                          asChild={(hoverProps) => (
-                            <button
-                              {...hoverProps()}
-                              type="button"
-                              class="focus-ring text-text-primary hover:bg-surface-transparent-hover w-full cursor-pointer rounded-md bg-transparent px-2 py-1 text-start text-sm leading-5 select-none"
-                              onClick={() => props.onNavigate(path)}
-                            >
-                              <span class="text-text-secondary i-material-symbols:link-rounded mr-1 inline-block size-3.5 align-[-0.125rem]" />
-                              <span>{getMemoDisplayName(path, props.allMemos)}</span>
-                              <div class="text-text-secondary truncate pl-5 text-xs">{path}</div>
-                            </button>
-                          )}
-                        />
+              </Show>
+
+              <Show when={info().frontmatter.status === "absent"}>
+                <div class="text-text-secondary border-border-primary bg-surface-secondary rounded-md border px-2 py-1.5 text-xs leading-4">
+                  No frontmatter block found. Editing title or tags will create one.
+                </div>
+              </Show>
+
+              <EditableFrontmatterFields
+                title={info().frontmatter.title}
+                tags={info().frontmatter.tags}
+                allMemos={props.allMemos}
+                onChange={updateFrontmatter}
+              />
+
+              <Show when={info().frontmatter.extraFields.length > 0}>
+                <div class="border-border-primary mt-1 border-t pt-2">
+                  <div class="text-text-secondary mb-1 text-xs font-medium">Extra keys</div>
+                  <div class="flex flex-col gap-1.5">
+                    <For each={info().frontmatter.extraFields}>
+                      {(field) => (
+                        <PropertyRow label={field.key}>
+                          <code class="bg-surface-secondary rounded px-1.5 py-0.5 text-xs">
+                            {field.value}
+                          </code>
+                        </PropertyRow>
                       )}
                     </For>
                   </div>
-                </Show>
-              </Section>
-            </>
-          )}
-        </Show>
-      </div>
-      <Portal>
-        <HoverCard.Positioner>
-          <HoverCard.Content class={treeStyles.HoverCardContent}>
-            <Suspense>
-              <Show when={activePath()}>{(path) => <MemoPreview path={path()} />}</Show>
-            </Suspense>
-          </HoverCard.Content>
-        </HoverCard.Positioner>
-      </Portal>
-    </HoverCard.Root>
+                </div>
+              </Show>
+            </Section>
+
+            <Section title="Outline">
+              <Outline />
+            </Section>
+
+            <Section title="Backlinks">
+              <BacklinkList
+                paths={info().backlinks.paths}
+                allMemos={props.allMemos}
+                onNavigate={props.onNavigate}
+                showPath
+              />
+            </Section>
+          </>
+        )}
+      </Show>
+    </div>
   );
 };

@@ -24,7 +24,7 @@ describe("buildNoteProperties", () => {
     expect(props.frontmatter.title).toBe("Today");
     expect(props.frontmatter.tags).toEqual(["daily", "work"]);
     expect(props.frontmatter.extraFields).toEqual([{ key: "status", value: "draft" }]);
-    expect(props.backlinks.count).toBe(2);
+    expect(props.backlinks.paths).toEqual(["index.md", "notes/yesterday.md"]);
   });
 
   test("reports invalid frontmatter instead of treating it as unset", () => {

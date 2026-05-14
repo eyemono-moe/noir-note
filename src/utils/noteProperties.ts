@@ -48,7 +48,6 @@ export function buildNoteProperties(input: BuildNotePropertiesInput) {
       updatedAtIso: new Date(input.memo.updatedAt).toISOString(),
     },
     backlinks: {
-      count: input.backlinks.length,
       paths: input.backlinks,
     },
   };
