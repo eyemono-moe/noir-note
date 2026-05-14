@@ -64,6 +64,7 @@ export function useScrollSync(
 
   // ── Editor → Preview ──────────────────────────────────────────────────────
 
+  // Subscribe to editor scroll events while an EditorView is available and sync preview position.
   createEffect(() => {
     const view = editorView();
     if (!view || !enabled()) return;
@@ -102,6 +103,7 @@ export function useScrollSync(
 
   // ── Preview → Editor ──────────────────────────────────────────────────────
 
+  // Subscribe to preview scroll events while an adapter is available and sync editor position.
   createEffect(() => {
     const adapter = previewAdapter();
     if (!adapter || !enabled()) return;

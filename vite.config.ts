@@ -71,8 +71,9 @@ export default defineConfig({
     ignorePatterns: ["dist/**", "e2e/**"],
     options: { typeAware: true, typeCheck: true },
     plugins: ["eslint", "typescript", "unicorn", "oxc", "import", "jsx-a11y", "promise", "vitest"],
-    jsPlugins: ["eslint-plugin-solid"],
+    jsPlugins: ["eslint-plugin-solid", "./scripts/eslint-plugin-noir-note.ts"],
     rules: {
+      "noir-note/require-create-effect-comment": "error",
       "solid/components-return-once": "warn",
       "solid/event-handlers": "warn",
       "solid/imports": "warn",
