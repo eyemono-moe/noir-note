@@ -14,14 +14,12 @@ interface BacklinkListProps {
   allMemos: MemoWithoutContent[];
   onNavigate: (path: string) => void;
   emptyMessage?: string;
-  showPath?: boolean;
 }
 
 interface BacklinksProps {
   currentPath: string;
   allMemos: MemoWithoutContent[];
   onNavigate: (path: string) => void;
-  showPath?: boolean;
 }
 
 function getMemoDisplayName(path: string, allMemos: MemoWithoutContent[]): string {
@@ -66,9 +64,7 @@ export const BacklinkList: Component<BacklinkListProps> = (props) => {
                     <span class="text-text-secondary i-material-symbols:link-rounded mt-0.5 size-4 shrink-0" />
                     <span class="min-w-0 flex-1">
                       <span class="block truncate">{getMemoDisplayName(path, props.allMemos)}</span>
-                      <Show when={props.showPath}>
-                        <span class="text-text-secondary block truncate text-xs">{path}</span>
-                      </Show>
+                      <span class="text-text-secondary block truncate text-xs">{path}</span>
                     </span>
                   </button>
                 )}
@@ -114,7 +110,6 @@ export const Backlinks: Component<BacklinksProps> = (props) => {
       paths={refs.latest ?? []}
       allMemos={props.allMemos}
       onNavigate={props.onNavigate}
-      showPath={props.showPath}
     />
   );
 };

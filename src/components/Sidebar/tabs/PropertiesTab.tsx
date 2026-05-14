@@ -373,7 +373,6 @@ export const PropertiesTab: Component<PropertiesTabProps> = (props) => {
                 paths={info().backlinks.paths}
                 allMemos={props.allMemos}
                 onNavigate={props.onNavigate}
-                showPath
               />
             </Section>
           </>
