@@ -125,10 +125,7 @@ const Sidebar: Component<SidebarProps> = (props) => {
         </Tabs.Content>
 
         <Tabs.Content value="search" class="h-full data-[state=inactive]:hidden">
-          <SearchTab
-            memosCollection={props.memosCollection}
-            onNavigateToResult={props.onSearchResultNavigate}
-          />
+          <SearchTab onNavigateToResult={props.onSearchResultNavigate} />
         </Tabs.Content>
 
         <Tabs.Content value="attachments" class="h-full data-[state=inactive]:hidden">

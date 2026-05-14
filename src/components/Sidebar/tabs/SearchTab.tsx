@@ -1,59 +1,21 @@
-import { useLiveQuery } from "@tanstack/solid-db";
 import { createEffect, createSignal, For, Show, type Component } from "solid-js";
 
 import type { PageSearchResult } from "../../../commands/types";
-import type { MemosCollection } from "../../../db/memoCollection";
-import { getSearchClient } from "../../../search/searchClient";
+import { useSearch } from "../../../search/SearchProvider";
 import { buildSidebarSearchGroups } from "../searchPanel";
 
 const SEARCH_RESULT_LIMIT = 100;
 
 interface SearchTabProps {
-  memosCollection: MemosCollection;
   onNavigateToResult: (path: string, query: string) => void;
 }
 
 export const SearchTab: Component<SearchTabProps> = (props) => {
   const [query, setQuery] = createSignal("");
-  const [isIndexReady, setIndexReady] = createSignal(false);
   const [isSearching, setSearching] = createSignal(false);
   const [error, setError] = createSignal<string | undefined>();
   const [results, setResults] = createSignal<PageSearchResult[]>([]);
-
-  const allMemosQuery = useLiveQuery((q) =>
-    q.from({ memos: props.memosCollection }).select(({ memos }) => ({
-      path: memos.path,
-      content: memos.content,
-      createdAt: memos.createdAt,
-      updatedAt: memos.updatedAt,
-      metadata: memos.metadata,
-    })),
-  );
-
-  createEffect(() => {
-    const allMemos = allMemosQuery();
-    if (!allMemos) return;
-
-    let cancelled = false;
-    setIndexReady(false);
-    setError(undefined);
-    void getSearchClient()
-      .rebuild(allMemos)
-      .then(() => {
-        if (!cancelled) setIndexReady(true);
-      })
-      .catch((caught: unknown) => {
-        console.error("[SidebarSearch] Search index update failed:", caught);
-        if (!cancelled) {
-          setError("Search index failed to update.");
-          setIndexReady(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  });
+  const search = useSearch();
 
   createEffect(() => {
     const nextQuery = query();
@@ -63,16 +25,26 @@ export const SearchTab: Component<SearchTabProps> = (props) => {
       return;
     }
 
-    if (!isIndexReady()) {
+    const indexError = search.error();
+    const isIndexReady = search.isReady();
+    if (indexError) {
+      setResults([]);
+      setSearching(false);
+      setError("Search index failed to update.");
+      return;
+    }
+
+    if (!isIndexReady) {
       setResults([]);
       setSearching(true);
+      setError(undefined);
       return;
     }
 
     let cancelled = false;
     setSearching(true);
     setError(undefined);
-    void getSearchClient()
+    void search
       .search(nextQuery, { limit: SEARCH_RESULT_LIMIT })
       .then((nextResults) => {
         if (!cancelled) setResults(nextResults);

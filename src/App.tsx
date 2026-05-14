@@ -7,6 +7,7 @@ import { DBProvider } from "./context/db";
 import { EditorProvider } from "./context/editor";
 import { EditorSplitProvider } from "./context/editorSplit";
 import { ThemeProvider } from "./context/theme";
+import { SearchProvider } from "./search/SearchProvider";
 
 const App: ParentComponent = (props) => {
   return (
@@ -15,9 +16,11 @@ const App: ParentComponent = (props) => {
         <CommandsProvider>
           <ThemeProvider>
             <DBProvider>
-              <CommandPalette />
-              <ToastViewport />
-              {props.children}
+              <SearchProvider>
+                <CommandPalette />
+                <ToastViewport />
+                {props.children}
+              </SearchProvider>
             </DBProvider>
           </ThemeProvider>
         </CommandsProvider>
