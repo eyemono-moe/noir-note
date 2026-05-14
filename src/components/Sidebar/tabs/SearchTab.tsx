@@ -130,7 +130,7 @@ export const SearchTab: Component<SearchTabProps> = (props) => {
                     {(match) => (
                       <button
                         type="button"
-                        class="focus-ring hover:bg-surface-transparent-hover text-text-secondary w-full rounded px-2 py-1 text-left text-xs leading-5"
+                        class="focus-ring hover:bg-surface-transparent-hover text-text-secondary w-full rounded bg-transparent px-2 py-1 text-left text-xs leading-5"
                         onClick={() => props.onNavigateToResult(group.path, query())}
                       >
                         <For each={match.preview}>
@@ -138,7 +138,7 @@ export const SearchTab: Component<SearchTabProps> = (props) => {
                             <span
                               class={
                                 part.matched
-                                  ? "bg-surface-transparent-active text-text-primary rounded px-0.5"
+                                  ? "bg-surface-transparent-accent text-text-primary rounded px-0.5"
                                   : undefined
                               }
                             >
