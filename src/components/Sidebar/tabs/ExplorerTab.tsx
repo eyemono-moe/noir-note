@@ -7,7 +7,6 @@ import { updateSidebarAccordionState, useSidebarAccordionState } from "../../../
 import type { Memo, MemoWithoutContent } from "../../../types/memo";
 import { buildTree, type TreeNode } from "../../../utils/tree";
 import { Backlinks } from "../Backlinks";
-import { Outline } from "../Outline";
 import { RecentNotes } from "../RecentNotes";
 import { Tree } from "../Tree";
 
@@ -106,21 +105,6 @@ export const ExplorerTab: Component<ExplorerTabProps> = (props) => {
             allMemos={props.allMemos}
             onNavigate={props.onNavigate}
           />
-        </Accordion.ItemContent>
-      </Accordion.Item>
-
-      <Accordion.Item
-        class="flex shrink-0 flex-col overflow-hidden data-[state=open]:min-h-0 data-[state=open]:flex-1"
-        value="outline"
-      >
-        <Accordion.ItemTrigger class="focus-ring text-text-secondary hover:bg-surface-transparent-hover hover:text-text-primary flex w-full shrink-0 cursor-pointer items-center justify-between bg-transparent px-3 py-1.5 text-[0.6875rem] font-bold tracking-[0.06em] uppercase select-none">
-          <span>Outline</span>
-          <Accordion.ItemIndicator class="inline-flex items-center justify-center [transition:rotate_150ms_ease] data-[state=open]:[rotate:90deg]">
-            <span class="i-material-symbols:chevron-right-rounded size-3.5 shrink-0" />
-          </Accordion.ItemIndicator>
-        </Accordion.ItemTrigger>
-        <Accordion.ItemContent class={styles.ItemContent}>
-          <Outline />
         </Accordion.ItemContent>
       </Accordion.Item>
     </Accordion.Root>

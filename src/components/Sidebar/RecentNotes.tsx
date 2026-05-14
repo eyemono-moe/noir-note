@@ -63,15 +63,18 @@ export const RecentNotes: Component<RecentNotesProps> = (props) => {
               asChild={(hoverProps) => (
                 <button
                   type="button"
-                  class={`focus-ring text-text-primary flex w-full cursor-pointer items-center gap-1.5 rounded-md border-0 bg-transparent px-2 py-1 text-start text-sm leading-5 select-none hover:bg-surface-transparent-hover${memo.path === props.currentPath ? " bg-surface-transparent-active" : ""}`}
+                  class={`focus-ring text-text-primary flex w-full cursor-pointer items-start gap-1.5 rounded-md border-0 bg-transparent px-2 py-1 text-start text-sm leading-5 select-none hover:bg-surface-transparent-hover${memo.path === props.currentPath ? " bg-surface-transparent-active" : ""}`}
                   onClick={() => props.onNavigate(memo.path)}
                   {...hoverProps()}
                 >
-                  <span class="i-material-symbols:description-outline-rounded size-4 shrink-0" />
-                  <span class="flex-1 truncate">
-                    {getMemoDisplayName(memo.path, memo.metadata?.title)}
+                  <span class="i-material-symbols:description-outline-rounded mt-0.5 size-4 shrink-0" />
+                  <span class="min-w-0 flex-1">
+                    <span class="block truncate">
+                      {getMemoDisplayName(memo.path, memo.metadata?.title)}
+                    </span>
+                    <span class="text-text-secondary block truncate text-xs">{memo.path}</span>
                   </span>
-                  <span class="text-text-secondary shrink-0 text-xs leading-4 whitespace-nowrap">
+                  <span class="text-text-secondary shrink-0 text-xs leading-5 whitespace-nowrap">
                     {formatRelativeTime(memo.updatedAt)}
                   </span>
                 </button>

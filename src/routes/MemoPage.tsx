@@ -66,6 +66,7 @@ const MemoPageContent: Component = () => {
           <Suspense fallback={<div class="text-text-secondary p-4">Loading sidebar...</div>}>
             <Sidebar
               currentPath={currentPath()}
+              currentContent={content()}
               onNavigate={(path) => navigate(path)}
               onDelete={(path) => {
                 collection.delete(path);
@@ -74,6 +75,7 @@ const MemoPageContent: Component = () => {
                 const now = Date.now();
                 collection.insert({ ...memo, content: "", createdAt: now, updatedAt: now });
               }}
+              onCurrentContentChange={handleContentChange}
               allMemos={allMemosQuery() || []}
               memosCollection={collection}
             />
